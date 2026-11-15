@@ -1,9 +1,9 @@
-name: Publicar previa web do Educart
+name: Publicar previa web do Educart — Fase 2
 
 on:
   push:
     branches:
-      - feat/fase-1-fundacao
+      - feat/fase-2-reservas
     paths:
       - 'src/**'
       - 'index.html'
