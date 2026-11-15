@@ -469,7 +469,7 @@ test('Fase 4 — filtros semanais, contagem correta e exportação CSV/PDF',asyn
   await page.locator('#calendar-focus').fill(date1);
   await page.locator('#calendar-cart').selectOption(cartId);
   await page.locator('#calendar-requester').selectOption(teacherId);
-  await expect(page.getByText('Professora Relatório').first()).toBeVisible();
+  await expect(page.locator('.calendar-event').getByText('Professora Relatório').first()).toBeVisible();
   const stats=page.locator('.calendar-stats');
   await expect(stats.getByText('Reservas agrupadas').locator('..').locator('strong')).toHaveText('1');
   await expect(stats.getByText('Períodos ocupados').locator('..').locator('strong')).toHaveText('1');
