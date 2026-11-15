@@ -121,6 +121,11 @@ A confirmação de cancelamento não apaga o histórico.
 - Consultar carrinhos por identificador e sua capacidade informada.
 - Acessar os notebooks cadastrados e identificadores associados a cada carrinho.
 - Cadastrar/ajustar capacidade e notebooks é parte da administração do estoque.
+- Oferecer opções **Informar códigos manualmente**, **Importar planilha** e **Gerar códigos automaticamente** para o cadastro de notebooks, inclusive em lote.
+- Ao gerar códigos, o administrador informa a quantidade; a tela mostra os códigos propostos e permite editá-los antes de concluir.
+- Na importação, permitir revisar e corrigir códigos antes de confirmar. Não exigir que os identificadores sejam números de patrimônio.
+- Validar campos obrigatórios e códigos duplicados, mostrando erros no item correspondente, sem gravar registros inválidos.
+- Mostrar quantidade de notebooks efetivamente cadastrados no carrinho após o registro.
 - **Pendente de decisão:** como a interface deve lidar com diferença entre capacidade configurada e quantidade de notebooks individuais efetivamente cadastrados; não aplicar uma regra silenciosa.
 
 ## T09 — Pedidos de reserva pelos professores (futuro)
@@ -143,6 +148,9 @@ A confirmação de cancelamento não apaga o histórico.
 | Cancelamento elegível apenas da terça | Libera terça e mantém segunda/quarta, com histórico |
 | Cancelamento solicitado na própria data | Bloqueio conforme prazo acordado |
 | Exportação semanal com reservas completas, parciais e canceladas | Dados e situações consistentes com o painel e com a ocupação |
+| Cadastro em lote com geração de 10 códigos | A tela propõe 10 códigos distintos, permite editá-los e os valida antes de salvar |
+| Importação de códigos próprios da equipe de TI por planilha | Os códigos são preservados, revisáveis e associados ao carrinho escolhido |
+| Cadastro de identificadores repetidos | Registro inválido é impedido com indicação da duplicidade |
 
 ## Pontos para a próxima rodada de decisões
 
