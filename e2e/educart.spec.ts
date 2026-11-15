@@ -1269,3 +1269,40 @@ test('Responsivo professor — portal se ajusta à altura do notebook e ao celul
     await page.getByRole('button',{name:'Voltar para solicitações'}).click();
   }
 });
+
+
+test('Identidade visual — símbolo A carrega no login, painel e favicon',async({page})=>{
+  await useFakeSupabase(page);
+  await page.goto('/');
+  const loginLogo=page.locator('.auth-panel .brand-lockup');
+  await expect(loginLogo).toBeVisible();
+  await expect.poll(()=>loginLogo.evaluate((img:HTMLImageElement)=>
+    img.complete&&img.naturalWidth>0)).toBe(true);
+  await expect(page.locator('.auth-panel')).toHaveCSS('background-color','rgb(37, 30, 49)');
+  const favicon=page.locator('link[rel="icon"]');
+  await expect(favicon).toHaveAttribute('href',/favicon\.svg$/);
+  const href=await favicon.getAttribute('href');
+  const result=await page.request.get(new URL(href!,page.url()).href);
+  expect(result.status()).toBe(200);
+  expect(await result.text()).toContain('<svg');
+
+  await login(page);
+  const sidebarLogo=page.locator('.sidebar .brand-lockup');
+  await expect(sidebarLogo).toBeVisible();
+  await expect.poll(()=>sidebarLogo.evaluate((img:HTMLImageElement)=>
+    img.complete&&img.naturalWidth>0)).toBe(true);
+  await expect(page.getByText(/Fase \d+ •/)).toHaveCount(0);
+});
+
+test('Identidade visual — logo permanece íntegra em tela estreita',async({page})=>{
+  await page.setViewportSize({width:360,height:640});
+  await useFakeSupabase(page);
+  await page.goto('/');
+  const logo=page.locator('.auth-panel .brand-lockup');
+  await expect(logo).toBeVisible();
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth-document.documentElement.clientWidth)).toBeLessThanOrEqual(1);
+  await login(page);
+  await page.getByRole('button',{name:'Abrir menu lateral'}).click();
+  await expect(page.locator('.sidebar .brand-lockup')).toBeVisible();
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth-document.documentElement.clientWidth)).toBeLessThanOrEqual(1);
+});
