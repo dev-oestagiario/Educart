@@ -13,11 +13,11 @@ O Educart organiza a reserva de laboratórios móveis (carrinhos) e notebooks pa
 
 ## Cadastro de equipamentos
 
-- Cada laboratório móvel possui identificador próprio e capacidade configurável, pois carrinhos podem ter quantidades distintas de notebooks.
-- Cada notebook possui identificador individual e associação a um laboratório móvel. Identificadores podem ser códigos próprios da equipe de TI; não é obrigatório utilizar número de patrimônio.
+- Cada laboratório móvel possui identificador próprio e **capacidade numérica configurável**, que é a referência para calcular quantos notebooks podem ser reservados em cada data e turno. Exemplo: capacidade 30, sem reservas no período = 30 disponíveis, ainda que nem todos os códigos individuais tenham sido cadastrados.
+- Cada notebook que for identificado individualmente possui código próprio e associação a um laboratório móvel. Identificadores podem ser códigos da equipe de TI; não é obrigatório utilizar número de patrimônio. **A ausência de cadastro individual de alguns notebooks não diminui a capacidade disponível do carrinho.**
 - O administrador pode informar identificadores manualmente, importar identificadores por planilha ou solicitar geração automática de códigos para diversos notebooks, com possibilidade de editar os códigos gerados antes de concluir o cadastro.
-- A quantidade reservada em modalidade parcial corresponde aos notebooks efetivamente selecionados por identificador.
-- A disponibilidade de cada notebook é consultada para cada **data e turno**, não somente por carrinho ou dia.
+- Em reserva parcial, a quantidade reservada reduz a disponibilidade do carrinho em cada data e turno; os identificadores dos equipamentos efetivamente selecionados são registrados para rastreabilidade, sem exigir cadastro prévio de todos os notebooks que compõem a capacidade.
+- A disponibilidade de cada carrinho é calculada por **data e turno**, usando **capacidade configurada menos a soma de quantidades ativas reservadas no período**. Quando um notebook tiver código identificado, esse mesmo código também não poderá ser destinado duas vezes no período.
 - Mouse é uma necessidade/acessório informado separadamente da seleção do laboratório móvel ou notebooks, por meio de uma marcação simples **Precisa de mouse: sim/não**. A marcação serve para orientar a equipe de TI na preparação dos equipamentos; não há cadastro, quantidade, identificação ou controle de estoque de mouses.
 
 ## RF-08 — Cadastrar notebooks por código manual ou automático
@@ -51,24 +51,24 @@ O administrador informa:
 O registrante fica registrado automaticamente, separado do solicitante.
 
 **Critérios de aceitação:**
-- Uma reserva parcial somente é confirmada com todos os notebooks selecionados disponíveis em todos os períodos solicitados.
-- A reserva completa compromete todos os notebooks daquele laboratório móvel em todos os períodos selecionados.
+- Uma reserva parcial somente é confirmada se sua quantidade couber no saldo de todos os períodos solicitados e nenhum identificador individual selecionado conflitar com outra reserva ativa.
+- A reserva completa compromete **toda a capacidade configurada do carrinho** em todos os períodos selecionados, mesmo se o cadastro individual tiver menos identificadores.
 - É possível selecionar mais de um turno na mesma data.
 - Nenhuma reserva é confirmada com notebook, período ou solicitante obrigatório ausente.
 - Marcar ou desmarcar **Precisa de mouse** registra a preferência sem alterar disponibilidade de notebooks e sem impedir a confirmação por falta de mouses.
 
 ## RF-02 — Verificar conflitos e disponibilidade
 
-- Um turno é a menor unidade de reserva: qualquer reserva de um notebook impede nova reserva **do mesmo notebook** naquele turno e data, independentemente da hora dentro do turno.
+- Um turno é a menor unidade de reserva: o total de quantidades ativas reservadas no carrinho não pode superar sua capacidade naquele dia e turno. Quando houver notebooks identificados, **o mesmo identificador** não pode ser associado a duas reservas ativas no mesmo dia e turno.
 - Outros notebooks livres do mesmo carrinho continuam reserváveis naquele turno.
-- A reserva completa somente é permitida se **todos** os notebooks do carrinho estiverem livres em cada data e turno escolhidos.
+- A reserva completa somente é permitida se **nenhuma quantidade estiver reservada** naquele carrinho em cada data e turno escolhidos, de modo que toda a capacidade configurada esteja disponível.
 - Se houver conflito, o sistema detalha datas, turnos e equipamentos indisponíveis e permite rever a seleção ou escolher outro carrinho.
 - A verificação também deve ocorrer na confirmação, evitando que duas operações simultâneas comprometam o mesmo notebook.
 
 **Critérios de aceitação:**
 - Notebook A reservado segunda/matutino não pode ser reservado novamente segunda/matutino; pode ser reservado segunda/vespertino, se livre.
 - Notebook B do mesmo carrinho continua disponível segunda/matutino, se não tiver reserva.
-- Um carrinho parcialmente ocupado não pode ser reservado **por completo** no mesmo turno, mas seus notebooks livres podem ser reservados parcialmente.
+- Um carrinho parcialmente ocupado não pode ser reservado **por completo** no mesmo turno, mas a quantidade restante da capacidade configurada pode ser reservada parcialmente.
 - A escolha de datas e turnos múltiplos não gera reservas parciais silenciosamente quando algum período está indisponível.
 
 ## RF-03 — Agrupar reservas de múltiplos dias
@@ -113,7 +113,7 @@ Uma única reserva administrativa pode agrupar vários dias, mantendo registros 
 
 ## RF-06 — Consultar visualização 3D
 
-- Um carrinho genérico em 3D representa cada notebook cadastrado individualmente.
+- Um carrinho genérico em 3D representa **uma posição visual por unidade da capacidade configurada**, mesmo que não existam identificadores individuais cadastrados para todas elas. Posições de equipamentos com código conhecido mostram seu identificador, e posições sem código permanecem sem identificação específica.
 - A seleção de data e turno determina quais notebooks aparecem disponíveis ou reservados.
 - Ao clicar em notebook reservado, o administrador consulta solicitante, data, turno, necessidade de mouse e observações, além do identificador.
 - Ao clicar na estrutura do carrinho, consulta capacidade, disponíveis, reservados e contexto das reservas parciais/completas.
@@ -121,7 +121,7 @@ Uma única reserva administrativa pode agrupar vários dias, mantendo registros 
 - Deve existir consulta textual equivalente para acessibilidade e situações nas quais o 3D não carrega.
 
 **Critérios de aceitação:**
-- O total de notebooks exibidos corresponde aos cadastrados no carrinho.
+- O total de posições de notebooks exibidas corresponde à **capacidade configurada do carrinho** e não à contagem de identificadores previamente cadastrados; a ocupação reflete quantidades reservadas no período.
 - A legenda/indicação visual distingue disponibilidade e reserva e há informação acessível sem depender somente de cores.
 - Criar ou cancelar uma reserva atualiza o estado consultado no 3D.
 
@@ -154,7 +154,7 @@ Um usuário poderá solicitar uma reserva, que ficará pendente de análise. O a
 
 ## Regras e questões a detalhar antes da implementação
 
-1. **Cadastro versus capacidade:** como tratar divergência entre a capacidade informada do carrinho e a lista de notebooks cadastrados; não assumir um valor fixo.
+1. **Capacidade (decidido):** a capacidade numérica configurada no carrinho é a referência da disponibilidade, independentemente da quantidade de identificadores cadastrados. Disponíveis = capacidade − quantidades ativas reservadas para a data e turno. **A detalhar:** como atribuir códigos específicos a posições ainda sem identificação quando for necessário separar fisicamente os aparelhos.
 2. **Mouse (decidido):** somente sinalização sim/não para a equipe de TI; não existe controle de quantidade, identificação ou disponibilidade de mouses nesta versão.
 3. **Seleção de dias (decidido):** oferecer intervalo contínuo e datas avulsas, inclusive um único dia, **apenas de segunda a sexta-feira**. Sábados e domingos são excluídos dos intervalos e não podem ser selecionados individualmente. **Feriados e dias sem aula (decidido):** não precisam de cadastro ou tratamento especial; se ocorrerem de segunda a sexta, continuam incluídos normalmente na reserva e no controle de disponibilidade.
 4. **Cancelamentos excepcionais:** o prazo até o dia anterior está definido; eventuais exceções administrativas ainda não.
@@ -166,5 +166,6 @@ Um usuário poderá solicitar uma reserva, que ficará pendente de análise. O a
 - [ADR 0001 — Notebooks identificados individualmente](adr/0001-notebooks-identificados-individualmente.md)
 - [ADR 0002 — Disponibilidade por data, turno e equipamento](adr/0002-disponibilidade-por-data-turno-e-equipamento.md)
 - [ADR 0003 — Visualização 3D como projeção das reservas](adr/0003-visualizacao-3d-como-projecao-das-reservas.md)
+- [ADR 0004 — Capacidade configurada como fonte da disponibilidade](adr/0004-capacidade-configurada-e-disponibilidade.md)
 
 Termos do domínio: [GLOSSARY.md](../GLOSSARY.md).
