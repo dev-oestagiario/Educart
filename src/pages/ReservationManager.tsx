@@ -1,5 +1,5 @@
 import {useState} from 'react';
-import {useMutation,useQuery,useQueryClient} from '@tanstack/react-query';
+import {useInfiniteQuery,useMutation,useQuery,useQueryClient} from '@tanstack/react-query';
 import {ClipboardCheck, History, Pencil, XCircle} from 'lucide-react';
 import {supabase, type Cart, type Requester} from '../lib/supabase';
 import {showDate,shiftLabel,type Shift} from '../lib/reservations';
@@ -34,16 +34,33 @@ export default function ReservationManager({carts,requesters,onEdit,onChanged}:P
   const [selectedCancel,setSelectedCancel]=useState<CancelSelection>(null);
   const [notice,setNotice]=useState('');
   const [loadingEdit,setLoadingEdit]=useState<string|null>(null);
+  const [showHistory,setShowHistory]=useState(false);
+  const [search,setSearch]=useState('');
+  const [statusFilter,setStatusFilter]=useState<'all'|'CONFIRMADA'|'CANCELADA'>('all');
+  const pageSize=50;
 
-  const reservations=useQuery({
-    queryKey:['reservations'],
-    queryFn:async()=>{
+  const reservations=useInfiniteQuery({
+    queryKey:['reservations','paginated'],
+    initialPageParam:0,
+    queryFn:async({pageParam}):Promise<Booking[]>=>{
+      const from=pageParam*pageSize;
       const {data,error}=await supabase.from('reservations')
         .select('id,requester_id,cart_id,mode,quantity,needs_mouse,notes,status,created_at')
-        .order('created_at',{ascending:false}).limit(40);
+        .order('created_at',{ascending:false}).range(from,from+pageSize-1);
       if(error)throw error;
       return (data??[]) as Booking[];
-    }
+    },
+    getNextPageParam:(lastPage,allPages)=>lastPage.length===pageSize?allPages.length:undefined
+  });
+  const bookings=reservations.data?.pages.flatMap(page=>page)??[];
+  const filter=search.trim().toLocaleLowerCase('pt-BR');
+  const filteredBookings=bookings.filter(booking=>{
+    if(statusFilter!=='all'&&booking.status!==statusFilter)return false;
+    if(!filter)return true;
+    const teacher=requesters.find(x=>x.id===booking.requester_id)?.name??'';
+    const cart=carts.find(x=>x.id===booking.cart_id)?.name??'';
+    return (teacher+' '+cart+' '+booking.status+' '+booking.quantity)
+      .toLocaleLowerCase('pt-BR').includes(filter);
   });
   const periods=useQuery({
     queryKey:['booking-periods'],
@@ -57,6 +74,7 @@ export default function ReservationManager({carts,requesters,onEdit,onChanged}:P
   });
   const events=useQuery({
     queryKey:['reservation-events'],
+    enabled:showHistory,
     queryFn:async()=>{
       const {data,error}=await supabase.from('reservation_events')
         .select('id,reservation_id,event_type,admin_id,occurred_at,before_data,after_data')
@@ -67,6 +85,7 @@ export default function ReservationManager({carts,requesters,onEdit,onChanged}:P
   });
   const admins=useQuery({
     queryKey:['admin-users'],
+    enabled:showHistory,
     queryFn:async()=>{
       const {data,error}=await supabase.from('admin_users').select('user_id,display_name');
       if(error)throw error;
@@ -113,13 +132,37 @@ export default function ReservationManager({carts,requesters,onEdit,onChanged}:P
     } finally {setLoadingEdit(null);}
   }
   return <>
-    <section className="panel" aria-labelledby="booking-list-title">
-      <h2 id="booking-list-title"><ClipboardCheck size={19} aria-hidden="true"/> Gestão de reservas</h2>
+    <section className="panel reservation-list-panel" aria-labelledby="booking-list-title">
+      <div className="reservation-list-toolbar">
+        <h2 id="booking-list-title"><ClipboardCheck size={19} aria-hidden="true"/> {showHistory?'Histórico de alterações':'Reservas cadastradas'}</h2>
+        <button type="button" className="secondary reservation-history-toggle"
+          onClick={()=>setShowHistory(previous=>!previous)}>
+          <History size={17} aria-hidden="true"/>
+          {showHistory?'Voltar à lista':'Ver histórico'}
+        </button>
+      </div>
       {notice&&<p className="notice" role="status">{notice}</p>}
-      {reservations.isLoading||periods.isLoading?<p role="status">Carregando reservas…</p>:
+      {!showHistory&&<>
+        <div className="reservation-list-filters">
+          <label className="field" htmlFor="reservation-search"><span>Buscar reserva</span>
+            <input id="reservation-search" type="search" value={search}
+              placeholder="Professor, carrinho ou quantidade"
+              onChange={event=>setSearch(event.target.value)}/>
+          </label>
+          <label className="field" htmlFor="reservation-status-filter"><span>Situação</span>
+            <select id="reservation-status-filter" value={statusFilter}
+              onChange={event=>setStatusFilter(event.target.value as typeof statusFilter)}>
+              <option value="all">Todas as situações</option>
+              <option value="CONFIRMADA">Confirmadas</option>
+              <option value="CANCELADA">Canceladas</option>
+            </select>
+          </label>
+        </div>
+        {reservations.isLoading||periods.isLoading?<p role="status">Carregando reservas…</p>:
         reservations.error||periods.error?<p className="notice error" role="alert">Não foi possível consultar reservas e períodos.</p>:
-        !reservations.data?.length?<p className="empty">Nenhuma reserva registrada.</p>:
-        <div className="booking-list">{reservations.data.map(booking=>{
+        !bookings.length?<p className="empty">Nenhuma reserva registrada. Use “Nova reserva” para criar a primeira.</p>:
+        !filteredBookings.length?<p className="empty">Nenhuma reserva corresponde à busca ou ao filtro.</p>:
+        <div className="booking-list">{filteredBookings.map(booking=>{
           const active=(periods.data??[]).filter(p=>p.reservation_id===booking.id&&p.active);
           const allFuture=active.length>0&&active.every(p=>p.usage_date>currentDay);
           const editable=active.length>0&&active.every(p=>p.usage_date>=currentDay);
@@ -160,10 +203,14 @@ export default function ReservationManager({carts,requesters,onEdit,onChanged}:P
             </div>}
           </article>;
         })}</div>}
-      <p className="form-hint">Cancelamentos são permitidos até o dia anterior. Edições de períodos já transcorridos não são permitidas nesta versão.</p>
-    </section>
-    <section className="panel" aria-labelledby="booking-history-title">
-      <h2 id="booking-history-title"><History size={19} aria-hidden="true"/> Histórico de alterações</h2>
+        {reservations.hasNextPage&&<button type="button" className="secondary reservation-load-more"
+          disabled={reservations.isFetchingNextPage} onClick={()=>void reservations.fetchNextPage()}>
+          {reservations.isFetchingNextPage?'Carregando…':'Carregar mais reservas'}
+        </button>}
+        <p className="form-hint">Exibindo {bookings.length} reserva(s). Cancelamentos são permitidos até o dia anterior. Edições de períodos já transcorridos não são permitidas.</p>
+      </>}
+      {showHistory&&<div className="reservation-history-panel">
+        <h3 id="booking-history-title">Auditoria de reservas</h3>
       {events.isLoading?<p role="status">Carregando histórico…</p>:
         events.error?<p role="alert" className="notice error">Falha ao consultar auditoria.</p>:
         !events.data?.length?<p className="empty">Nenhuma alteração registrada.</p>:
@@ -174,6 +221,7 @@ export default function ReservationManager({carts,requesters,onEdit,onChanged}:P
           <div className="booking-history-data"><p><strong>Antes</strong></p><pre>{JSON.stringify(e.before_data??{},null,2)}</pre>
             <p><strong>Depois</strong></p><pre>{JSON.stringify(e.after_data??{},null,2)}</pre></div>
         </details>)}</div>}
+      </div>}
     </section>
   </>;
 }
