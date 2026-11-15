@@ -147,7 +147,7 @@ test('menu permanece lateral e navegável no celular, sem rolagem horizontal', a
   await expect(opener).toBeFocused();
   await opener.click();
   await navigation.getByRole('button',{name:'Carrinhos'}).click();
-  await expect(page.getByRole('heading',{name:'Carrinhos'})).toBeVisible();
+  await expect(page.getByRole('heading',{name:'Carrinhos',exact:true})).toBeVisible();
   await expect(navigation).toBeHidden();
   const doesNotOverflow=await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth);
   expect(doesNotOverflow).toBe(true);
