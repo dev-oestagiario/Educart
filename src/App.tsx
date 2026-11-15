@@ -1,7 +1,7 @@
 import { lazy, Suspense, useEffect, useRef, useState, type FormEvent, type ChangeEvent } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { BarChart3, BookOpen, Boxes, CalendarDays, ClipboardList, Laptop, LogOut, Box, Menu, ShieldCheck, UserRound, UserRoundPlus, X } from 'lucide-react';
+import { BarChart3, BookOpen, Boxes, CalendarDays, ClipboardList, Laptop, LogOut, Box, ClipboardCheck, Menu, ShieldCheck, UserRound, UserRoundPlus, X } from 'lucide-react';
 import { create } from 'zustand';
 import { supabase, isConfigured, type Cart, type Requester, type Notebook } from './lib/supabase';
 import { cartSchema, errorMessage, notebookSchema, requesterSchema, validateCodes } from './lib/validation';
@@ -11,7 +11,10 @@ import { parseImportFile } from './lib/importSpreadsheet';
 const ReservationsPage = lazy(()=>import('./pages/ReservationsPage'));
 const CalendarReportsPage = lazy(()=>import('./pages/CalendarReportsPage'));
 const Visual3DPage = lazy(()=>import('./pages/Visual3DPage'));
-type Page = 'overview' | 'carts' | 'requesters' | 'notebooks' | 'reservations' | 'calendar' | 'visual3d';
+const TeacherPortal = lazy(()=>import('./pages/TeacherPortal'));
+const TeacherApprovalsPage = lazy(()=>import('./pages/TeacherApprovalsPage'));
+
+type Page = 'overview' | 'carts' | 'requesters' | 'notebooks' | 'reservations' | 'calendar' | 'visual3d' | 'approvals';
 const useUi = create<{page:Page; setPage:(page:Page)=>void; cartId:string; setCartId:(id:string)=>void}>()(
   set => ({page:'overview',setPage:page=>set({page}),cartId:'',setCartId:cartId=>set({cartId})})
 );
@@ -45,7 +48,7 @@ function Login({onLogin}:{onLogin:()=>void}) {
           options:{emailRedirectTo:new URL(import.meta.env.BASE_URL,window.location.href).toString()}
         });
         if(error)throw error;
-        setMessage('Cadastro solicitado. Se a confirmação por e-mail estiver ativada, abra a mensagem recebida e confirme seu endereço. O acesso administrativo será liberado separadamente pela TI.');
+        setMessage('Cadastro solicitado. Se a confirmação por e-mail estiver ativada, abra a mensagem recebida e confirme seu endereço. O acesso de professor ou administrador será autorizado separadamente pela TI.');
         setMode('login');setPassword('');
       } else {
         const {error}=await supabase.auth.signInWithPassword({email:email.trim(),password});
@@ -61,8 +64,8 @@ function Login({onLogin}:{onLogin:()=>void}) {
   return <div className="auth-shell"><section className="auth-panel">
     <div className="brand"><span className="brand-mark"><Laptop size={22}/></span><span>educart</span></div>
     <div className="auth-intro"><span className="eyebrow">ACESSO • TI</span>
-      <h1>{mode==='signup'?'Criar conta no Educart':'Acesso administrativo'}</h1>
-      <p>{mode==='signup'?'Cadastre seu e-mail. O acesso às funções administrativas depende de aprovação da TI.':'Entre com a conta autorizada para gerenciar os laboratórios móveis.'}</p></div>
+      <h1>{mode==='signup'?'Criar conta no Educart':'Acesso ao Educart'}</h1>
+      <p>{mode==='signup'?'Cadastre seu e-mail. A TI autoriza o acesso de professor ou administrador depois da confirmação da conta.':'Entre com sua conta para acessar o painel da TI ou o portal do professor.'}</p></div>
     <form onSubmit={submit} className="form-stack">
       <TextInput id="email" label="E-mail" type="email" value={email} onChange={setEmail} required/>
       <TextInput id="password" label="Senha" type="password" value={password} onChange={setPassword} required/>
@@ -74,7 +77,7 @@ function Login({onLogin}:{onLogin:()=>void}) {
     <button type="button" className="auth-switch" onClick={()=>{setMode(mode==='login'?'signup':'login');setError('');setMessage('');setPassword('')}}>
       {mode==='login'?'Ainda não tem conta? Criar conta':'Já tem conta? Fazer login'}
     </button>
-    <p className="auth-footer"><ShieldCheck size={16}/> Criar conta não concede acesso de administrador.</p>
+    <p className="auth-footer"><ShieldCheck size={16}/> Criar conta não concede acesso automático ao sistema.</p>
   </section></div>;
 }
 function Overview() {
@@ -272,13 +275,37 @@ export default function App() {
     const {data,error}=await supabase.from('admin_users').select('user_id,display_name').eq('user_id',session!.user.id).eq('active',true).maybeSingle();
     if(error)throw error;return data;
   }});
+  const teacherAccess=useQuery({
+    queryKey:['teacher-account',session?.user.id],
+    enabled:Boolean(session)&&check.isSuccess&&!check.data,
+    queryFn:async()=>{
+      const {data,error}=await supabase.from('teacher_account_links')
+        .select('requester_id,active').eq('user_id',session!.user.id).eq('active',true).maybeSingle();
+      if(error)throw error;
+      return data as {requester_id:string;active:boolean}|null;
+    }
+  });
   if(!isConfigured)return <div className="setup"><h1>Educart ainda não está configurado</h1><p>Defina VITE_SUPABASE_URL e VITE_SUPABASE_PUBLISHABLE_KEY no arquivo .env antes de iniciar a aplicação. Nunca exponha uma chave secreta.</p></div>;
   if(loading)return <div className="center-status" role="status">Carregando Educart…</div>;
   if(!session)return <Login onLogin={()=>setPage('overview')}/>;
   if(check.isLoading)return <div className="center-status" role="status">Validando acesso administrativo…</div>;
   if(check.error)return <div className="setup"><h1>Não foi possível validar o acesso</h1><p>{errorMessage(check.error)}</p><button className="secondary" onClick={()=>qc.invalidateQueries({queryKey:['admin']})}>Tentar novamente</button></div>;
-  if(!check.data)return <div className="setup"><ShieldCheck size={34}/><h1>Conta criada, aguardando autorização</h1><p>Seu login foi reconhecido, mas a TI ainda precisa habilitar esta conta como administradora. Os dados e cadastros continuam protegidos.</p><button className="secondary" onClick={()=>qc.invalidateQueries({queryKey:['admin']})}>Verificar autorização</button><button className="ghost" onClick={()=>supabase.auth.signOut()}>Sair desta conta</button></div>;
-  const nav:[Page,string,typeof Boxes][]=[['overview','Visão geral',ClipboardList],['carts','Carrinhos',Boxes],['requesters','Professores',UserRoundPlus],['notebooks','Notebooks',Laptop],['reservations','Reservas',CalendarDays],['calendar','Calendário',BarChart3],['visual3d','Visualização 3D',Box]];
+  if(!check.data){
+    if(teacherAccess.isLoading)return <div role="status" className="center-status">Verificando vínculo de professor…</div>;
+    if(teacherAccess.error)return <div className="setup"><h1>Não foi possível verificar o acesso</h1>
+      <p>Houve um erro na verificação do vínculo. Tente novamente.</p>
+      <button className="secondary" onClick={()=>void qc.invalidateQueries({queryKey:['teacher-account']})}>Tentar novamente</button>
+      <button className="ghost" onClick={()=>void supabase.auth.signOut()}>Sair</button></div>;
+    if(teacherAccess.data)return <Suspense fallback={<div role="status" className="center-status">Carregando portal do professor…</div>}>
+      <TeacherPortal requesterId={teacherAccess.data.requester_id} email={session.user.email??''}
+        onLogout={()=>{void supabase.auth.signOut()}}/>
+    </Suspense>;
+    return <div className="setup"><ShieldCheck size={34}/><h1>Conta criada, aguardando autorização</h1>
+      <p>Seu login foi reconhecido. A TI precisa vincular seu e-mail a um professor cadastrado ou autorizar o acesso administrativo.</p>
+      <button className="secondary" onClick={()=>{void qc.invalidateQueries({queryKey:['admin']});void qc.invalidateQueries({queryKey:['teacher-account']})}}>Verificar autorização</button>
+      <button className="ghost" onClick={()=>void supabase.auth.signOut()}>Sair desta conta</button></div>;
+  }
+  const nav:[Page,string,typeof Boxes][]=[['overview','Visão geral',ClipboardList],['carts','Carrinhos',Boxes],['requesters','Professores',UserRoundPlus],['notebooks','Notebooks',Laptop],['reservations','Reservas',CalendarDays],['calendar','Calendário',BarChart3],['visual3d','Visualização 3D',Box],['approvals','Solicitações',ClipboardCheck]];
   return <div className="app-shell">
     <a className="skip-link" href="#main-content">Pular para o conteúdo</a>
     {menuOpen&&<button type="button" tabIndex={-1} className="mobile-menu-backdrop" aria-label="Fechar navegação" onClick={closeMobileMenu}/>}
@@ -304,10 +331,10 @@ export default function App() {
           </button>
           <span>Gestão dos laboratórios móveis</span>
         </div>
-        <span className="phase-tag">Fase 5 • Visualização 3D</span>
+        <span className="phase-tag">Fase 6 • Solicitações</span>
       </header>
       <div className="content">
-        {page==='overview'?<Overview/>:page==='carts'?<CartsPage/>:page==='requesters'?<RequestersPage/>:page==='notebooks'?<NotebooksPage/>:page==='reservations'?<Suspense fallback={<p role="status">Carregando reservas…</p>}><ReservationsPage/></Suspense>:page==='calendar'?<Suspense fallback={<p role="status">Carregando calendário…</p>}><CalendarReportsPage/></Suspense>:<Suspense fallback={<p role="status">Carregando visualização 3D…</p>}><Visual3DPage/></Suspense>}
+        {page==='overview'?<Overview/>:page==='carts'?<CartsPage/>:page==='requesters'?<RequestersPage/>:page==='notebooks'?<NotebooksPage/>:page==='reservations'?<Suspense fallback={<p role="status">Carregando reservas…</p>}><ReservationsPage/></Suspense>:page==='calendar'?<Suspense fallback={<p role="status">Carregando calendário…</p>}><CalendarReportsPage/></Suspense>:page==='visual3d'?<Suspense fallback={<p role="status">Carregando visualização 3D…</p>}><Visual3DPage/></Suspense>:<Suspense fallback={<p role="status">Carregando solicitações…</p>}><TeacherApprovalsPage/></Suspense>}
       </div>
     </main>
   </div>;
