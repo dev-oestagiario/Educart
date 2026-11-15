@@ -316,6 +316,7 @@ test('administrador cadastra carrinho e professor', async ({page}) => {
   await login(page);
   await expect(page.getByRole('heading', {name:'Visão geral'})).toBeVisible();
   await page.getByRole('button', {name:'Carrinhos', exact:true}).click();
+  await page.getByRole('button',{name:'Cadastrar carrinho'}).click();
   await page.getByLabel('Código do carrinho').fill('C-01');
   await page.getByLabel('Nome do laboratório móvel').fill('Laboratório 1');
   await page.getByLabel('Capacidade de notebooks').fill('30');
