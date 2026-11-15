@@ -890,7 +890,7 @@ test('Fase 8 — sem reservas confirmadas, capacidade permanece 30 e pedidos pen
   await page.getByLabel('Carrinho completo').check();
   await expect(page.getByText(/1 de 1 períodos possuem saldo estimado para 30 notebook/)).toBeVisible();
   await page.getByText(/Ver saldo por data e turno/).click();
-  await expect(page.locator('.teacher-availability-table-wrap').getByRole('cell',{name:'0'})).toBeVisible();
+  await expect(page.locator('.teacher-availability-table-wrap').getByRole('cell',{name:'0',exact:true})).toBeVisible();
   await expect(page.locator('.teacher-availability-table-wrap').getByRole('cell',{name:'30'})).toHaveCount(2);
 });
 
