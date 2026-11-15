@@ -1164,7 +1164,7 @@ test('Responsivo desktop — largura e altura se adaptam em oito tamanhos de mon
     capacity:30,active:true,created_at:new Date().toISOString()
   });
   await login(page);
-  const sizes:[[number,number],...[number,number][]]=[
+  const sizes:Array<[number,number]>=[
     [768,600],[820,480],[1024,600],[1280,720],
     [1366,768],[1440,900],[1920,1080],[2560,1080]
   ];
@@ -1210,7 +1210,7 @@ test('Responsivo desktop — calendário, reservas e 3D sem conteúdo cortado',a
     await page.setViewportSize({width,height});
     for(const [button,heading] of [
       ['Reservas','Reservas'],['Calendário','Calendário e relatórios'],
-      ['Visualização 3D','Visualização 3D'],['Solicitações','Solicitações de professores']
+      ['Visualização 3D','Laboratório móvel em 3D'],['Solicitações','Solicitações de professores']
     ]){
       await page.getByRole('button',{name:button,exact:true}).click();
       await expect(page.getByRole('heading',{name:heading,exact:true})).toBeVisible();
