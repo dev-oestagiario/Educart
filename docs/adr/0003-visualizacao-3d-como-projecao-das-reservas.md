@@ -11,6 +11,6 @@ A representação 3D do laboratório móvel será uma interface de consulta deri
 
 ## Consequências
 
-- O modelo 3D é genérico e representa os notebooks cadastrados individualmente em cada carrinho.
+- O modelo 3D é genérico e representa a **capacidade configurada** de cada carrinho por posições visuais individuais, mesmo quando nem todos os notebooks possuírem identificadores cadastrados. As posições reservadas refletem as quantidades ativas; o código físico só é exibido quando conhecido.
 - Selecionar um notebook exibe os dados da sua reserva no período escolhido; selecionar o carrinho apresenta a disponibilidade geral e as reservas parciais ou completas.
 - Criação, cancelamento e alterações de reserva atualizam a informação consultada no 3D; a exclusividade e a capacidade são garantidas pela aplicação, independentemente do modelo visual.
