@@ -187,7 +187,7 @@ button{touch-action:manipulation}
 .visual3d-dot.free{background:#51a4a1}.visual3d-dot.busy{background:#e2a15b}
 .cart-scene{margin-top:10px}
 .cart-scene-canvas{width:100%;height:clamp(300px,42vw,490px);min-width:0;overflow:hidden;border-radius:12px;border:1px solid #dce7f2;background:#f1f6fc;touch-action:pan-y}
-.cart-scene-canvas canvas{display:block;max-width:100%;outline-offset:3px}
+.cart-scene-canvas canvas{display:block;width:100%;height:100%;max-width:100%;outline-offset:3px}
 .visual3d-details{display:grid;gap:8px;overflow-wrap:anywhere}
 .visual3d-details h3{font-size:17px;margin:0 0 6px}
 .visual3d-details p{font-size:13px;line-height:1.55;margin:0;color:#425970}

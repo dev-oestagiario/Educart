@@ -19,7 +19,7 @@ export default function Cart3DCanvas({slots,onPick}:{slots:CartSlot[];onPick:(po
     }
     const scene=new THREE.Scene();
     scene.background=new THREE.Color('#f1f6fc');
-    const w=Math.max(320,root.clientWidth),h=Math.max(300,root.clientHeight);
+    const w=Math.max(1,root.clientWidth),h=Math.max(1,root.clientHeight);
     const camera=new THREE.PerspectiveCamera(47,w/h,0.1,150);
     const cols=Math.min(6,Math.max(1,Math.ceil(Math.sqrt(slots.length))));
     const rows=Math.ceil(slots.length/cols);
