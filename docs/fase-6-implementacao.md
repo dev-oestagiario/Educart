@@ -46,11 +46,11 @@ Baseado na skill local `.agents/skills/educart-frontend/SKILL.md`:
 
 ## Testes de aceitação
 
-- [ ] Compilação TypeScript/Vite e testes Vitest.
-- [ ] Playwright com dados simulados: conta não autorizada, professor vinculado, solicitação, retirada, vínculo TI, aprovação e conflito com carrinho lotado.
-- [ ] Migração aplicada somente ao projeto **Educart** e advisor de RLS revisado.
+- [x] Compilação TypeScript/Vite e 41 testes Vitest aprovados.
+- [x] 18 testes Playwright com dados simulados: conta não autorizada, professor vinculado, solicitação, retirada, vínculo TI, aprovação e conflito com carrinho lotado.
+- [x] Migração aplicada somente ao projeto **Educart** e advisor de RLS revisado.
 - [ ] Testes de RLS com identidade simulada em transação read-only e, antes de produção, contas JWT reais em ambiente controlado.
-- [ ] Site publicado após CI; teste em celular físico.
+- [x] Site publicado no GitHub Pages após CI.\n- [ ] Teste de aceitação em celular físico com contas reais.
 - [ ] Fases 1–5 revisadas e integradas em ordem antes de mesclar o PR #16 à `main`.
 
 ## Observações importantes
@@ -59,3 +59,17 @@ Baseado na skill local `.agents/skills/educart-frontend/SKILL.md`:
 - Ao mudar a capacidade ou cancelar reservas, os pedidos pendentes **não** ficam automaticamente aprovados.
 - O vínculo é baseado no e-mail confirmado do Supabase Auth e é habilitado pela TI. O sistema não oferece escolha autodeclarada do identificador de professor.
 - Atualizações de RLS e RPC devem ser avaliadas em ambiente de teste antes de habilitar o portal para uso geral.
+
+## Verificações registradas em 15/11/2026
+
+- GitHub Actions: [verificação aprovada](https://github.com/dev-oestagiario/Educart/actions/runs/43757640266) com 41 testes unitários e 18 cenários Playwright; [deploy aprovado](https://github.com/dev-oestagiario/Educart/actions/runs/43757635985).
+- Supabase Educart: migração `educart_phase6_teacher_requests` aplicada e registrada. RLS habilitado nas 3 novas tabelas, cada uma com 2 políticas SELECT. Permissões diretas INSERT e UPDATE para `authenticated`: **não**.
+- Consulta de autenticação em transação read-only: identidade sem autorização não foi reconhecida como administrador ou professor; identidade administrativa conhecida foi reconhecida como administradora. **As tabelas ainda estão vazias:** estes resultados não substituem testes de isolamento de dados entre dois professores reais.
+- Security Advisor: alerta de funções `SECURITY DEFINER` invocáveis por `authenticated`; trata-se de RPCs intencionalmente expostas que possuem guarda de papel dentro das funções. Recomenda-se revisão de código e teste de acesso real antes de produção. Alerta pré-existente sobre [proteção contra senhas vazadas desabilitada](https://supabase.com/docs/guides/auth/password-security#password-strength-and-leaked-password-protection).
+
+## Homologação pendente
+
+1. Cadastrar contas de teste de **dois** professores com e-mails verificados, vinculá-las pela TI e confirmar isolamento RLS em sessões JWT reais.
+2. Verificar aprovação concorrente de solicitações para o mesmo carrinho (bloqueio transacional) em ambiente controlado.
+3. Verificar interface em celular real e habilitar proteção contra senhas comprometidas.
+4. Revisar e integrar PRs #10–#16, sequencialmente, antes de liberar oficialmente a Fase 6 em produção.
