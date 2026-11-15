@@ -221,6 +221,14 @@ export default function App() {
     const focusFrame=window.requestAnimationFrame(()=>{
       closeButtonRef.current?.focus();
     });
+    // Alguns navegadores adiam a visibilidade da gaveta durante a animação.
+    // Só tenta novamente se o foco ainda estiver fora do próprio menu.
+    const focusRetry=window.setTimeout(()=>{
+      const sidebar=sidebarRef.current;
+      if(sidebar?.classList.contains('sidebar-open') && !sidebar.contains(document.activeElement)) {
+        closeButtonRef.current?.focus();
+      }
+    },250);
 
     function handleKeydown(event:KeyboardEvent){
       if(event.key==='Escape'){
@@ -240,6 +248,7 @@ export default function App() {
     window.addEventListener('resize',handleResize);
     return ()=>{
       window.cancelAnimationFrame(focusFrame);
+      window.clearTimeout(focusRetry);
       document.body.style.overflow=previousOverflow;
       document.removeEventListener('keydown',handleKeydown);
       window.removeEventListener('resize',handleResize);

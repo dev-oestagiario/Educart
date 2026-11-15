@@ -30,7 +30,7 @@ button{touch-action:manipulation}
     overflow-y:auto;overscroll-behavior:contain;
     padding:calc(18px + env(safe-area-inset-top)) 16px calc(16px + env(safe-area-inset-bottom));
     transform:translateX(-102%);visibility:hidden;pointer-events:none;
-    transition:transform .22s ease,visibility .22s ease;
+    transition:transform .22s ease;
     box-shadow:12px 0 35px #07132240
   }
   .sidebar.sidebar-open{transform:translateX(0);visibility:visible;pointer-events:auto}
