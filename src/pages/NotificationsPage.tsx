@@ -40,7 +40,7 @@ export default function NotificationsPage({userId,onReturn,onViewRequests,audien
       <ArrowLeft size={17} aria-hidden="true"/> Voltar ao portal
     </button>}
     <div className="page-header">
-      <span className="eyebrow">ATUALIZAÇÕES DO EDUCart</span>
+      <span className="eyebrow">ATUALIZAÇÕES DO EDUCART</span>
       <h1>Notificações</h1>
       <p>{audience==='admin'
         ?'Avisos sobre novas solicitações de reserva e retiradas pelos professores.'
