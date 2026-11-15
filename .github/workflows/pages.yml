@@ -1,12 +1,13 @@
-name: Publicar previa web do Educart — Layout adaptavel
+name: Publicar Educart — nova identidade visual
 
 on:
   push:
     branches:
-      - feat/ux-layout-responsivo-viewport
+      - feat/identidade-educart-conceito-a
     paths:
       - 'src/**'
       - 'index.html'
+      - 'public/**'
       - 'package.json'
       - 'vite.config.ts'
       - 'playwright.config.ts'

@@ -1,0 +1,196 @@
+/*
+ * Educart — identidade A / tema escuro violeta.
+ * Tokens de contraste para interface, sem gradientes ou brilhos.
+ * Os ajustes de geometria e responsividade permanecem em styles.css.
+ */
+:root{
+  color-scheme:dark;
+  --educart-bg:#17131e;
+  --educart-sidebar:#14101b;
+  --educart-header:#1c1726;
+  --educart-surface:#241e30;
+  --educart-elevated:#2c253a;
+  --educart-subtle:#30283f;
+  --educart-border:#41364f;
+  --educart-text:#f5f1fc;
+  --educart-muted:#c0b6d0;
+  --educart-dim:#a79bb9;
+  --educart-purple:#a88af5;
+  --educart-action:#8058c9;
+  --educart-action-hover:#936adb;
+  --educart-positive:#87dfb4;
+  --educart-negative:#ff97a1;
+  color:var(--educart-text);
+  background:var(--educart-bg);
+}
+body,#root{color:var(--educart-text);background:var(--educart-bg)}
+button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,
+textarea:focus-visible,summary:focus-visible{
+  outline:3px solid #c6b6ff;outline-offset:2px
+}
+a,.text-button{color:var(--educart-purple)}
+.text-button:hover{color:#d6c5ff}
+.brand{display:flex;align-items:center;margin-bottom:0;min-width:0;padding:0;line-height:1}
+.brand-lockup{display:block;width:clamp(148px,13.3vw,190px);height:auto;max-width:100%;object-fit:contain}
+.sidebar .brand-lockup{width:clamp(155px,13.3vw,184px)}
+.auth-panel .brand-lockup{width:194px}
+.teacher-topbar .brand-lockup{width:175px}
+.brand img{vertical-align:middle}
+.sidebar,.teacher-topbar{background:var(--educart-sidebar);color:var(--educart-text)}
+.sidebar{border-right:1px solid var(--educart-border)}
+.sidebar-label{color:#afa3c4}
+.sidebar .nav-item{color:#d4c9e6}
+.sidebar .nav-item:hover{background:#2a203b}
+.sidebar .nav-item.selected{background:#40305e;color:#fff}
+.sidebar .side-bottom,.sidebar .account{border-color:var(--educart-border)}
+.sidebar .account strong{color:var(--educart-text)}
+.sidebar .account small{color:var(--educart-muted)}
+.sidebar .avatar{background:#3c2d54;color:#e8dcff}
+.sidebar-close{color:var(--educart-text)}
+.sidebar-close:hover{background:#38294e}
+.main,.content,.teacher-shell,.teacher-main,.calendar-page,.visual3d-page{
+  background:var(--educart-bg);color:var(--educart-text)
+}
+.topbar{background:var(--educart-header);border-color:var(--educart-border);color:var(--educart-muted)}
+.topbar-main{color:var(--educart-text)}
+.topbar-main>span{color:var(--educart-muted)}
+.phase-tag{background:#372849;color:#d5c4ff}
+.page-header h1,.panel h2,.panel h3,.records-heading h1,.teacher-main h1{
+  color:var(--educart-text)
+}
+.page-header p,.welcome-panel p,.auth-intro p,.teacher-main>p,.teacher-footer{
+  color:var(--educart-muted)
+}
+.eyebrow{color:#c4aaff}
+.stat,.panel,.auth-panel{
+  background:var(--educart-surface);
+  color:var(--educart-text);
+  border-color:var(--educart-border);
+  box-shadow:0 3px 14px #0b08151f
+}
+.stat-label,.stat .stat-label,.records-count,.form-hint,.reservation-subtle{
+  color:var(--educart-muted)
+}
+.stat strong,.records-item strong,.records-list-heading h2{color:var(--educart-text)}
+.stat-icon{background:#392a50;color:#c2a5ff}
+.welcome-panel{background:var(--educart-surface)}
+.muted-panel,.empty,.records-form-tools,.reservation-date-popover,
+.teacher-availability,.teacher-availability-details,.calendar-panel{
+  background:var(--educart-elevated);border-color:var(--educart-border);color:var(--educart-muted)
+}
+.muted-panel p{color:var(--educart-muted)}
+.primary{background:var(--educart-action);color:#fff;border-color:var(--educart-action)}
+.primary:hover{background:var(--educart-action-hover);border-color:var(--educart-action-hover)}
+.secondary{background:#3b2c55;color:#ecdefe;border-color:#5c4979}
+.secondary:hover{background:#493466;border-color:#756094}
+.ghost{color:#ded2ed;background:transparent}
+.ghost:hover{background:#32273e}
+button:disabled{cursor:not-allowed}
+.field{color:#e0d6eb}
+.field input,.field select,.field textarea,
+.records-search input,.records-filters select,
+input[type='search'],input[type='date'],input[type='number'],textarea,select{
+  background:#191522;color:var(--educart-text);border-color:#554669
+}
+.field input:hover,.field select:hover,.field textarea:hover,
+input:hover,select:hover,textarea:hover{border-color:#8769b2}
+input::placeholder,textarea::placeholder{color:#a59bb6}
+input[type='checkbox'],input[type='radio']{accent-color:#a88af5}
+.item{border-color:var(--educart-border);color:var(--educart-text)}
+.item span,.teacher-subheading,.capacity-line,.capacity-line strong{
+  color:var(--educart-muted)
+}
+.records-inactive,.teacher-status.desistencia{color:#e4c28f}
+.records-count,.code-pill{background:#3c3150;color:#dfcaff}
+.records-form-tools{background:#211b2d}
+.records-tool-title,.file-label{color:var(--educart-text)}
+.notice.error{background:#4b2739;color:#ffc6d1}
+.notice.success{background:#244237;color:#a7f5d0}
+.notice{border:1px solid transparent}
+.reservation-type-options label,.reservation-fieldset,
+.reservation-date-trigger,.reservation-date-tabs,.reservation-date-presets button,
+.reservation-date-month-header button,.reservation-form-summary,
+.reservation-form-availability,.reservation-form-availability summary{
+  color:var(--educart-text);border-color:var(--educart-border)
+}
+.reservation-type-options label,.reservation-date-trigger,.reservation-date-month-header button{
+  background:var(--educart-elevated)
+}
+.reservation-type-options label:has(input:checked){
+  background:#41305e;border-color:#9b7bd5;color:#fff
+}
+.reservation-date-trigger:hover,.reservation-date-presets button:hover{
+  background:#39304b;border-color:#a88af5
+}
+.reservation-date-trigger-action,.reservation-date-month-header strong,
+.reservation-date-month-header button,.reservation-date-tabs button.is-active,
+.reservation-date-grid button:not(:disabled){color:#d7c1ff}
+.reservation-date-presets button,.reservation-date-tabs{
+  background:#32283f;border-color:var(--educart-border)
+}
+.reservation-date-tabs button{color:var(--educart-muted)}
+.reservation-date-tabs button.is-active{background:#493463;box-shadow:none;color:#fff}
+.reservation-date-month-header button:disabled,
+.reservation-date-day:disabled{opacity:.4}
+.reservation-date-day:hover:not(:disabled){background:#4a3762}
+.reservation-date-day.is-selected{background:#4c386a;color:#fff;border-color:#8664bd}
+.reservation-date-day.is-endpoint,.reservation-date-day.is-selected.is-endpoint{
+  background:#8a63d0;border-color:#8a63d0;color:#fff
+}
+.reservation-date-weekday,.reservation-date-instruction,.reservation-date-label,
+.reservation-date-popover-footer span,.reservation-date-popover .form-hint{color:var(--educart-muted)}
+.reservation-form-summary,.reservation-availability-summary{background:#2e2740;border-color:var(--educart-border)}
+.reservation-table-wrap,.teacher-availability-table-wrap{border-color:var(--educart-border)}
+table,td,th{color:var(--educart-text);border-color:var(--educart-border)}
+thead th,.reservation-table thead th,.teacher-availability-table-wrap thead th{background:#372b49;color:#f2eaff}
+tbody tr:hover{background:#2c233b}
+.booking-item,.notification-item,.teacher-request-list .booking-item{
+  background:#272033;border-color:var(--educart-border);color:var(--educart-text)
+}
+.booking-item strong,.notification-item-heading strong{color:var(--educart-text)}
+.booking-item p,.notification-text p,.notification-text small,
+.reservation-status,.teacher-request-list .reservation-subtle{color:var(--educart-muted)}
+.teacher-status,.teacher-status.aprovada{
+  background:#31473d;color:#aef3cd
+}
+.teacher-status.rejeitada,.teacher-status.desistencia{
+  background:#493040;color:#ffc6d3
+}
+.teacher-availability{background:#282038}
+.teacher-availability-heading h3,.teacher-availability-details summary,
+.teacher-availability-table-wrap th{color:#d7c6fb}
+.teacher-availability-summary{background:#294137;color:#aeefcd}
+.teacher-availability-warning{background:#433322;border-color:#795d3a;color:#ffdaa6}
+.teacher-availability-disclaimer{color:var(--educart-muted)}
+.teacher-availability-table-wrap table{background:var(--educart-surface)}
+.teacher-availability-table-wrap th,.teacher-availability-table-wrap td{border-color:var(--educart-border)}
+.notifications-trigger{background:#3b2b53;border-color:#624c82;color:#e9dfff}
+.notifications-trigger:hover,.teacher-account .notifications-trigger:hover{background:#50376a}
+.notifications-count{background:#a88af5;color:#21192c;border-color:var(--educart-header)}
+.notification-item.unread{background:#342746;border-color:#795db2}
+.notification-new{background:#694b95;color:#fff}
+.notifications-heading h2{color:var(--educart-text)}
+.auth-shell{background:#14101b}
+.auth-panel{background:#251e31;box-shadow:0 24px 70px #09070d88}
+.auth-panel .brand{color:#fff;margin:0 0 34px}
+.auth-intro h1,.auth-intro p,.auth-footer{color:var(--educart-text)}
+.auth-switch{color:#c9adff}
+.auth-switch:hover{color:#e4d6ff}
+.setup,.center-status{background:var(--educart-bg);color:var(--educart-text)}
+.setup p{color:var(--educart-muted)}
+.teacher-topbar .ghost{color:var(--educart-text);border-color:var(--educart-border)}
+.teacher-topbar .ghost:hover{background:#31253f}
+.calendar-day,.calendar-event,.calendar-result,.visual3d-slot,
+.visual3d-card,.visual3d-legend{border-color:var(--educart-border);color:var(--educart-text)}
+.calendar-day,.calendar-result,.visual3d-slot{background:var(--educart-surface)}
+.calendar-event{background:#3a2d50;color:#efe4ff}
+.calendar-event strong,.calendar-event span{color:inherit}
+::-webkit-scrollbar{width:10px;height:10px}
+::-webkit-scrollbar-thumb{background:#514264;border:2px solid var(--educart-bg);border-radius:12px}
+::-webkit-scrollbar-track{background:var(--educart-bg)}
+@media(max-width:690px){
+  .brand-lockup,.sidebar .brand-lockup{width:168px}
+  .teacher-topbar .brand-lockup{width:150px}
+  .auth-panel .brand-lockup{width:185px}
+}
+@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
