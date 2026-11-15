@@ -31,7 +31,7 @@ Equipamento individual associado a um laboratório móvel, passível de reserva 
 Referência individual que permite distinguir e selecionar um notebook específico para uma reserva.
 
 **Capacidade do laboratório móvel**:
-Quantidade de notebooks cadastrados como integrantes de um determinado laboratório móvel, própria de cada carrinho.
+Quantidade total de notebooks definida para um laboratório móvel, independentemente de quantos equipamentos tenham identificadores individuais cadastrados.
 
 **Mouse**:
 Acessório opcional solicitado junto ao uso do laboratório móvel ou de notebooks, cuja necessidade é registrada separadamente dos notebooks.
