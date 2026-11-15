@@ -144,6 +144,94 @@ async function useFakeSupabase(page: Page, authorized = true) {
       }
       await respond(reservationId);return;
     }
+
+    // Fase 6: simulação dos endpoints protegidos. Não acessa o Supabase real.
+    if (url.pathname === '/rest/v1/rpc/list_teacher_accounts') {
+      if(!authorized){await respond({message:'Sem permissão'},403);return;}
+      await respond(database.teacher_account_links.map(link=>{
+        const teacher=database.requesters.find(x=>x.id===link.requester_id);
+        return {...link,requester_name:teacher?.name??'',email:link.email??'professor@escola.example'};
+      }));
+      return;
+    }
+    if (url.pathname === '/rest/v1/rpc/link_teacher_account') {
+      if(!authorized){await respond({message:'Sem permissão'},403);return;}
+      const body=req.postDataJSON() as {p_requester_id:string;p_email:string};
+      if(!database.requesters.find(t=>t.id===body.p_requester_id)){
+        await respond({message:'Professor não encontrado'},400);return;
+      }
+      const linkedUserId=crypto.randomUUID();
+      database.teacher_account_links.push({user_id:linkedUserId,requester_id:body.p_requester_id,
+        email:body.p_email,active:true});
+      await respond(linkedUserId);return;
+    }
+    if (url.pathname === '/rest/v1/rpc/unlink_teacher_account') {
+      if(!authorized){await respond({message:'Sem permissão'},403);return;}
+      const body=req.postDataJSON() as {p_user_id:string};
+      const link=database.teacher_account_links.find(l=>l.user_id===body.p_user_id);
+      if(link)link.active=false;
+      await respond(!!link);return;
+    }
+    if (url.pathname === '/rest/v1/rpc/submit_teacher_request') {
+      const body=req.postDataJSON() as {
+        p_cart_id:string;p_mode:'COMPLETA'|'PARCIAL';p_quantity:number;
+        p_dates:string[];p_shifts:string[];p_notes:string|null;p_needs_mouse:boolean
+      };
+      const link=database.teacher_account_links.find(l=>l.user_id===ADMIN_ID&&l.active);
+      const cart=database.carts.find(c=>c.id===body.p_cart_id&&c.active);
+      if(!link||!cart){await respond({message:'Conta não autorizada'},403);return;}
+      if(body.p_quantity>Number(cart.capacity)){await respond({message:'Quantidade acima da capacidade'},400);return;}
+      const id=crypto.randomUUID();
+      database.reservation_requests.push({
+        id,requester_id:link.requester_id,requested_by:ADMIN_ID,cart_id:cart.id,mode:body.p_mode,
+        quantity:body.p_quantity,dates:body.p_dates,shifts:body.p_shifts,
+        notes:body.p_notes,needs_mouse:body.p_needs_mouse,status:'PENDENTE',review_notes:null,
+        reservation_id:null,created_at:new Date().toISOString()
+      });
+      database.reservation_request_events.push({request_id:id,event_type:'CRIACAO',actor_id:ADMIN_ID});
+      await respond(id);return;
+    }
+    if (url.pathname === '/rest/v1/rpc/withdraw_teacher_request') {
+      const body=req.postDataJSON() as {p_request_id:string};
+      const item=database.reservation_requests.find(x=>x.id===body.p_request_id&&x.requested_by===ADMIN_ID&&x.status==='PENDENTE');
+      if(!item){await respond({message:'Solicitação não autorizada'},403);return;}
+      item.status='DESISTENCIA';
+      database.reservation_request_events.push({request_id:item.id,event_type:'DESISTENCIA',actor_id:ADMIN_ID});
+      await respond(true);return;
+    }
+    if (url.pathname === '/rest/v1/rpc/review_teacher_request') {
+      if(!authorized){await respond({message:'Sem permissão'},403);return;}
+      const body=req.postDataJSON() as {p_request_id:string;p_approve:boolean;p_review_notes:string|null};
+      const item=database.reservation_requests.find(x=>x.id===body.p_request_id&&x.status==='PENDENTE');
+      if(!item){await respond({message:'Pedido não está pendente'},409);return;}
+      const cart=database.carts.find(c=>c.id===item.cart_id&&c.active);
+      if(!cart){await respond({message:'Carrinho não encontrado'},400);return;}
+      const capacity=Number(cart.capacity);
+      if(body.p_approve){
+        for(const date of item.dates as string[])for(const shift of item.shifts as string[]){
+          const reserved=database.reservation_periods.filter(p=>p.cart_id===cart.id&&p.usage_date===date&&p.shift===shift&&p.active)
+            .reduce((sum,p)=>sum+Number(p.quantity),0);
+          if(reserved+Number(item.quantity)>capacity){
+            await respond({message:'Sem disponibilidade no momento da aprovação'},409);return;
+          }
+        }
+        const reservationId=crypto.randomUUID();
+        database.reservations.push({id:reservationId,requester_id:item.requester_id,cart_id:cart.id,
+          mode:item.mode,quantity:item.quantity,needs_mouse:item.needs_mouse,notes:item.notes,
+          created_at:new Date().toISOString(),status:'CONFIRMADA'});
+        for(const date of item.dates as string[])for(const shift of item.shifts as string[]){
+          database.reservation_periods.push({id:crypto.randomUUID(),reservation_id:reservationId,
+            cart_id:cart.id,usage_date:date,shift,quantity:item.quantity,active:true});
+        }
+        item.reservation_id=reservationId;
+      }
+      item.status=body.p_approve?'APROVADA':'REJEITADA';
+      item.review_notes=body.p_review_notes;
+      item.reviewed_at=new Date().toISOString();
+      database.reservation_request_events.push({request_id:item.id,
+        event_type:body.p_approve?'APROVACAO':'REJEICAO',actor_id:ADMIN_ID});
+      await respond(item.reservation_id);return;
+    }
     const table = url.pathname.slice('/rest/v1/'.length);
     if (Object.prototype.hasOwnProperty.call(database, table)) {
       if (req.method() === 'GET') {
@@ -547,4 +635,80 @@ test('Fase 5 — navegação mobile e alternativa textual sem WebGL',async({page
   await page.getByLabel('Exibir modelo 3D').uncheck();
   await expect(page.locator('.visual3d-slot')).toHaveCount(4);
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=document.documentElement.clientWidth+1)).toBe(true);
+});
+
+
+test('Fase 6 — professor vinculado envia e retira pedido, sem ocupar capacidade',async({page})=>{
+  const db=await useFakeSupabase(page,false);
+  const cartId=crypto.randomUUID(),teacherId=crypto.randomUUID();
+  db.carts.push({id:cartId,name:'Carrinho professor',code:'CT-01',capacity:30,active:true});
+  db.requesters.push({id:teacherId,name:'Professora Vinculada',active:true});
+  db.teacher_account_links.push({user_id:ADMIN_ID,requester_id:teacherId,active:true});
+  await login(page);
+  await expect(page.getByRole('heading',{name:'Solicitar laboratório móvel'})).toBeVisible();
+  await expect(page.getByRole('button',{name:'Solicitações'})).toHaveCount(0);
+  await page.locator('#teacher-cart').selectOption(cartId);
+  await page.locator('#teacher-quantity').fill('7');
+  const d=new Date(Date.now()+14*86400000);
+  while(d.getUTCDay()===0||d.getUTCDay()===6)d.setUTCDate(d.getUTCDate()+1);
+  const day=d.toISOString().slice(0,10);
+  await page.locator('#teacher-start').fill(day);
+  await page.locator('#teacher-end').fill(day);
+  await page.getByRole('button',{name:'Enviar solicitação para aprovação'}).click();
+  await expect(page.getByText(/Solicitação enviada à TI/)).toBeVisible();
+  expect(db.reservation_requests).toHaveLength(1);
+  expect(db.reservation_requests[0].status).toBe('PENDENTE');
+  expect(db.reservation_periods).toHaveLength(0);
+  await page.getByRole('button',{name:'Retirar pedido pendente'}).click();
+  await page.getByRole('button',{name:'Confirmar retirada'}).click();
+  await expect(page.getByText('Retirada pelo professor')).toBeVisible();
+  expect(db.reservation_requests[0].status).toBe('DESISTENCIA');
+});
+
+test('Fase 6 — TI vincula conta e aprova pedido gerando reserva',async({page})=>{
+  const db=await useFakeSupabase(page);
+  const cartId=crypto.randomUUID(),teacherId=crypto.randomUUID(),requestId=crypto.randomUUID();
+  db.carts.push({id:cartId,name:'Carrinho Aprovado',code:'CA-01',capacity:30,active:true});
+  db.requesters.push({id:teacherId,name:'Professora Aprovada',active:true});
+  const d=new Date(Date.now()+14*86400000);
+  while(d.getUTCDay()===0||d.getUTCDay()===6)d.setUTCDate(d.getUTCDate()+1);
+  db.reservation_requests.push({id:requestId,requester_id:teacherId,requested_by:crypto.randomUUID(),
+    cart_id:cartId,mode:'PARCIAL',quantity:7,dates:[d.toISOString().slice(0,10)],shifts:['MATUTINO'],
+    needs_mouse:true,notes:'Solicitar mouse',status:'PENDENTE',created_at:new Date().toISOString(),
+    reservation_id:null,review_notes:null});
+  await login(page);
+  await page.getByRole('button',{name:'Solicitações',exact:true}).click();
+  await expect(page.getByRole('heading',{name:'Solicitações de professores'})).toBeVisible();
+  await page.locator('#teacher-link-requester').selectOption(teacherId);
+  await page.locator('#teacher-link-email').fill('professora@escola.example');
+  await page.getByRole('button',{name:'Vincular professor'}).click();
+  await expect(page.getByText('Conta vinculada. O professor já pode enviar solicitações.')).toBeVisible();
+  expect(db.teacher_account_links).toHaveLength(1);
+  await page.getByRole('button',{name:'Aprovar e confirmar reserva'}).click();
+  await expect(page.getByText('Solicitação aprovada e reserva confirmada.')).toBeVisible();
+  expect(db.reservation_requests[0].status).toBe('APROVADA');
+  expect(db.reservations).toHaveLength(1);
+  expect(db.reservation_periods).toHaveLength(1);
+  expect(db.reservation_periods[0].quantity).toBe(7);
+});
+
+test('Fase 6 — TI recusa aprovação se saldo mudou e preserva pendência',async({page})=>{
+  const db=await useFakeSupabase(page);
+  const cartId=crypto.randomUUID(),teacherId=crypto.randomUUID(),requestId=crypto.randomUUID();
+  const d=new Date(Date.now()+14*86400000);
+  while(d.getUTCDay()===0||d.getUTCDay()===6)d.setUTCDate(d.getUTCDate()+1);
+  const day=d.toISOString().slice(0,10);
+  db.carts.push({id:cartId,name:'Carrinho Lotado',code:'CL-01',capacity:10,active:true});
+  db.requesters.push({id:teacherId,name:'Professor Esperando',active:true});
+  db.reservation_requests.push({id:requestId,requester_id:teacherId,requested_by:crypto.randomUUID(),
+    cart_id:cartId,mode:'PARCIAL',quantity:7,dates:[day],shifts:['MATUTINO'],
+    needs_mouse:false,notes:null,status:'PENDENTE',created_at:new Date().toISOString()});
+  db.reservation_periods.push({id:crypto.randomUUID(),reservation_id:crypto.randomUUID(),cart_id:cartId,
+    usage_date:day,shift:'MATUTINO',quantity:9,active:true});
+  await login(page);
+  await page.getByRole('button',{name:'Solicitações',exact:true}).click();
+  await page.getByRole('button',{name:'Aprovar e confirmar reserva'}).click();
+  await expect(page.getByRole('alert')).toContainText('Sem disponibilidade');
+  expect(db.reservation_requests[0].status).toBe('PENDENTE');
+  expect(db.reservations).toHaveLength(0);
 });
