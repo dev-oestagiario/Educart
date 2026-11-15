@@ -292,7 +292,7 @@ test('Fase 2 — reserva parcial por turno preserva saldo e bloqueia reserva com
   const iso=monday.toISOString().slice(0,10);
 
   await page.getByLabel('Professor solicitante').selectOption(requesterId);
-  await page.getByLabel('Carrinho',{exact:true}).selectOption(cartId);
+  await page.locator('#reservation-cart').selectOption(cartId);
   await page.getByLabel('Data inicial').fill(iso);
   await page.getByLabel('Data final').fill(iso);
   await page.getByRole('radio',{name:'Notebooks avulsos'}).check();
@@ -320,7 +320,7 @@ test('Fase 2 — datas avulsas recusam sábado e domingo', async ({page})=>{
   await login(page);
   await page.getByRole('button',{name:'Reservas',exact:true}).click();
   await page.getByLabel('Professor solicitante').selectOption(requesterId);
-  await page.getByLabel('Carrinho',{exact:true}).selectOption(cartId);
+  await page.locator('#reservation-cart').selectOption(cartId);
   await page.getByLabel('Escolha das datas').selectOption('avulsas');
   const saturday=new Date(Date.now()+14*24*60*60*1000);
   while(saturday.getUTCDay()!==6)saturday.setUTCDate(saturday.getUTCDate()+1);
