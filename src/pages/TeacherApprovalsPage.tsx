@@ -1,6 +1,7 @@
 import {useState,type FormEvent} from 'react';
 import {useMutation,useQuery,useQueryClient} from '@tanstack/react-query';
 import {ClipboardCheck,Link2,ShieldCheck,UserMinus} from 'lucide-react';
+import RecordsHeader from '../components/RecordsHeader';
 import {supabase,type Cart,type Requester} from '../lib/supabase';
 import {shiftLabel,showDate,type Shift} from '../lib/reservations';
 import {requestStatusLabel,type TeacherRequest} from '../lib/teacherRequests';
@@ -19,6 +20,7 @@ async function rows<T>(table:'requesters'|'carts'):Promise<T[]>{
 }
 export default function TeacherApprovalsPage(){
   const qc=useQueryClient();
+  const [screen,setScreen]=useState<'list'|'link'>('list');
   const [requesterId,setRequesterId]=useState('');
   const [email,setEmail]=useState('');
   const [message,setMessage]=useState<{kind:'error'|'success';text:string}|null>(null);
@@ -57,7 +59,7 @@ export default function TeacherApprovalsPage(){
       const {error}=await supabase.rpc('link_teacher_account',{p_requester_id:requesterId,p_email:email.trim()});
       if(error)throw error;
     },
-    onSuccess:()=>{setMessage({kind:'success',text:'Conta vinculada. O professor já pode enviar solicitações.'});setEmail('');setRequesterId('');refresh();},
+    onSuccess:()=>{setMessage({kind:'success',text:'Conta vinculada. O professor já pode enviar solicitações.'});setEmail('');setRequesterId('');setScreen('list');refresh();},
     onError:err=>setMessage({kind:'error',text:explain(err)})
   });
   const unlink=useMutation({
@@ -86,6 +88,31 @@ export default function TeacherApprovalsPage(){
   const displayed=(requests.data??[]).filter(x=>filter==='TODAS'||x.status==='PENDENTE');
   function submitLink(event:FormEvent){event.preventDefault();setMessage(null);link.mutate();}
   return <div className="teacher-approvals">
+    {screen==='link'?<>
+      <RecordsHeader editing title="Vincular conta de professor"
+        description="Autorize uma conta existente e com e-mail confirmado para acessar o portal."
+        actionLabel="Voltar para solicitações" onAction={()=>{if(!link.isPending){setScreen('list');setMessage(null);}}}/>
+      <section className="panel records-form-panel" aria-labelledby="link-form-title">
+        <h2 id="link-form-title">Dados do vínculo</h2>
+        <p className="form-hint">O professor deve criar a conta e confirmar o e-mail antes. A TI escolhe o cadastro correspondente.</p>
+        {message&&<p role={message.kind==='error'?'alert':'status'} className={'notice '+message.kind}>{message.text}</p>}
+      <form className="teacher-link-form" onSubmit={submitLink}>
+        <label className="field" htmlFor="teacher-link-requester"><span>Professor cadastrado</span>
+          <select id="teacher-link-requester" required value={requesterId} onChange={e=>setRequesterId(e.target.value)}>
+            <option value="">Selecione um professor</option>
+            {(teachers.data??[]).map(t=><option key={t.id} value={t.id}>{t.name}</option>)}
+          </select>
+        </label>
+        <label className="field" htmlFor="teacher-link-email"><span>E-mail da conta confirmada</span>
+          <input id="teacher-link-email" type="email" autoComplete="email" required value={email}
+            onChange={e=>setEmail(e.target.value)} placeholder="professor@escola.edu.br"/>
+        </label>
+        <button type="submit" className="primary" disabled={link.isPending||!!teachers.error}>
+          {link.isPending?'Vinculando…':'Vincular professor'}
+        </button>
+      </form>
+      </section>
+    </>:<>
     <div className="page-header"><h1>Solicitações de professores</h1>
       <p>Vincule contas verificadas aos professores cadastrados e aprove ou rejeite os pedidos.</p></div>
     <div className="panel muted-panel"><ShieldCheck size={20} aria-hidden="true"/>
@@ -134,23 +161,13 @@ export default function TeacherApprovalsPage(){
         </article>)}</div>}
     </section>
     <section className="panel" aria-labelledby="links-heading">
-      <h2 id="links-heading"><Link2 size={19} aria-hidden="true"/> Autorizar contas de professores</h2>
-      <p className="form-hint">O professor deve criar a conta e confirmar o e-mail antes. A TI escolhe o cadastro correspondente: não há vínculo automático por nome.</p>
-      <form className="teacher-link-form" onSubmit={submitLink}>
-        <label className="field" htmlFor="teacher-link-requester"><span>Professor cadastrado</span>
-          <select id="teacher-link-requester" required value={requesterId} onChange={e=>setRequesterId(e.target.value)}>
-            <option value="">Selecione um professor</option>
-            {(teachers.data??[]).map(t=><option key={t.id} value={t.id}>{t.name}</option>)}
-          </select>
-        </label>
-        <label className="field" htmlFor="teacher-link-email"><span>E-mail da conta confirmada</span>
-          <input id="teacher-link-email" type="email" autoComplete="email" required value={email}
-            onChange={e=>setEmail(e.target.value)} placeholder="professor@escola.edu.br"/>
-        </label>
-        <button type="submit" className="primary" disabled={link.isPending||!!teachers.error}>
-          {link.isPending?'Vinculando…':'Vincular professor'}
-        </button>
-      </form>
+      <div className="records-list-heading">
+        <h2 id="links-heading"><Link2 size={19} aria-hidden="true"/> Contas de professores</h2>
+        <button type="button" className="primary records-add" onClick={()=>{
+          setRequesterId('');setEmail('');setMessage(null);setScreen('link');
+        }}>Vincular conta</button>
+      </div>
+      <p className="form-hint">A TI vincula contas verificadas aos professores cadastrados. Nenhum professor recebe acesso automaticamente.</p>
       <h3 className="teacher-subheading">Contas vinculadas</h3>
       {links.isLoading?<p role="status">Carregando vínculos…</p>:
         links.error?<p role="alert" className="notice error">Não foi possível consultar os vínculos.</p>:
@@ -165,5 +182,6 @@ export default function TeacherApprovalsPage(){
               <UserMinus size={15} aria-hidden="true"/> Revogar</button>)}
         </div>)}</div>}
     </section>
+    </>}
   </div>;
 }
