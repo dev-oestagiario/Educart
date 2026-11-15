@@ -54,7 +54,8 @@ flowchart TD
 
 - Selecionar/informar professor responsável.
 - Escolher a modalidade de datas: **Intervalo contínuo** (campos data inicial e data final, permitindo semanas ou meses inteiros) ou **Dias específicos** (calendário de múltipla seleção, incluindo um único dia).
-- Mostrar antes da confirmação as datas efetivas selecionadas; não excluir automaticamente fins de semana, feriados ou dias sem aula enquanto essa regra não for definida.
+- Ao escolher um intervalo, incluir somente datas de **segunda a sexta-feira**, excluindo automaticamente sábados e domingos. Na seleção avulsa, desabilitar sábados e domingos com explicação acessível.
+- Mostrar antes da confirmação as datas efetivas selecionadas, com contagem dos dias úteis selecionados e indicação de que fins de semana foram excluídos. Não presumir tratamento de feriados e outros dias sem aula, ainda pendente de definição.
 - Selecionar um ou vários turnos: matutino, vespertino, noturno.
 - Prosseguir apenas com os campos obrigatórios preenchidos.
 
@@ -147,7 +148,9 @@ A confirmação de cancelamento não apaga o histórico.
 | Professor escolhe o notebook de João segunda/vespertino | Permitido se não houver reserva nesse outro turno |
 | Administrador tenta reservar o carrinho inteiro enquanto um notebook está ocupado no período | Impedir modalidade completa; indicar carrinho alternativo ou notebooks restantes |
 | Reserva agrupada de segunda a quarta, manhã, com terça indisponível | Apontar terça/matutino e pedir correção antes de confirmar o conjunto |
-| Professor solicita um laboratório por uma semana ou por um mês | Permitir intervalo de início e fim, exibir todas as datas efetivas e verificar disponibilidade de cada data e turno |
+| Professor solicita um laboratório por uma semana ou por um mês | Permitir intervalo de início e fim, considerar apenas segunda a sexta, exibir datas efetivas e verificar disponibilidade de cada data e turno |
+| Intervalo inclui sábado e domingo | Excluir esses dias automaticamente sem ocupar notebooks; informar a exclusão na revisão |
+| Administrador tenta escolher sábado ou domingo como data avulsa | Impedir a seleção e explicar que o Educart permite somente segunda a sexta-feira |
 | Professor solicita somente segunda, quarta e sexta ou um único dia | Permitir seleção avulsa sem obrigar o preenchimento de datas intermediárias |
 | Cancelamento elegível apenas da terça | Libera terça e mantém segunda/quarta, com histórico |
 | Cancelamento solicitado na própria data | Bloqueio conforme prazo acordado |
@@ -161,7 +164,7 @@ A confirmação de cancelamento não apaga o histórico.
 
 1. No cadastro dos carrinhos, a capacidade deve ser derivada dos notebooks cadastrados ou pode divergir temporariamente?
 2. **Mouse (decidido):** somente marcação de necessidade sim/não, sem estoque ou quantidade por reserva.
-3. **Decidido:** oferecer intervalo contínuo e dias avulsos, inclusive uma data única. **Pendente:** tratamento de fins de semana, feriados e dias sem aula.
+3. **Decidido:** oferecer intervalo contínuo e dias avulsos, inclusive uma data única, **apenas de segunda a sexta-feira**; sábados e domingos são excluídos/indisponíveis. **Pendente:** identificação e tratamento de feriados e demais dias sem aula.
 4. Permitir editar uma reserva já confirmada, além de cancelar períodos, e quais limites seriam aplicados?
 
 Este documento **descreve os fluxos**, não indica que as telas já estejam implementadas.
