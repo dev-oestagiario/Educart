@@ -1,14 +1,15 @@
-import { useEffect, useRef, useState, type FormEvent, type ChangeEvent } from 'react';
+import { lazy, Suspense, useEffect, useRef, useState, type FormEvent, type ChangeEvent } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { BookOpen, Boxes, ClipboardList, Laptop, LogOut, Menu, ShieldCheck, UserRound, UserRoundPlus, X } from 'lucide-react';
+import { BookOpen, Boxes, CalendarDays, ClipboardList, Laptop, LogOut, Menu, ShieldCheck, UserRound, UserRoundPlus, X } from 'lucide-react';
 import { create } from 'zustand';
 import { supabase, isConfigured, type Cart, type Requester, type Notebook } from './lib/supabase';
 import { cartSchema, errorMessage, notebookSchema, requesterSchema, validateCodes } from './lib/validation';
 import { configuredCapacity } from './lib/capacity';
 import { parseImportFile } from './lib/importSpreadsheet';
 
-type Page = 'overview' | 'carts' | 'requesters' | 'notebooks';
+const ReservationsPage = lazy(()=>import('./pages/ReservationsPage'));
+type Page = 'overview' | 'carts' | 'requesters' | 'notebooks' | 'reservations';
 const useUi = create<{page:Page; setPage:(page:Page)=>void; cartId:string; setCartId:(id:string)=>void}>()(
   set => ({page:'overview',setPage:page=>set({page}),cartId:'',setCartId:cartId=>set({cartId})})
 );
@@ -89,7 +90,7 @@ function Overview() {
     </div>
     {(carts.error||requesters.error||notebooks.error)&&<Notice message="Não foi possível carregar alguns indicadores. Confira a conexão."/>}
     <div className="panel welcome-panel"><div><span className="eyebrow">FASE 1 • CADASTROS</span><h2>Organize os equipamentos</h2><p>Cadastre os carrinhos, professores e códigos de notebooks. A contagem de códigos não altera a capacidade configurada do carrinho.</p></div><button className="secondary" onClick={()=>setPage('carts')}>Gerenciar carrinhos</button></div>
-    <div className="panel muted-panel"><BookOpen size={19}/><p>O agendamento e a disponibilidade por turno serão ativados na fase de reservas. Ainda não é possível criar reservas nesta tela.</p></div>
+    <div className="panel muted-panel"><BookOpen size={19}/><p>Agora você já pode reservar carrinhos completos ou quantidades parciais por turno na área Reservas.</p></div>
   </>;
 }
 function CartsPage() {
@@ -275,7 +276,7 @@ export default function App() {
   if(check.isLoading)return <div className="center-status" role="status">Validando acesso administrativo…</div>;
   if(check.error)return <div className="setup"><h1>Não foi possível validar o acesso</h1><p>{errorMessage(check.error)}</p><button className="secondary" onClick={()=>qc.invalidateQueries({queryKey:['admin']})}>Tentar novamente</button></div>;
   if(!check.data)return <div className="setup"><ShieldCheck size={34}/><h1>Conta criada, aguardando autorização</h1><p>Seu login foi reconhecido, mas a TI ainda precisa habilitar esta conta como administradora. Os dados e cadastros continuam protegidos.</p><button className="secondary" onClick={()=>qc.invalidateQueries({queryKey:['admin']})}>Verificar autorização</button><button className="ghost" onClick={()=>supabase.auth.signOut()}>Sair desta conta</button></div>;
-  const nav:[Page,string,typeof Boxes][]=[['overview','Visão geral',ClipboardList],['carts','Carrinhos',Boxes],['requesters','Professores',UserRoundPlus],['notebooks','Notebooks',Laptop]];
+  const nav:[Page,string,typeof Boxes][]=[['overview','Visão geral',ClipboardList],['carts','Carrinhos',Boxes],['requesters','Professores',UserRoundPlus],['notebooks','Notebooks',Laptop],['reservations','Reservas',CalendarDays]];
   return <div className="app-shell">
     <a className="skip-link" href="#main-content">Pular para o conteúdo</a>
     {menuOpen&&<button type="button" tabIndex={-1} className="mobile-menu-backdrop" aria-label="Fechar navegação" onClick={closeMobileMenu}/>}
@@ -301,10 +302,10 @@ export default function App() {
           </button>
           <span>Gestão dos laboratórios móveis</span>
         </div>
-        <span className="phase-tag">Fase 1 • Cadastros</span>
+        <span className="phase-tag">Fase 2 • Reservas</span>
       </header>
       <div className="content">
-        {page==='overview'?<Overview/>:page==='carts'?<CartsPage/>:page==='requesters'?<RequestersPage/>:<NotebooksPage/>}
+        {page==='overview'?<Overview/>:page==='carts'?<CartsPage/>:page==='requesters'?<RequestersPage/>:page==='notebooks'?<NotebooksPage/>:<Suspense fallback={<p role="status">Carregando reservas…</p>}><ReservationsPage/></Suspense>}
       </div>
     </main>
   </div>;

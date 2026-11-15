@@ -76,3 +76,41 @@ button{touch-action:manipulation}
 .auth-switch:hover{color:#124b8d}
 .form-hint{margin:0;color:#697d92;font-size:12px;line-height:1.6}
 .setup .ghost{margin-top:10px}
+
+
+/* Fase 2 — formulário de reservas, consulta por turno e leitura mobile. */
+.reservation-layout{display:grid;grid-template-columns:minmax(310px,510px) minmax(0,1fr);align-items:start;gap:20px}
+.reservation-side{min-width:0}
+.reservation-page .reservation-hint{margin-bottom:20px}
+.reservation-page .panel h2{display:flex;align-items:center;gap:8px}
+.reservation-fieldset{border:1px solid #e0e7f0;border-radius:11px;margin:0;padding:14px 15px;min-width:0}
+.reservation-fieldset legend{padding:0 5px;font-size:13px;font-weight:700;color:#344a64}
+.reservation-fieldset>label,.reservation-options label,.reservation-notebooks label,.reservation-check{display:flex;align-items:center;gap:10px;font-size:13px;min-height:39px;color:#33495e;cursor:pointer}
+.reservation-fieldset input,.reservation-check input{accent-color:#2169c4;width:17px;height:17px;flex-shrink:0}
+.reservation-options{display:flex;flex-wrap:wrap;gap:4px 22px}
+.reservation-dates{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;align-items:end}
+.reservation-dates .secondary{min-height:42px}
+.reservation-pills{display:flex;gap:7px;flex-wrap:wrap}
+.reservation-pill{background:#eff6ff;border:1px solid #cadef4;color:#215d99;border-radius:20px;min-height:34px;padding:6px 12px;font-size:12px}
+.reservation-pill:hover{background:#daeaff}
+.reservation-notebooks{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));max-height:180px;overflow:auto}
+.reservation-subtle{color:#667a90;font-size:13px;line-height:1.6;margin:0}
+.reservation-check{font-weight:650}
+.reservation-table-wrap{max-height:360px;overflow:auto;max-width:100%;border-radius:10px;border:1px solid #e7edf4;margin:12px 0}
+.reservation-table{width:100%;border-collapse:collapse;font-size:13px}
+.reservation-table th,.reservation-table td{text-align:left;padding:10px;border-bottom:1px solid #e9edf3;white-space:nowrap}
+.reservation-table th{position:sticky;top:0;background:#f5f8fc;color:#465e76;font-weight:700}
+.reservation-status{font-size:12px;font-weight:700;border-radius:30px;padding:5px 8px;display:inline-block}
+.reservation-status.available{background:#e6f7ee;color:#19613e}
+.reservation-status.unavailable{background:#feeaea;color:#993635}
+.reservation-side-note{display:flex;align-items:flex-start;gap:12px;color:#526b87;font-size:13px;padding:0 10px}
+.reservation-side-note p{margin:0;line-height:1.6}
+.reservation-side-note svg{flex-shrink:0;margin-top:1px}
+@media(max-width:1080px){.reservation-layout{grid-template-columns:1fr}.reservation-page .reservation-hint{margin-bottom:15px}}
+@media(max-width:690px){
+  .reservation-dates{grid-template-columns:1fr}
+  .reservation-notebooks{grid-template-columns:1fr}
+  .reservation-options{display:grid;grid-template-columns:1fr}
+  .reservation-table th,.reservation-table td{padding:9px 7px;font-size:12px}
+  .reservation-page .panel{padding:18px}
+}
