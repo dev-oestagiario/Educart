@@ -18,7 +18,7 @@ O Educart organiza a reserva de laboratórios móveis (carrinhos) e notebooks pa
 - O administrador pode informar identificadores manualmente, importar identificadores por planilha ou solicitar geração automática de códigos para diversos notebooks, com possibilidade de editar os códigos gerados antes de concluir o cadastro.
 - A quantidade reservada em modalidade parcial corresponde aos notebooks efetivamente selecionados por identificador.
 - A disponibilidade de cada notebook é consultada para cada **data e turno**, não somente por carrinho ou dia.
-- Mouse é uma necessidade/acessório informada separadamente da seleção do laboratório móvel ou notebooks. O controle de unidades de mouse permanece por detalhar.
+- Mouse é uma necessidade/acessório informado separadamente da seleção do laboratório móvel ou notebooks, por meio de uma marcação simples **Precisa de mouse: sim/não**. A marcação serve para orientar a equipe de TI na preparação dos equipamentos; não há cadastro, quantidade, identificação ou controle de estoque de mouses.
 
 ## RF-08 — Cadastrar notebooks por código manual ou automático
 
@@ -45,7 +45,7 @@ O administrador informa:
 4. Em reserva parcial, quantidade e identificadores dos notebooks escolhidos.
 5. Uma ou mais datas da utilização.
 6. Turnos: matutino, vespertino e/ou noturno (qualquer combinação, inclusive três).
-7. Necessidade de mouse (sim/não).
+7. Necessidade de mouse (sim/não), sem seleção de quantidade.
 8. Observação opcional.
 
 O registrante fica registrado automaticamente, separado do solicitante.
@@ -55,6 +55,7 @@ O registrante fica registrado automaticamente, separado do solicitante.
 - A reserva completa compromete todos os notebooks daquele laboratório móvel em todos os períodos selecionados.
 - É possível selecionar mais de um turno na mesma data.
 - Nenhuma reserva é confirmada com notebook, período ou solicitante obrigatório ausente.
+- Marcar ou desmarcar **Precisa de mouse** registra a preferência sem alterar disponibilidade de notebooks e sem impedir a confirmação por falta de mouses.
 
 ## RF-02 — Verificar conflitos e disponibilidade
 
@@ -126,7 +127,7 @@ Um usuário poderá solicitar uma reserva, que ficará pendente de análise. O a
 ## Regras e questões a detalhar antes da implementação
 
 1. **Cadastro versus capacidade:** como tratar divergência entre a capacidade informada do carrinho e a lista de notebooks cadastrados; não assumir um valor fixo.
-2. **Mouse:** se terá quantidade, identificador, disponibilidade e bloqueio de estoque próprio, e como indicar quantos acessórios são necessários.
+2. **Mouse (decidido):** somente sinalização sim/não para a equipe de TI; não existe controle de quantidade, identificação ou disponibilidade de mouses nesta versão.
 3. **Seleção de dias:** confirmar se será intervalo contínuo, datas avulsas ou ambos, inclusive dias sem aula.
 4. **Cancelamentos excepcionais:** o prazo até o dia anterior está definido; eventuais exceções administrativas ainda não.
 5. **Situações de reserva:** nomes exatos dos estados, permissões de edição, regras de alterações e eventual manutenção de equipamento ainda não definidos.
