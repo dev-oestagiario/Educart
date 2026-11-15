@@ -62,13 +62,13 @@ flowchart TD
 - Selecionar laboratório móvel pelo identificador e consultar sua capacidade.
 - Escolher entre **Laboratório móvel completo** ou **Notebooks individuais**.
 - Para notebooks individuais, informar quantidade e selecionar **os identificadores de cada notebook**; conferir coincidência entre quantidade e seleção.
-- Informar necessidade de mouse (sim/não) e observações (opcionais).
+- Exibir um checkbox **Precisa de mouse** (sim/não) e um campo de observações (opcional). A marcação apenas informa à equipe de TI que deve considerar o acessório ao preparar os equipamentos; não exige quantidade nem consulta estoque de mouses.
 - Exibir quais notebooks estão livres e quais ocupados, considerando todas as datas e turnos selecionados.
 - Não aceitar notebook pertencente a outro carrinho sem alteração explícita do carrinho escolhido.
 
 ### Etapa 3 — Validação e revisão
 
-- Exibir resumo: solicitante, registrante, datas, turnos, carrinho, modalidade, identificadores e quantidade de notebooks, mouse e observação.
+- Exibir resumo: solicitante, registrante, datas, turnos, carrinho, modalidade, identificadores e quantidade de notebooks, indicador de necessidade de mouse (sim/não) e observação. A necessidade de mouse não participa da validação de disponibilidade.
 - Revalidar a disponibilidade **para cada combinação de data e turno**.
 - Se houver conflito, informar exatamente onde e quais notebooks estão indisponíveis, oferecendo voltar para trocar equipamento, reduzir a seleção ou trocar carrinho.
 - Reserva completa com ocupação parcial naquele período não pode ser confirmada como completa; oferecer alternativa de reserva parcial.
@@ -151,11 +151,12 @@ A confirmação de cancelamento não apaga o histórico.
 | Cadastro em lote com geração de 10 códigos | A tela propõe 10 códigos distintos, permite editá-los e os valida antes de salvar |
 | Importação de códigos próprios da equipe de TI por planilha | Os códigos são preservados, revisáveis e associados ao carrinho escolhido |
 | Cadastro de identificadores repetidos | Registro inválido é impedido com indicação da duplicidade |
+| Administrador marca **Precisa de mouse** | A necessidade aparece nos detalhes, no 3D e nos relatórios; a reserva não é bloqueada por estoque de mouses |
 
 ## Pontos para a próxima rodada de decisões
 
 1. No cadastro dos carrinhos, a capacidade deve ser derivada dos notebooks cadastrados ou pode divergir temporariamente?
-2. O mouse terá estoque numérico e quantidades por reserva ou somente a marcação de necessidade?
+2. **Mouse (decidido):** somente marcação de necessidade sim/não, sem estoque ou quantidade por reserva.
 3. Na escolha de vários dias, oferecer intervalo contínuo, seleção de dias isolados ou ambos?
 4. Permitir editar uma reserva já confirmada, além de cancelar períodos, e quais limites seriam aplicados?
 
