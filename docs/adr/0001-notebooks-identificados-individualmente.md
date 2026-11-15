@@ -13,4 +13,5 @@ O Educart controlará cada notebook pelo seu identificador e pela associação a
 
 - Reservas parciais informam quantidade e identificadores dos notebooks selecionados.
 - Reservas completas abrangem todos os notebooks integrantes do laboratório móvel para o período reservado.
+- O identificador pode ser um código próprio da equipe de TI, não necessariamente um número de patrimônio. O cadastro admite informação manual, importação de planilha ou geração automática com edição antes de salvar; em todos os casos, os códigos precisam ser únicos.
 - A quantidade declarada e os equipamentos cadastrados para um carrinho precisam permanecer consistentes. A política de cadastro e correção de divergências ainda precisa ser detalhada na especificação funcional.
