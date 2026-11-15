@@ -136,3 +136,39 @@ button{touch-action:manipulation}
 .booking-history-data{padding:9px 0}
 .booking-history-data pre{white-space:pre-wrap;overflow-wrap:anywhere;max-height:230px;overflow:auto;background:#f6f8fb;border-radius:8px;padding:10px;color:#43556d;font-size:11px}
 @media(max-width:690px){.booking-item{padding:11px}.booking-period{align-items:flex-start;flex-direction:column}}
+
+
+/* Fase 4 — calendário consultável e relatórios responsivos. */
+.calendar-filters{display:grid;gap:16px}
+.calendar-filters h2,.calendar-result h2{display:flex;align-items:center;gap:8px}
+.calendar-filter-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}
+.calendar-filter-grid .field{min-width:0}
+.calendar-filter-grid input,.calendar-filter-grid select{min-width:0}
+.calendar-stats{grid-template-columns:repeat(4,minmax(0,1fr))}
+.calendar-header{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:20px}
+.calendar-header h2{margin:0 0 5px}
+.calendar-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px}
+.calendar-day{min-width:0;min-height:145px;border:1px solid #dfe7f1;border-radius:11px;padding:12px;background:#fafcfe}
+.calendar-day header{display:flex;align-items:center;justify-content:space-between;gap:5px;margin-bottom:12px}
+.calendar-day header strong{font-size:12px;color:#213a56}
+.calendar-day header span{font-size:11px;color:#7890a9}
+.calendar-items{display:grid;gap:7px}
+.calendar-event{display:flex;flex-direction:column;gap:5px;border:1px solid #c4ddf6;border-left:3px solid #2976c5;background:#edf5ff;padding:8px;border-radius:8px;color:#245683;font-size:11px;overflow-wrap:anywhere}
+.calendar-event strong{font-size:12px}
+.calendar-event.cancelled{background:#f2f4f7;border-color:#d8dfe8;border-left-color:#97a4b4;color:#64748b}
+.calendar-event em{font-style:normal;font-weight:700}
+.calendar-empty{color:#9aabba;font-size:12px;margin:0}
+.calendar-page .form-hint{line-height:1.6}
+@media(max-width:1100px){
+ .calendar-filter-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .calendar-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
+ .calendar-day:first-child{grid-column:auto!important}
+}
+@media(max-width:690px){
+ .calendar-filter-grid{grid-template-columns:1fr}
+ .calendar-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .calendar-day{padding:9px;min-height:130px}
+ .calendar-header .reservation-actions{width:100%}
+ .calendar-header .reservation-actions button{flex:1}
+}
+@media(max-width:370px){.calendar-grid{grid-template-columns:1fr}}
