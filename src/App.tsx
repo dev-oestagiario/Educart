@@ -39,7 +39,7 @@ function Login({onLogin}:{onLogin:()=>void}) {
       if(mode==='signup') {
         const {error}=await supabase.auth.signUp({
           email:email.trim(), password,
-          options:{emailRedirectTo:window.location.origin+import.meta.env.BASE_URL}
+          options:{emailRedirectTo:new URL(import.meta.env.BASE_URL,window.location.href).toString()}
         });
         if(error)throw error;
         setMessage('Cadastro solicitado. Se a confirmação por e-mail estiver ativada, abra a mensagem recebida e confirme seu endereço. O acesso administrativo será liberado separadamente pela TI.');
