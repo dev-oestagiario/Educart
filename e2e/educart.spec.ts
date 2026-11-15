@@ -322,6 +322,7 @@ test('administrador cadastra carrinho e professor', async ({page}) => {
   await page.getByRole('button',{name:'Cadastrar carrinho'}).click();
   await expect(page.getByText('C-01 · 30 notebooks de capacidade')).toBeVisible();
   await page.getByRole('button',{name:'Professores',exact:true}).click();
+  await page.getByRole('button',{name:'Cadastrar professor'}).click();
   await page.getByLabel('Nome completo').fill('Professora Exemplo');
   await page.getByRole('button',{name:'Salvar professor'}).click();
   await expect(page.getByText('Professora Exemplo')).toBeVisible();
@@ -331,6 +332,7 @@ test('CSV mostra prévia editável e impede duplicação de notebook', async ({p
   await useFakeSupabase(page);
   await login(page);
   await page.getByRole('button',{name:'Carrinhos',exact:true}).click();
+  await page.getByRole('button',{name:'Cadastrar carrinho'}).click();
   await page.getByLabel('Código do carrinho').fill('C-01');
   await page.getByLabel('Nome do laboratório móvel').fill('Laboratório 1');
   await page.getByLabel('Capacidade de notebooks').fill('30');
@@ -338,6 +340,7 @@ test('CSV mostra prévia editável e impede duplicação de notebook', async ({p
   await expect(page.getByText('C-01 · 30 notebooks de capacidade')).toBeVisible();
   await page.getByRole('button',{name:'Notebooks',exact:true}).click();
   await page.getByLabel('Laboratório móvel').selectOption({label:'Laboratório 1 (C-01)'});
+  await page.getByRole('button',{name:'Cadastrar notebooks'}).click();
   await page.locator('#csv-import').setInputFiles({
     name:'codigos.csv', mimeType:'text/csv',
     buffer:Buffer.from('codigo;descricao\nNT-001;primeiro\nNT-002;segundo','utf8')
@@ -359,6 +362,7 @@ test('importa arquivo XLSX real com prévia antes de salvar', async ({page}) => 
   await useFakeSupabase(page);
   await login(page);
   await page.getByRole('button',{name:'Carrinhos',exact:true}).click();
+  await page.getByRole('button',{name:'Cadastrar carrinho'}).click();
   await page.getByLabel('Código do carrinho').fill('CXLSX');
   await page.getByLabel('Nome do laboratório móvel').fill('Carrinho de planilhas');
   await page.getByLabel('Capacidade de notebooks').fill('30');
@@ -366,6 +370,7 @@ test('importa arquivo XLSX real com prévia antes de salvar', async ({page}) => 
   await expect(page.getByText('CXLSX · 30 notebooks de capacidade')).toBeVisible();
   await page.getByRole('button',{name:'Notebooks',exact:true}).click();
   await page.getByLabel('Laboratório móvel').selectOption({label:'Carrinho de planilhas (CXLSX)'});
+  await page.getByRole('button',{name:'Cadastrar notebooks'}).click();
   const workbook = Buffer.from(XLSX_FIXTURE_BASE64,'base64');
   await page.locator('#csv-import').setInputFiles({
     name:'notebooks.xlsx',
@@ -995,4 +1000,83 @@ test('UX de reservas — calendário oferece dia, semana, mês e datas avulsas n
   await expect(page.locator('.reservation-date-popover')).toBeVisible();
   expect(await page.evaluate(()=>
     document.documentElement.scrollWidth<=document.documentElement.clientWidth+1)).toBe(true);
+});
+
+
+test('Cadastros — todas as telas abrem primeiro na listagem e oferecem criar/editar separadamente',async({page})=>{
+  const db=await useFakeSupabase(page);
+  const cartId=crypto.randomUUID(),requesterId=crypto.randomUUID();
+  db.carts.push({id:cartId,name:'Laboratório Móvel',code:'C-100',capacity:25,active:true,
+    created_at:new Date().toISOString()});
+  db.requesters.push({id:requesterId,name:'Professora Alfa',reference_code:'REF-01',active:true,
+    created_at:new Date().toISOString()});
+  db.notebook_codes.push({id:crypto.randomUUID(),cart_id:cartId,code:'NB-100',active:true,
+    created_at:new Date().toISOString()});
+  await login(page);
+
+  await page.getByRole('button',{name:'Carrinhos',exact:true}).click();
+  await expect(page.getByRole('heading',{name:'Carrinhos',exact:true})).toBeVisible();
+  await expect(page.getByRole('heading',{name:'Carrinhos cadastrados'})).toBeVisible();
+  await expect(page.getByLabel('Código do carrinho')).toHaveCount(0);
+  await page.getByLabel('Buscar carrinho').fill('não existe');
+  await expect(page.getByText('Nenhum carrinho corresponde à busca.')).toBeVisible();
+  await page.getByLabel('Buscar carrinho').fill('Móvel');
+  await page.getByRole('button',{name:'Editar'}).click();
+  await expect(page.getByRole('heading',{name:'Editar carrinho'})).toBeVisible();
+  await expect(page.getByLabel('Capacidade de notebooks')).toHaveValue('25');
+  await page.getByLabel('Nome do laboratório móvel').fill('Laboratório Atualizado');
+  await page.getByRole('button',{name:'Salvar alterações'}).click();
+  await expect(page.getByText('Carrinho atualizado.')).toBeVisible();
+  await expect(page.getByText('Laboratório Atualizado')).toBeVisible();
+  await page.getByRole('button',{name:'Cadastrar carrinho'}).click();
+  await expect(page.getByLabel('Código do carrinho')).toBeVisible();
+  await page.getByRole('button',{name:'Voltar para carrinhos'}).click();
+  await expect(page.getByLabel('Código do carrinho')).toHaveCount(0);
+
+  await page.getByRole('button',{name:'Professores',exact:true}).click();
+  await expect(page.getByRole('heading',{name:'Professores cadastrados'})).toBeVisible();
+  await expect(page.getByLabel('Nome completo')).toHaveCount(0);
+  await page.getByLabel('Buscar professor').fill('Alfa');
+  await expect(page.getByText('Professora Alfa')).toBeVisible();
+  await page.getByRole('button',{name:'Editar'}).click();
+  await expect(page.getByRole('heading',{name:'Editar professor'})).toBeVisible();
+  await page.getByLabel('Nome completo').fill('Professora Beta');
+  await page.getByRole('button',{name:'Salvar alterações'}).click();
+  await expect(page.getByText('Professora Beta')).toBeVisible();
+  await page.getByRole('button',{name:'Cadastrar professor'}).click();
+  await expect(page.getByLabel('Nome completo')).toHaveValue('');
+  await page.getByRole('button',{name:'Voltar para professores'}).click();
+  await expect(page.getByLabel('Nome completo')).toHaveCount(0);
+
+  await page.getByRole('button',{name:'Notebooks',exact:true}).click();
+  await expect(page.getByRole('heading',{name:'Notebooks cadastrados'})).toBeVisible();
+  await expect(page.locator('#codes')).toHaveCount(0);
+  await expect(page.getByText('NB-100',{exact:true})).toBeVisible();
+  await page.getByRole('button',{name:'Cadastrar notebooks'}).click();
+  await expect(page.getByLabel('Códigos (um por linha)')).toBeVisible();
+  await page.getByRole('button',{name:'Voltar para notebooks'}).click();
+  await expect(page.locator('#codes')).toHaveCount(0);
+});
+
+test('Cadastros — formulário não invade a listagem em telas pequenas',async({page})=>{
+  await useFakeSupabase(page);
+  await login(page);
+  for(const width of [320,360,390]){
+    await page.setViewportSize({width,height:780});
+    const opener=page.getByRole('button',{name:'Abrir menu lateral'});
+    const nav=page.getByRole('navigation',{name:'Menu principal'});
+    for(const [section,button,form] of [
+      ['Carrinhos','Cadastrar carrinho','#cart-code'],
+      ['Professores','Cadastrar professor','#teacher-name'],
+      ['Notebooks','Cadastrar notebooks','#codes']
+    ]){
+      await opener.click();
+      await nav.getByRole('button',{name:section,exact:true}).click();
+      await expect(page.locator(form)).toHaveCount(0);
+      await page.getByRole('button',{name:button}).click();
+      await expect(page.locator(form)).toBeVisible();
+      const noOverflow=await page.evaluate(()=>document.documentElement.scrollWidth<=document.documentElement.clientWidth+1);
+      expect(noOverflow,'Sem rolagem horizontal em '+section+' a '+width+'px').toBe(true);
+    }
+  }
 });
