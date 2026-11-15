@@ -216,7 +216,11 @@ export default function App() {
     if(!menuOpen)return;
     const previousOverflow=document.body.style.overflow;
     document.body.style.overflow='hidden';
-    closeButtonRef.current?.focus();
+    // A gaveta inicia oculta por CSS. Aguarde a próxima atualização de layout
+    // antes de mover o foco para um botão que estava invisível.
+    const focusFrame=window.requestAnimationFrame(()=>{
+      closeButtonRef.current?.focus();
+    });
 
     function handleKeydown(event:KeyboardEvent){
       if(event.key==='Escape'){
@@ -235,6 +239,7 @@ export default function App() {
     document.addEventListener('keydown',handleKeydown);
     window.addEventListener('resize',handleResize);
     return ()=>{
+      window.cancelAnimationFrame(focusFrame);
       document.body.style.overflow=previousOverflow;
       document.removeEventListener('keydown',handleKeydown);
       window.removeEventListener('resize',handleResize);
@@ -265,7 +270,7 @@ export default function App() {
   return <div className="app-shell">
     <a className="skip-link" href="#main-content">Pular para o conteúdo</a>
     {menuOpen&&<button type="button" tabIndex={-1} className="mobile-menu-backdrop" aria-label="Fechar navegação" onClick={closeMobileMenu}/>}
-    <aside id="main-nav-panel" ref={sidebarRef} className={'sidebar '+(menuOpen?'sidebar-open':'')} aria-label="Navegação principal">
+    <aside id="main-nav-panel" ref={sidebarRef} className={'sidebar '+(menuOpen?'sidebar-open':'')} role={menuOpen?'dialog':undefined} aria-modal={menuOpen||undefined} aria-label="Navegação principal">
       <div className="sidebar-top">
         <div className="brand"><span className="brand-mark"><Laptop size={22} aria-hidden="true"/></span><span>educart</span></div>
         <button type="button" ref={closeButtonRef} className="sidebar-close" aria-label="Fechar menu lateral" onClick={closeMobileMenu}><X size={22} aria-hidden="true"/></button>
