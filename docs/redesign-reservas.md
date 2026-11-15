@@ -38,6 +38,13 @@ Essa mudança altera somente React/TypeScript/CSS/testes. **Não cria tabelas, n
 - [x] Seção de códigos condicional à modalidade notebooks avulsos.
 - [x] Histórico separado do cadastro.
 - [x] Testes Vitest da lógica de calendário e Playwright dos fluxos de gestão e mobile adicionados.
-- [ ] Confirmar CI, deploy e capturas de tela do commit final.
+- [x] CI aprovado: 53 testes unitários e 26 Playwright; GitHub Pages publicado após testes. Capturas automáticas disponíveis no GitHub Actions.
 - [ ] Revisão manual em celular físico e homologação com administrador real.
 - [ ] Aprovação de PR e integração ordenada após as fases anteriores.
+
+## Evidências
+
+- [GitHub Actions — 53 testes unitários e 26 Playwright](https://github.com/dev-oestagiario/Educart/actions/runs/43767895853).
+- [GitHub Pages — publicação após testes](https://github.com/dev-oestagiario/Educart/actions/runs/43767890438).
+- Os Playwright usam Supabase simulado; fluxos reais com administrador e revisão visual em celular físico continuam pendentes.
+- Migrações/RLS/RPCs não foram alteradas nesta revisão de interface.
