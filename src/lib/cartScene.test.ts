@@ -27,3 +27,25 @@ describe('projeção 3D da disponibilidade',()=>{
    expect(slots.every(s=>s.reserved)).toBe(true);
  });
 });
+
+describe('projeção 3D — regressões de rastreabilidade',()=>{
+ it('não marca um código como reservado sem atribuição confirmada',()=>{
+   const slots=buildCartSlots(3,[{id:'a',code:'NT-A'},{id:'b',code:'NT-B'}],
+      [{id:'p1',reservation_id:'r1',quantity:1}],[]);
+   expect(slots.filter(s=>s.reserved)).toHaveLength(1);
+   expect(slots.find(s=>s.code==='NT-A')).toMatchObject({reserved:false,confirmedCode:false});
+   expect(slots.filter(s=>s.confirmedCode)).toHaveLength(0);
+ });
+ it('combina duas reservas sem duplicar posições nem ultrapassar a capacidade',()=>{
+   const slots=buildCartSlots(4,[],
+      [{id:'a',reservation_id:'r1',quantity:2},{id:'b',reservation_id:'r2',quantity:2}],[]);
+   expect(slots.filter(s=>s.reserved)).toHaveLength(4);
+   expect(slots.filter(s=>s.reservationId==='r1')).toHaveLength(2);
+   expect(slots.filter(s=>s.reservationId==='r2')).toHaveLength(2);
+ });
+ it('não confirma atribuição fora dos períodos consultados',()=>{
+   const slots=buildCartSlots(2,[{id:'n',code:'REAL'}],[],
+      [{period_id:'desconhecido',notebook_id:'n'}]);
+   expect(slots.some(s=>s.reserved)).toBe(false);
+ });
+});
