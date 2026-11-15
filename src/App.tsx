@@ -31,23 +31,47 @@ function TextInput({label,id,value,onChange,required=false,type='text',min}:{lab
 }
 function Login({onLogin}:{onLogin:()=>void}) {
   const [email,setEmail]=useState('');const [password,setPassword]=useState('');
-  const [error,setError]=useState('');const [busy,setBusy]=useState(false);
+  const [mode,setMode]=useState<'login'|'signup'>('login');
+  const [error,setError]=useState('');const [message,setMessage]=useState('');const [busy,setBusy]=useState(false);
   async function submit(e:FormEvent) {
-    e.preventDefault();setError('');setBusy(true);
-    const {error}=await supabase.auth.signInWithPassword({email,password});
-    if(error)setError('Não foi possível entrar. Confira as credenciais e tente novamente.');
-    else onLogin();
-    setBusy(false);
+    e.preventDefault();setError('');setMessage('');setBusy(true);
+    try {
+      if(mode==='signup') {
+        const {error}=await supabase.auth.signUp({
+          email:email.trim(), password,
+          options:{emailRedirectTo:window.location.origin+import.meta.env.BASE_URL}
+        });
+        if(error)throw error;
+        setMessage('Cadastro solicitado. Se a confirmação por e-mail estiver ativada, abra a mensagem recebida e confirme seu endereço. O acesso administrativo será liberado separadamente pela TI.');
+        setMode('login');setPassword('');
+      } else {
+        const {error}=await supabase.auth.signInWithPassword({email:email.trim(),password});
+        if(error)throw error;
+        onLogin();
+      }
+    } catch {
+      setError(mode==='signup'
+        ? 'Não foi possível criar a conta. Confira o e-mail e a senha ou tente novamente.'
+        : 'Não foi possível entrar. Confira as credenciais e tente novamente.');
+    } finally {setBusy(false)}
   }
   return <div className="auth-shell"><section className="auth-panel">
     <div className="brand"><span className="brand-mark"><Laptop size={22}/></span><span>educart</span></div>
-    <div className="auth-intro"><span className="eyebrow">ÁREA RESTRITA • TI</span><h1>Acesso administrativo</h1><p>Entre com a conta autorizada para gerenciar os laboratórios móveis.</p></div>
+    <div className="auth-intro"><span className="eyebrow">ACESSO • TI</span>
+      <h1>{mode==='signup'?'Criar conta no Educart':'Acesso administrativo'}</h1>
+      <p>{mode==='signup'?'Cadastre seu e-mail. O acesso às funções administrativas depende de aprovação da TI.':'Entre com a conta autorizada para gerenciar os laboratórios móveis.'}</p></div>
     <form onSubmit={submit} className="form-stack">
       <TextInput id="email" label="E-mail" type="email" value={email} onChange={setEmail} required/>
       <TextInput id="password" label="Senha" type="password" value={password} onChange={setPassword} required/>
+      {mode==='signup'&&<p className="form-hint">Use uma senha exclusiva. Depois do cadastro, confirme seu e-mail se receber uma mensagem do Supabase.</p>}
       {error&&<Notice message={error}/>}
-      <button className="primary" disabled={busy} type="submit">{busy?'Entrando…':'Entrar no Educart'}</button>
-    </form><p className="auth-footer"><ShieldCheck size={16}/> Somente administradores cadastrados pela TI.</p>
+      {message&&<Notice kind="success" message={message}/>}
+      <button className="primary" disabled={busy} type="submit">{busy?'Aguarde…':mode==='signup'?'Criar minha conta':'Entrar no Educart'}</button>
+    </form>
+    <button type="button" className="auth-switch" onClick={()=>{setMode(mode==='login'?'signup':'login');setError('');setMessage('');setPassword('')}}>
+      {mode==='login'?'Ainda não tem conta? Criar conta':'Já tem conta? Fazer login'}
+    </button>
+    <p className="auth-footer"><ShieldCheck size={16}/> Criar conta não concede acesso de administrador.</p>
   </section></div>;
 }
 function Overview() {
@@ -191,7 +215,7 @@ export default function App() {
   if(!session)return <Login onLogin={()=>setPage('overview')}/>;
   if(check.isLoading)return <div className="center-status" role="status">Validando acesso administrativo…</div>;
   if(check.error)return <div className="setup"><h1>Não foi possível validar o acesso</h1><p>{errorMessage(check.error)}</p><button className="secondary" onClick={()=>qc.invalidateQueries({queryKey:['admin']})}>Tentar novamente</button></div>;
-  if(!check.data)return <div className="setup"><ShieldCheck size={34}/><h1>Acesso não autorizado</h1><p>Esta conta não está habilitada como administradora da TI. Solicite autorização à equipe responsável.</p><button className="secondary" onClick={()=>supabase.auth.signOut()}>Sair desta conta</button></div>;
+  if(!check.data)return <div className="setup"><ShieldCheck size={34}/><h1>Conta criada, aguardando autorização</h1><p>Seu login foi reconhecido, mas a TI ainda precisa habilitar esta conta como administradora. Os dados e cadastros continuam protegidos.</p><button className="secondary" onClick={()=>qc.invalidateQueries({queryKey:['admin']})}>Verificar autorização</button><button className="ghost" onClick={()=>supabase.auth.signOut()}>Sair desta conta</button></div>;
   const nav:[Page,string,typeof Boxes][]=[['overview','Visão geral',ClipboardList],['carts','Carrinhos',Boxes],['requesters','Professores',UserRoundPlus],['notebooks','Notebooks',Laptop]];
   return <div className="app-shell"><aside className="sidebar">
     <div className="brand"><span className="brand-mark"><Laptop size={22}/></span><span>educart</span></div>
