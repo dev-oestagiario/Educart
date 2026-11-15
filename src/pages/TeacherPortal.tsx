@@ -5,6 +5,7 @@ import {supabase,type Cart} from '../lib/supabase';
 import {addCalendarDays,expandReservationDates,isWeekday,SHIFTS,shiftLabel,showDate,todayInSaoPaulo,type Shift} from '../lib/reservations';
 import {requestStatusLabel,validateTeacherRequest,type TeacherRequest} from '../lib/teacherRequests';
 import NotificationBell from '../components/NotificationBell';
+import TeacherAvailabilityPreview from '../components/TeacherAvailabilityPreview';
 const NotificationsPage = lazy(()=>import('./NotificationsPage'));
 
 
@@ -185,6 +186,7 @@ export default function TeacherPortal({requesterId,userId,email,onLogout}:Props)
                   onClick={()=>setIndividualDates(old=>old.filter(d=>d!==day))}>{showDate(day)} ×</button>)}</div>
               </div>}
             <p className="form-hint">Prévia: <strong>{days.length} dia(s) útil(eis)</strong> × {shifts.length} turno(s) = <strong>{days.length*shifts.length} período(s)</strong>.</p>
+            <TeacherAvailabilityPreview cartId={cartId} dates={days} shifts={shifts} quantity={requestedQuantity}/>
             <label className="reservation-check"><input type="checkbox" checked={needsMouse} onChange={e=>setNeedsMouse(e.target.checked)}/> Preciso de mouse</label>
             <label className="field" htmlFor="teacher-notes"><span>Observações (opcional)</span>
               <textarea id="teacher-notes" rows={3} maxLength={1000} value={notes}

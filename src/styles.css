@@ -284,3 +284,24 @@ button{touch-action:manipulation}
  .topbar-actions .phase-tag{max-width:112px;overflow:hidden;text-overflow:ellipsis}
  .notification-actions button{white-space:normal;min-height:44px}
 }
+
+/* Fase 8 — disponibilidade consultiva no portal do professor. */
+.teacher-availability{border:1px solid #d8e6f4;border-radius:12px;padding:18px;background:#f8fbff;min-width:0;display:grid;gap:13px}
+.teacher-availability-heading{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px}
+.teacher-availability-heading h3{display:flex;gap:8px;align-items:center;color:#1c527e;font-size:15px;font-weight:750;margin:0}
+.teacher-availability-reload{display:flex;align-items:center;gap:6px;min-height:40px}
+.teacher-availability-summary{display:flex;gap:10px;align-items:start;padding:13px;border-radius:9px;background:#e7f5ef;color:#226443;font-size:13px}
+.teacher-availability-summary p{margin:0;line-height:1.5}
+.teacher-availability-warning{border:1px solid #f1d4a2;background:#fffbf1;color:#84520d;padding:13px;border-radius:9px;font-size:13px}
+.teacher-availability-warning p{margin:6px 0;line-height:1.55}
+.teacher-availability-warning ul{margin:8px 0 0;padding-left:18px;display:grid;gap:5px}
+.teacher-availability-details{min-width:0}
+.teacher-availability-details summary{font-weight:700;font-size:13px;color:#225884;cursor:pointer;min-height:40px;display:flex;align-items:center}
+.teacher-availability-table-wrap{max-width:100%;max-height:360px;overflow:auto;border:1px solid #dbe6f0;border-radius:8px;margin-top:7px}
+.teacher-availability-table-wrap table{border-collapse:collapse;width:100%;font-size:12px;text-align:left}
+.teacher-availability-table-wrap th,.teacher-availability-table-wrap td{padding:10px;border-bottom:1px solid #e7edf4;white-space:nowrap}
+.teacher-availability-table-wrap th{color:#344c63}
+.teacher-availability-table-wrap thead th{background:#edf4fb;position:sticky;top:0;z-index:1}
+.teacher-availability-disclaimer{display:flex;gap:9px;align-items:flex-start;color:#62788a;font-size:12px;line-height:1.55;margin:0}
+.teacher-availability-disclaimer svg{flex:none;margin-top:1px}
+@media(max-width:690px){.teacher-availability{padding:12px}.teacher-availability-heading{align-items:start}.teacher-availability-reload{padding:8px}}
