@@ -440,3 +440,26 @@ button{touch-action:manipulation}
  .records-item{flex-direction:column;align-items:stretch}
  .records-item .secondary{align-self:flex-start}
 }
+
+
+/* Solicitações do professor e vínculos da TI seguem a mesma navegação lista → cadastro. */
+.teacher-main>.records-page-header{margin-bottom:22px}
+.teacher-portal-form{max-width:820px;min-width:0}
+.teacher-portal-list{max-width:1050px;min-width:0}
+.teacher-portal-note{max-width:820px}
+.teacher-portal-list .teacher-request-list{grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr))}
+.teacher-portal-list .booking-item{height:100%}
+.teacher-portal-list .teacher-request-heading{width:100%}
+.teacher-portal-form .form-stack{gap:18px}
+.teacher-approvals .records-form-panel{max-width:800px}
+.teacher-approvals .records-form-panel .form-hint{margin-bottom:16px}
+.teacher-approvals .records-list-heading{margin-bottom:12px}
+.teacher-approvals .teacher-link-form{grid-template-columns:repeat(2,minmax(0,1fr));align-items:end}
+.teacher-approvals .teacher-link-form>button{grid-column:1/-1;justify-self:start;min-width:180px}
+@media(max-width:690px){
+ .teacher-portal-form,.teacher-portal-list{padding:18px}
+ .teacher-portal-list .teacher-request-list{grid-template-columns:1fr}
+ .teacher-approvals .teacher-link-form{grid-template-columns:1fr}
+ .teacher-approvals .teacher-link-form>button{grid-column:1;justify-self:stretch}
+ .teacher-main .records-page-header{margin-bottom:20px}
+}
