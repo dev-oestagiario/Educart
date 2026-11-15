@@ -80,7 +80,7 @@ export const reservationInputSchema=z.object({
     ctx.addIssue({code:'custom',path:['notebook_ids'],message:'Quantidade de códigos maior que a reserva'});
 });
 
-export type UsagePeriod={usage_date:string;shift:Shift;quantity:number;active:boolean};
+export type UsagePeriod={reservation_id?:string;usage_date:string;shift:Shift;quantity:number;active:boolean};
 export type SlotAvailability={date:string;shift:Shift;reserved:number;remaining:number;capacity:number};
 export function calculateAvailability(capacity:number,periods:UsagePeriod[],dates:string[],shifts:Shift[]):SlotAvailability[]{
   return dates.flatMap(date=>shifts.map(shift=>{

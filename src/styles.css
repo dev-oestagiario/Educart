@@ -114,3 +114,25 @@ button{touch-action:manipulation}
   .reservation-table th,.reservation-table td{padding:9px 7px;font-size:12px}
   .reservation-page .panel{padding:18px}
 }
+
+
+/* Fase 3 — listagem auditável, ações por data e turno. */
+.booking-list{display:grid;gap:14px}
+.booking-item{border:1px solid #e2e9f2;border-radius:12px;padding:15px;min-width:0}
+.booking-info{display:flex;flex-direction:column;gap:5px;font-size:13px}
+.booking-info strong{color:#22364b;font-size:14px}
+.booking-info span{color:#6c7f94}
+.booking-periods{display:grid;gap:6px;padding:10px 0;margin:10px 0;border-top:1px solid #eef2f6;border-bottom:1px solid #eef2f6}
+.booking-period{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:8px;color:#40556e;font-size:12px}
+.booking-period button{min-height:36px}
+.booking-period button:disabled{opacity:.5;cursor:not-allowed;text-decoration:none}
+.reservation-actions{display:flex;flex-wrap:wrap;align-items:center;gap:9px}
+.reservation-actions button{display:inline-flex;align-items:center;justify-content:center;gap:7px;min-height:39px}
+.booking-confirm{border:1px solid #fed7aa;background:#fff8ec;padding:12px;border-radius:9px;margin-top:12px;font-size:13px}
+.booking-confirm p{margin:0 0 10px;color:#704b19;line-height:1.5}
+.booking-history{display:grid;gap:9px}
+.booking-history details{border:1px solid #dfe7f0;border-radius:10px;padding:10px;font-size:12px}
+.booking-history summary{cursor:pointer;line-height:1.5;color:#41566e}
+.booking-history-data{padding:9px 0}
+.booking-history-data pre{white-space:pre-wrap;overflow-wrap:anywhere;max-height:230px;overflow:auto;background:#f6f8fb;border-radius:8px;padding:10px;color:#43556d;font-size:11px}
+@media(max-width:690px){.booking-item{padding:11px}.booking-period{align-items:flex-start;flex-direction:column}}

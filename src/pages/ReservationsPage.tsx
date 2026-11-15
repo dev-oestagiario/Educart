@@ -1,16 +1,13 @@
 import { useMemo, useState, type FormEvent } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { CalendarDays, CheckCircle2, ClipboardCheck, Info, Laptop2 } from 'lucide-react';
+import { CalendarDays, Info, Laptop2 } from 'lucide-react';
+import ReservationManager, {type ReservationEdit} from './ReservationManager';
 import { supabase, type Cart, type Notebook, type Requester } from '../lib/supabase';
 import {
   addCalendarDays, calculateAvailability, expandReservationDates, isWeekday, reservationInputSchema,
   SHIFTS, shiftLabel, showDate, todayInSaoPaulo, type Shift, type UsagePeriod
 } from '../lib/reservations';
 
-type Reservation = {
-  id:string; requester_id:string; cart_id:string; mode:'COMPLETA'|'PARCIAL';
-  quantity:number; needs_mouse:boolean; notes:string|null; status:string; created_at:string;
-};
 const today=todayInSaoPaulo();
 let firstBookableDay=today;
 while(!isWeekday(firstBookableDay))firstBookableDay=addCalendarDays(firstBookableDay,1);
@@ -43,6 +40,7 @@ export default function ReservationsPage() {
   const [needsMouse,setNeedsMouse]=useState(false);
   const [notes,setNotes]=useState('');
   const [feedback,setFeedback]=useState<{kind:'error'|'success';text:string}|null>(null);
+  const [editingId,setEditingId]=useState<string|null>(null);
   const selectedCart=carts.data?.find(c=>c.id===cartId);
   const requestedQuantity=reservationMode==='COMPLETA'?(selectedCart?.capacity??0):Number(quantity);
 
@@ -60,31 +58,21 @@ export default function ReservationsPage() {
     enabled:!!cartId&&dates.length>0,
     queryFn:async():Promise<UsagePeriod[]>=>{
       const {data,error}=await supabase.from('reservation_periods')
-        .select('usage_date,shift,quantity,active')
+        .select('reservation_id,usage_date,shift,quantity,active')
         .eq('cart_id',cartId).gte('usage_date',dates[0]).lte('usage_date',dates[dates.length-1])
         .eq('active',true);
       if(error)throw error;
       return (data??[]) as UsagePeriod[];
     }
   });
-  const reservations=useQuery({
-    queryKey:['reservations'],
-    queryFn:async():Promise<Reservation[]>=>{
-      const {data,error}=await supabase.from('reservations')
-        .select('id,requester_id,cart_id,mode,quantity,needs_mouse,notes,status,created_at')
-        .order('created_at',{ascending:false}).limit(30);
-      if(error)throw error;
-      return (data??[]) as Reservation[];
-    }
-  });
   const slots=useMemo(()=>calculateAvailability(
-    selectedCart?.capacity??0,periods.data??[],dates,selectedShifts
-  ),[selectedCart?.capacity,periods.data,dates,selectedShifts]);
+    selectedCart?.capacity??0,(periods.data??[]).filter(p=>!editingId||p.reservation_id!==editingId),dates,selectedShifts
+  ),[selectedCart?.capacity,periods.data,dates,selectedShifts,editingId]);
   const blocked=!!selectedCart && slots.some(s=>s.remaining<requestedQuantity);
   const knownNotebooks=(notebooks.data??[]).filter(n=>n.cart_id===cartId);
   const periodsCount=dates.length*selectedShifts.length;
 
-  const create=useMutation({
+  const save=useMutation({
     mutationFn:async()=>{
       if(!selectedCart)throw new Error('Selecione um carrinho.');
       if(periods.isLoading||periods.isFetching)throw new Error('Aguarde a consulta de disponibilidade.');
@@ -95,25 +83,50 @@ export default function ReservationsPage() {
         notes,notebook_ids:selectedNotebookIds
       });
       if(blocked)throw new Error('Um ou mais períodos não possuem a quantidade solicitada.');
-      const {data:reservationId,error}=await supabase.rpc('create_reservation',{
+      const args={
         p_requester_id:data.requester_id,p_cart_id:data.cart_id,
         p_mode:data.mode,p_quantity:data.quantity,p_dates:data.dates,p_shifts:data.shifts,
         p_needs_mouse:data.needs_mouse,p_notes:data.notes||null,p_notebook_ids:data.notebook_ids
-      });
+      };
+      const {data:reservationId,error}=editingId
+        ?await supabase.rpc('update_reservation',{p_reservation_id:editingId,...args})
+        :await supabase.rpc('create_reservation',args);
       if(error)throw error;
       return reservationId as string;
     },
     onSuccess:()=>{
-      setFeedback({kind:'success',text:'Reserva confirmada para todos os períodos selecionados.'});
-      setSelectedNotebookIds([]);setNotes('');
-      void qc.invalidateQueries({queryKey:['reservation-periods']});
-      void qc.invalidateQueries({queryKey:['reservations']});
+      setFeedback({kind:'success',text:editingId?'Reserva editada e alteração registrada no histórico.':'Reserva confirmada para todos os períodos selecionados.'});
+      setEditingId(null);setSelectedNotebookIds([]);setNotes('');
+      refreshData();
     },
     onError:error=>setFeedback({kind:'error',text:explainError(error)})
   });
 
+  function refreshData(){
+    void qc.invalidateQueries({queryKey:['reservation-periods']});
+    void qc.invalidateQueries({queryKey:['reservations']});
+    void qc.invalidateQueries({queryKey:['booking-periods']});
+    void qc.invalidateQueries({queryKey:['reservation-events']});
+  }
+  function loadForEdit(info:ReservationEdit){
+    const {booking,dates:bookedDates,shifts,notebookIds}=info;
+    setEditingId(booking.id);
+    setRequesterId(booking.requester_id);
+    setCartId(booking.cart_id);
+    setReservationMode(booking.mode);
+    setQuantity(String(booking.quantity));
+    setDateMode('avulsas');setSpecificDates(bookedDates);
+    setStartDate(bookedDates[0]??firstBookableDay);
+    setEndDate(bookedDates[bookedDates.length-1]??firstBookableDay);
+    setSelectedShifts(shifts);
+    setSelectedNotebookIds(notebookIds);
+    setNeedsMouse(booking.needs_mouse);
+    setNotes(booking.notes??'');
+    setFeedback(null);
+    window.scrollTo({top:0,behavior:'smooth'});
+  }
   function submit(event:FormEvent) {
-    event.preventDefault();setFeedback(null);create.mutate();
+    event.preventDefault();setFeedback(null);save.mutate();
   }
   function toggleShift(shift:Shift,checked:boolean) {
     setSelectedShifts(prev=>checked?[...prev,shift]:prev.filter(s=>s!==shift));
@@ -141,7 +154,7 @@ export default function ReservationsPage() {
     </div>
     <div className="reservation-layout">
       <section className="panel" aria-labelledby="reservation-form-title">
-        <h2 id="reservation-form-title">Nova reserva</h2>
+        <h2 id="reservation-form-title">{editingId?'Editar reserva':'Nova reserva'}</h2>
         <form onSubmit={submit} className="form-stack">
           <label className="field" htmlFor="reservation-requester"><span>Professor solicitante</span>
             <select id="reservation-requester" value={requesterId} required onChange={e=>setRequesterId(e.target.value)}>
@@ -218,9 +231,13 @@ export default function ReservationsPage() {
           <p className="reservation-subtle">Esta reserva terá <strong>{dates.length} dia(s)</strong>, <strong>{selectedShifts.length} turno(s)</strong> e <strong>{periodsCount} período(s)</strong>.</p>
           {feedback&&<p className={'notice '+feedback.kind} role={feedback.kind==='error'?'alert':'status'}>{feedback.text}</p>}
           <button className="primary" type="submit"
-            disabled={!requesterId||!cartId||!requestedValid||!dates.length||!selectedShifts.length||blocked||periods.isFetching||create.isPending}>
-            {create.isPending?'Confirmando…':'Confirmar reserva'}
+            disabled={!requesterId||!cartId||!requestedValid||!dates.length||!selectedShifts.length||blocked||periods.isFetching||save.isPending}>
+            {save.isPending?'Salvando…':editingId?'Salvar alterações':'Confirmar reserva'}
           </button>
+          {editingId&&<button type="button" className="ghost"
+            onClick={()=>{setEditingId(null);setFeedback(null);setSelectedNotebookIds([]);}}>
+            Cancelar edição
+          </button>}
         </form>
       </section>
       <div className="reservation-side">
@@ -242,19 +259,8 @@ export default function ReservationsPage() {
               {blocked&&<p className="notice error" role="alert">Há períodos sem capacidade suficiente. Ajuste as datas, o turno, a quantidade ou o carrinho.</p>}
             </>}
         </section>
-        <section className="panel">
-          <h2><ClipboardCheck size={19} aria-hidden="true"/> Reservas recentes</h2>
-          {reservations.isLoading?<p role="status">Carregando reservas…</p>:
-            reservations.error?<p role="alert" className="notice error">Não foi possível consultar reservas.</p>:
-            !reservations.data?.length?<p className="empty">Nenhuma reserva registrada.</p>:
-            <div className="item-list">{reservations.data.map(item=><div className="item" key={item.id}>
-              <div><strong>{(teachers.data??[]).find(t=>t.id===item.requester_id)?.name??'Professor'}</strong>
-              <span>{(carts.data??[]).find(c=>c.id===item.cart_id)?.name??'Carrinho'} · {item.quantity} notebooks · {item.mode==='COMPLETA'?'Completa':'Parcial'}</span>
-              <span>{item.needs_mouse?'Precisa de mouse · ':''}{item.status}</span></div>
-              <CheckCircle2 size={18} color="#26754a" aria-label="Reserva registrada"/>
-            </div>)}</div>}
-          <p className="form-hint">Edições, cancelamentos e histórico detalhado serão liberados na Fase 3.</p>
-        </section>
+        <ReservationManager carts={carts.data??[]} requesters={teachers.data??[]}
+          onEdit={loadForEdit} onChanged={()=>{setEditingId(null);refreshData()}}/>
         <div className="reservation-side-note"><CalendarDays size={18} aria-hidden="true"/>
           <p>A confirmação reserva todos os períodos de uma vez. Se algum turno já estiver ocupado, nada será registrado.</p>
         </div>
