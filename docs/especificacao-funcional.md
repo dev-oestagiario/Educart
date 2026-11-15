@@ -73,11 +73,13 @@ O registrante fica registrado automaticamente, separado do solicitante.
 
 ## RF-03 — Agrupar reservas de múltiplos dias
 
-Uma única reserva administrativa pode agrupar vários dias, mantendo registros de ocupação por data e turno. O administrador dispõe de duas formas de seleção: **intervalo de datas** (início e fim, para uma semana ou mês inteiros) ou **datas avulsas** (um dia ou dias não consecutivos). Antes da confirmação, deve ser possível revisar a relação exata das datas selecionadas. A inclusão ou exclusão automática de fins de semana e feriados permanece pendente de definição e não pode ocorrer silenciosamente.
+Uma única reserva administrativa pode agrupar vários dias, mantendo registros de ocupação por data e turno. O administrador dispõe de duas formas de seleção: **intervalo de datas** (início e fim, para uma semana ou mês inteiros) ou **datas avulsas** (um dia ou dias não consecutivos). **Somente segunda a sexta-feira são datas de reserva permitidas**: ao selecionar um intervalo, o sistema exclui sábados e domingos automaticamente; no calendário avulso, não permite selecionar esses dias. Antes da confirmação, deve ser possível revisar a relação exata das datas selecionadas. O reconhecimento de feriados e outros dias sem aula permanece pendente de definição; não presumir calendário escolar ou excluir feriados sem uma regra configurada.
 
 **Critérios de aceitação:**
 - Um cadastro de segunda a quarta/matutino aparece como uma reserva agrupada, mas ocupa os notebooks em três datas distintas.
 - O administrador pode escolher um período contínuo de uma semana ou mês, uma data única ou vários dias avulsos, sem repetir todo o formulário.
+- O intervalo de segunda a domingo gera ocupação apenas de segunda a sexta, sem comprometer notebooks no sábado ou domingo.
+- A seleção avulsa não permite sábado ou domingo; o sistema sinaliza por que o dia está indisponível.
 - O sistema apresenta explicitamente todas as datas que serão reservadas, e permite revisá-las antes de confirmar.
 - O sistema aponta conflitos específicos antes de confirmar todo o conjunto.
 - É possível cancelar uma data selecionada sem cancelar automaticamente as demais datas válidas.
@@ -130,7 +132,7 @@ Um usuário poderá solicitar uma reserva, que ficará pendente de análise. O a
 
 1. **Cadastro versus capacidade:** como tratar divergência entre a capacidade informada do carrinho e a lista de notebooks cadastrados; não assumir um valor fixo.
 2. **Mouse (decidido):** somente sinalização sim/não para a equipe de TI; não existe controle de quantidade, identificação ou disponibilidade de mouses nesta versão.
-3. **Seleção de dias (decidido):** oferecer tanto intervalo contínuo (incluindo semanas ou meses inteiros) quanto dias específicos, inclusive um único dia. **Ainda falta decidir:** tratamento de fins de semana, feriados e dias sem aula; nenhuma exclusão automática deve ser presumida.
+3. **Seleção de dias (decidido):** oferecer intervalo contínuo e datas avulsas, inclusive um único dia, **apenas de segunda a sexta-feira**. Sábados e domingos são excluídos dos intervalos e não podem ser selecionados individualmente. **Ainda falta decidir:** tratamento de feriados e outros dias sem aula e como identificar o calendário escolar.
 4. **Cancelamentos excepcionais:** o prazo até o dia anterior está definido; eventuais exceções administrativas ainda não.
 5. **Situações de reserva:** nomes exatos dos estados, permissões de edição, regras de alterações e eventual manutenção de equipamento ainda não definidos.
 6. **Acesso e autenticação:** mecanismo técnico e permissões detalhadas além da responsabilidade dos dois administradores da TI ainda não definidos.
