@@ -13,7 +13,14 @@ export const notebookSchema = z.object({
   code: z.string().trim().min(1, 'Informe o código').max(80)
 });
 export function errorMessage(error: unknown) {
-  return error instanceof Error ? error.message : 'Não foi possível concluir a operação.';
+  if (error instanceof Error) return error.message;
+  if (error && typeof error === 'object' && 'code' in error) {
+    const code = String(error.code);
+    if (code === '23505') return 'Esse identificador já está cadastrado.';
+    if (code === '23514') return 'Os dados não atendem às regras de validação.';
+    if (code === '42501') return 'Você não tem permissão para realizar esta operação.';
+  }
+  return 'Não foi possível concluir a operação.';
 }
 export function validateCodes(raw: string): string[] {
   const codes = raw.split(/\r?\n/).map(x => x.trim()).filter(Boolean);

@@ -6,6 +6,7 @@ import { create } from 'zustand';
 import { supabase, isConfigured, type Cart, type Requester, type Notebook } from './lib/supabase';
 import { cartSchema, errorMessage, notebookSchema, requesterSchema, validateCodes } from './lib/validation';
 import { configuredCapacity } from './lib/capacity';
+import { parseCsvCodes } from './lib/importCsv';
 
 type Page = 'overview' | 'carts' | 'requesters' | 'notebooks';
 const useUi = create<{page:Page; setPage:(page:Page)=>void; cartId:string; setCartId:(id:string)=>void}>()(
@@ -109,12 +110,6 @@ function RequestersPage() {
       <div className="item-list">{q.data.map(p=><div className="item" key={p.id}><div><strong>{p.name}</strong><span>{p.reference_code||'Sem identificador interno'}</span></div><button className="text-button" onClick={()=>{setEditing(p.id);setName(p.name);setCode(p.reference_code||'');setNotice('')}}>Editar</button></div>)}</div>}
     </section></div></>;
 }
-function parseCsvCodes(text:string):string[] {
-  const rows=text.replace(/^\uFEFF/,'').split(/\r?\n/).filter(x=>x.trim());
-  const first=rows[0]?.trim().toLocaleLowerCase('pt-BR');
-  const source=(first==='codigo'||first==='código'||first==='code')?rows.slice(1):rows;
-  return source.map(row=>row.split(/[;,]/)[0].trim().replace(/^"|"$/g,''));
-}
 function NotebooksPage() {
   const qc=useQueryClient();const carts=useQuery({queryKey:['carts'],queryFn:()=>fetchRows<Cart>('carts')});
   const {cartId,setCartId}=useUi();const notebooks=useQuery({queryKey:['notebooks'],queryFn:()=>fetchRows<Notebook>('notebook_codes')});
@@ -127,13 +122,20 @@ function NotebooksPage() {
   function generate(){
     setNotice('');const n=Number(generateCount);
     if(!Number.isInteger(n)||n<1||n>200){setNotice('Informe uma quantidade de 1 a 200.');return;}
-    const taken=new Set([...(notebooks.data??[]).map(n=>n.code.toLowerCase()),...codes.split(/\r?\n/).map(x=>x.toLowerCase())]);
+    if(!currentCart){setNotice('Selecione um carrinho válido antes de gerar códigos.');return;}
+    const draft=codes.split(/\r?\n/).map(x=>x.trim()).filter(Boolean);
+    const remaining=currentCart.capacity-existing.length-draft.length;
+    if(n>remaining){setNotice(`O carrinho possui apenas ${Math.max(0,remaining)} posições disponíveis para novos códigos.`);return;}
+    const taken=new Set([...(notebooks.data??[]).map(x=>x.code.toLocaleLowerCase('pt-BR')),...draft.map(x=>x.toLocaleLowerCase('pt-BR'))]);
     const result:string[]=[];
     while(result.length<n){const code='EDU-'+crypto.randomUUID().slice(0,8).toUpperCase();if(!taken.has(code.toLowerCase())){taken.add(code.toLowerCase());result.push(code)}}
     setCodes(old=>[old.trim(),...result].filter(Boolean).join('\n'));
   }
   function save(e:FormEvent){e.preventDefault();setNotice('');if(!cartId){setNotice('Escolha um carrinho.');return;}
     try{const values=validateCodes(codes);for(const code of values)notebookSchema.parse({code});
+      const registered=new Set((notebooks.data??[]).map(x=>x.code.toLocaleLowerCase('pt-BR')));
+      const repeated=values.find(code=>registered.has(code.toLocaleLowerCase('pt-BR')));
+      if(repeated){setNotice(`O código ${repeated} já está cadastrado.`);return;}
       if(existing.length+values.length>(currentCart?.capacity??0)){setNotice('A quantidade de códigos ultrapassaria a capacidade do carrinho.');return;}
       mutation.mutate(values,{onError:err=>setNotice(errorMessage(err))});
     }catch(err){setNotice(errorMessage(err));}
@@ -141,8 +143,18 @@ function NotebooksPage() {
   async function upload(e:ChangeEvent<HTMLInputElement>){
     const file=e.target.files?.[0];if(!file)return;
     if(!file.name.toLowerCase().endsWith('.csv')){setNotice('Escolha um arquivo CSV.');e.target.value='';return;}
-    try{const parsed=parseCsvCodes(await file.text());setCodes(parsed.join('\n'));setNotice('Revise os códigos importados antes de cadastrar.');}
-    catch{setNotice('Não foi possível ler o arquivo CSV.');}e.target.value='';
+    if(file.size>1_000_000){setNotice('O arquivo CSV deve ter no máximo 1 MB.');e.target.value='';return;}
+    try{
+      const parsed=parseCsvCodes(await file.text());
+      setCodes(parsed.join('\n'));
+      const valid=validateCodes(parsed.join('\n'));
+      const registered=new Set((notebooks.data??[]).map(x=>x.code.toLocaleLowerCase('pt-BR')));
+      const duplicate=valid.find(code=>registered.has(code.toLocaleLowerCase('pt-BR')));
+      if(duplicate)setNotice(`O código ${duplicate} já está cadastrado. Corrija antes de salvar.`);
+      else if(existing.length+valid.length>(currentCart?.capacity??0))setNotice('A importação excede a capacidade do carrinho. Corrija antes de salvar.');
+      else setNotice('Revise os códigos importados antes de cadastrar.');
+    }catch(err){setNotice(errorMessage(err));}
+    e.target.value='';
   }
   return <><PageHeader title="Notebooks" description="Identifique os equipamentos por código, sem alterar a capacidade informada do carrinho."/>
     <div className="panel"><label className="field" htmlFor="cart-selector"><span>Laboratório móvel</span><select id="cart-selector" value={cartId} onChange={e=>{setCartId(e.target.value);setNotice('');setCodes('')}}><option value="">Selecione um carrinho</option>{(carts.data??[]).map(c=><option value={c.id} key={c.id}>{c.name} ({c.code})</option>)}</select></label>

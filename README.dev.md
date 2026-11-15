@@ -17,6 +17,6 @@ A migração cria a tabela `public.admin_users`, mas **não cria usuários**. O 
 
 ## Limites da fase
 
-A aplicação já contém base de autenticação e cadastros de carrinhos, solicitantes e notebooks, com geração e importação **CSV** simples e revisão. A quantidade de códigos não altera a capacidade configurada. A função de reservas e a visualização 3D ainda pertencem a fases posteriores.
+A aplicação já contém base de autenticação e cadastros de carrinhos, solicitantes e notebooks, com geração e importação **CSV** com revisão, validação e suporte a colunas com cabeçalho `codigo`/`código`/`code`. A quantidade de códigos não altera a capacidade configurada. A função de reservas e a visualização 3D ainda pertencem a fases posteriores.
 
-**Importante:** este código foi produzido pelo conector GitHub. Não houve execução local de `npm install`, `npm run build` ou testes, porque o ambiente utilizado estava sem acesso ao registro npm. Não considerar pronto para produção sem essas verificações e sem os administradores provisionados.
+**Verificações:** o PR #10 já executou build e testes unitários com sucesso no GitHub Actions; novas alterações devem passar pela mesma CI. O registro npm permanece inacessível no ambiente local utilizado. Ainda faltam testes E2E, provisionamento dos administradores reais e validação de permissões com sessões reais. Não disponibilizar em produção antes disso.
