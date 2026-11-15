@@ -21,7 +21,7 @@ const token = [
 
 async function useFakeSupabase(page: Page, authorized = true) {
   const database: Record<string, Row[]> = {
-    carts: [], requesters: [], notebook_codes: [], reservations: [], reservation_periods: [], reservation_notebooks: [], reservation_events: []
+    carts: [], requesters: [], notebook_codes: [], reservations: [], reservation_periods: [], reservation_notebooks: [], reservation_events: [], teacher_account_links: [], reservation_requests: [], reservation_request_events: []
   };
   await page.route('https://educart-e2e.supabase.co/**', async route => {
     const req = route.request();
