@@ -1,6 +1,6 @@
 import {useEffect,useRef,useState} from 'react';
 import {CalendarDays,ChevronLeft,ChevronRight,Check, X} from 'lucide-react';
-import {addCalendarDays,isValidIsoDate,isWeekday,showDate,todayInSaoPaulo} from '../lib/reservations';
+import {isValidIsoDate,isWeekday,showDate,todayInSaoPaulo} from '../lib/reservations';
 import {
   describeReservationSelection,firstBookableDate,reservationDatePreset,
   toggleSpecificDate,type ReservationDateSelection,type ReservationDateMode
