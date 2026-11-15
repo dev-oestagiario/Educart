@@ -1,5 +1,5 @@
 import { XLSX_FIXTURE_BASE64 } from './fixtures/workbook';
-import { mkdir } from 'node:fs/promises';
+import { mkdir, readFile } from 'node:fs/promises';
 import { expect, test, type Page } from '@playwright/test';
 
 type Row = Record<string, unknown>;
@@ -442,4 +442,64 @@ test('Fase 3 — cancelamento total desativa os períodos e preserva evento',asy
   expect(database.reservations[0].status).toBe('CANCELADA');
   expect(database.reservation_periods[0].active).toBe(false);
   expect(database.reservation_events.some(e=>e.event_type==='CANCELAMENTO')).toBe(true);
+});
+
+
+test('Fase 4 — filtros semanais, contagem correta e exportação CSV/PDF',async({page})=>{
+  const db=await useFakeSupabase(page);
+  const cartId=crypto.randomUUID(),teacherId=crypto.randomUUID(),bookingId=crypto.randomUUID();
+  db.carts.push({id:cartId,name:'Carrinho relatório',code:'C-REL',capacity:30,active:true});
+  db.requesters.push({id:teacherId,name:'Professora Relatório',active:true});
+  const monday=new Date(Date.now()+14*86400000);
+  while(monday.getUTCDay()!==1)monday.setUTCDate(monday.getUTCDate()+1);
+  const tuesday=new Date(monday.getTime()+86400000);
+  const date1=monday.toISOString().slice(0,10),date2=tuesday.toISOString().slice(0,10);
+  db.reservations.push({id:bookingId,requester_id:teacherId,cart_id:cartId,
+    mode:'PARCIAL',quantity:10,needs_mouse:true,notes:'Teste de relatório',
+    status:'CONFIRMADA',created_by:ADMIN_ID,created_at:new Date().toISOString()});
+  db.reservation_periods.push(
+    {id:crypto.randomUUID(),reservation_id:bookingId,cart_id:cartId,
+      usage_date:date1,shift:'MATUTINO',quantity:10,active:true},
+    {id:crypto.randomUUID(),reservation_id:bookingId,cart_id:cartId,
+      usage_date:date2,shift:'VESPERTINO',quantity:10,active:false}
+  );
+  await login(page);
+  await page.getByRole('button',{name:'Calendário',exact:true}).click();
+  await expect(page.getByRole('heading',{name:'Calendário e relatórios'})).toBeVisible();
+  await page.locator('#calendar-focus').fill(date1);
+  await page.locator('#calendar-cart').selectOption(cartId);
+  await page.locator('#calendar-requester').selectOption(teacherId);
+  await expect(page.getByText('Professora Relatório').first()).toBeVisible();
+  const stats=page.locator('.calendar-stats');
+  await expect(stats.getByText('Reservas agrupadas').locator('..').locator('strong')).toHaveText('1');
+  await expect(stats.getByText('Períodos ocupados').locator('..').locator('strong')).toHaveText('1');
+  await expect(stats.getByText('Linhas no relatório').locator('..').locator('strong')).toHaveText('1');
+  await page.getByLabel('Incluir períodos cancelados nos resultados').check();
+  await expect(stats.getByText('Linhas no relatório').locator('..').locator('strong')).toHaveText('2');
+  const csvWait=page.waitForEvent('download');
+  await page.getByRole('button',{name:'Planilha CSV'}).click();
+  const csv=await csvWait;
+  expect(csv.suggestedFilename()).toMatch(/educart.*\.csv$/);
+  const csvContent=await readFile(await csv.path()!,'utf8');
+  expect(csvContent).toContain('Professora Relatório');
+  expect(csvContent).toContain('Cancelada');
+  const pdfWait=page.waitForEvent('download');
+  await page.getByRole('button',{name:'Exportar PDF'}).click();
+  const pdf=await pdfWait;
+  expect(pdf.suggestedFilename()).toMatch(/educart.*\.pdf$/);
+  const pdfContent=await readFile(await pdf.path()!);
+  expect(pdfContent.subarray(0,4).toString('ascii')).toBe('%PDF');
+});
+
+test('Fase 4 — calendário responsivo sem rolagem horizontal',async({page})=>{
+  await page.setViewportSize({width:360,height:780});
+  await useFakeSupabase(page);
+  await login(page);
+  await page.getByRole('button',{name:'Abrir menu lateral'}).click();
+  await page.getByRole('navigation',{name:'Menu principal'})
+    .getByRole('button',{name:'Calendário'}).click();
+  await expect(page.getByRole('heading',{name:'Calendário e relatórios'})).toBeVisible();
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth+1)).toBe(true);
+  await page.locator('#calendar-mode').selectOption('mes');
+  await expect(page.locator('.calendar-grid')).toBeVisible();
 });
