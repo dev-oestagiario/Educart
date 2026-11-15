@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { CalendarDays, CheckCircle2, ClipboardCheck, Info, Laptop2 } from 'lucide-react';
 import { supabase, type Cart, type Notebook, type Requester } from '../lib/supabase';
 import {
-  calculateAvailability, expandReservationDates, isWeekday, reservationInputSchema,
+  addCalendarDays, calculateAvailability, expandReservationDates, isWeekday, reservationInputSchema,
   SHIFTS, shiftLabel, showDate, todayInSaoPaulo, type Shift, type UsagePeriod
 } from '../lib/reservations';
 
@@ -12,6 +12,8 @@ type Reservation = {
   quantity:number; needs_mouse:boolean; notes:string|null; status:string; created_at:string;
 };
 const today=todayInSaoPaulo();
+let firstBookableDay=today;
+while(!isWeekday(firstBookableDay))firstBookableDay=addCalendarDays(firstBookableDay,1);
 async function fetchActive<T>(table:'carts'|'requesters'|'notebook_codes'):Promise<T[]>{
   const {data,error}=await supabase.from(table).select('*').eq('active',true).order('created_at',{ascending:false});
   if(error)throw error;
@@ -32,7 +34,7 @@ export default function ReservationsPage() {
   const [reservationMode,setReservationMode]=useState<'COMPLETA'|'PARCIAL'>('COMPLETA');
   const [quantity,setQuantity]=useState('1');
   const [dateMode,setDateMode]=useState<'intervalo'|'avulsas'>('intervalo');
-  const [startDate,setStartDate]=useState(today);
+  const [startDate,setStartDate]=useState(firstBookableDay);
   const [endDate,setEndDate]=useState(today);
   const [specificDate,setSpecificDate]=useState(today);
   const [specificDates,setSpecificDates]=useState<string[]>([]);
