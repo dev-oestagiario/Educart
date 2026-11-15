@@ -1,9 +1,9 @@
-name: Publicar previa web do Educart — Redesign dos cadastros
+name: Publicar previa web do Educart — Layout adaptavel
 
 on:
   push:
     branches:
-      - feat/ux-cadastros-listagem
+      - feat/ux-layout-responsivo-viewport
     paths:
       - 'src/**'
       - 'index.html'

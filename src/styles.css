@@ -463,3 +463,197 @@ button{touch-action:manipulation}
  .teacher-approvals .teacher-link-form>button{grid-column:1;justify-self:stretch}
  .teacher-main .records-page-header{margin-bottom:20px}
 }
+
+
+/* Desktop adaptável — altura útil do viewport e largura real da janela.
+ * O cabeçalho e a navegação permanecem acessíveis; somente o conteúdo principal
+ * rola quando ultrapassar o espaço disponível. Nunca encolher fontes para
+ * "forçar" um formulário ou um calendário inteiro dentro da tela. */
+html,body,#root{width:100%;height:100%;min-width:0;margin:0}
+#root{isolation:isolate}
+.app-shell{
+  width:100%;max-width:100%;
+  height:100vh;height:100dvh;min-height:0;
+  overflow:hidden;align-items:stretch
+}
+.sidebar{
+  width:clamp(205px,18.5vw,250px);
+  flex:0 0 clamp(205px,18.5vw,250px);
+  height:100%;min-height:0;max-height:100%;
+  padding:clamp(14px,2.8vh,28px) 12px clamp(12px,2vh,20px);
+  overflow-y:auto;overflow-x:hidden;
+  overscroll-behavior:contain
+}
+.sidebar-top{margin-bottom:clamp(14px,3.5vh,42px);flex-shrink:0}
+.sidebar-top .brand{min-width:0}
+.sidebar .nav,.sidebar .side-bottom{min-width:0}
+.sidebar .nav-item{min-width:0;overflow-wrap:break-word}
+.sidebar .nav-item svg{flex:0 0 auto}
+.sidebar .account{min-width:0}
+.sidebar .account>span:last-child{min-width:0;overflow-wrap:anywhere}
+.sidebar .brand{font-size:clamp(20px,1.8vw,23px)}
+.main{
+  flex:1 1 0;
+  display:flex;flex-direction:column;
+  min-width:0;min-height:0;height:100%
+}
+.topbar{
+  flex:0 0 auto;
+  height:clamp(58px,8vh,72px);
+  min-width:0;width:100%;
+  padding-inline:clamp(14px,2.6vw,40px);
+  gap:12px
+}
+.topbar-main{flex:1 1 0;min-width:0}
+.topbar-main>span{
+  min-width:0;overflow:hidden;text-overflow:ellipsis;
+  white-space:nowrap
+}
+.topbar-actions{flex:0 0 auto;min-width:0;gap:clamp(6px,1vw,12px)}
+.content{
+  flex:1 1 auto;min-height:0;min-width:0;
+  width:100%;max-width:none;margin:0;
+  padding:clamp(14px,2.5vh,38px) clamp(14px,2.5vw,40px) clamp(22px,4vh,80px);
+  overflow-y:auto;overflow-x:hidden;
+  overscroll-behavior:contain;
+  scrollbar-gutter:stable
+}
+.content>*{width:min(100%,1320px);min-width:0;margin-inline:auto}
+.content .page-header{min-width:0}
+.page-header h1,.page-header p{overflow-wrap:break-word}
+.panel,.stats,.records-page,.reservation-page,.calendar-page,
+.visual3d-page,.teacher-approvals,.notifications-page{min-width:0;max-width:100%}
+.panel{overflow-wrap:break-word}
+.field,.form-stack,.records-filters,.records-list-filters,
+.reservation-form-columns,.calendar-filter-grid,
+.visual3d-filters,.teacher-link-form{min-width:0}
+.field input,.field textarea,.field select{max-width:100%;min-width:0}
+.item,.booking-item,.notification-item{max-width:100%}
+.item>div,.booking-info,.notification-text{min-width:0;overflow-wrap:anywhere}
+.code-pill,.visual3d-slot,.calendar-event{overflow-wrap:anywhere}
+.booking-periods,.reservation-pills,.reservation-options{min-width:0}
+.reservation-table-wrap,.teacher-availability-table-wrap{
+  max-width:100%;overflow-x:auto;overscroll-behavior-x:contain
+}
+.calendar-filter-grid,.visual3d-filters,.reservation-list-filters{
+  grid-template-columns:repeat(auto-fit,minmax(min(100%,205px),1fr))
+}
+.stats{gap:clamp(9px,1.4vw,16px)}
+.stat{min-width:0;padding:clamp(13px,1.7vw,22px)}
+.stat strong{max-width:100%;overflow-wrap:anywhere}
+.calendar-result,.visual3d-layout,.calendar-grid{min-width:0;max-width:100%}
+.calendar-grid{
+  max-height:min(800px,max(260px,calc(100dvh - 335px)));
+  overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain
+}
+.calendar-day{min-width:0;overflow-wrap:anywhere}
+.calendar-event>span,.calendar-event>strong{overflow-wrap:anywhere}
+.visual3d-layout{grid-template-columns:minmax(0,1.6fr) minmax(245px,1fr)}
+.cart-scene-canvas{
+  height:clamp(250px,min(43vw,calc(100dvh - 320px)),490px);
+  max-width:100%
+}
+.visual3d-text-grid{grid-template-columns:repeat(auto-fill,minmax(min(100%,124px),1fr))}
+.reservation-date-popover{max-width:100%}
+.reservation-date-grid{min-width:0}
+.reservation-date-day{min-width:0}
+.auth-shell{min-height:100vh;min-height:100dvh}
+.auth-panel{max-width:100%}
+.teacher-shell{
+  height:100vh;height:100dvh;min-height:0;
+  max-width:100%;display:flex;flex-direction:column;overflow:hidden
+}
+.teacher-topbar{flex:0 0 auto;min-width:0;max-width:100%;padding-inline:clamp(16px,2vw,28px)}
+.teacher-topbar .brand{flex:0 1 auto;min-width:0;margin-bottom:0}
+.teacher-account{flex:0 0 auto;min-width:0}
+.teacher-main{
+  flex:1 1 auto;min-height:0;min-width:0;
+  width:100%;max-width:none;
+  padding:clamp(16px,3vh,34px) max(16px,calc((100% - 1200px)/2)) clamp(26px,4vh,70px);
+  overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain;
+  scrollbar-gutter:stable
+}
+.teacher-main>*{width:min(100%,1200px);max-width:100%;margin-inline:auto}
+.teacher-layout{min-width:0;grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+.teacher-request-list{min-width:0}
+.teacher-request-list .booking-item{min-width:0;overflow-wrap:anywhere}
+
+/* Em notebooks: compactar espaços, não campos nem ações. */
+@media(max-height:780px){
+  .sidebar-top{margin-bottom:14px}
+  .sidebar .nav{gap:2px}
+  .sidebar .nav-item{padding-block:9px;min-height:40px}
+  .side-bottom{padding-top:8px}
+  .sidebar .account{margin-bottom:5px;padding-block:9px}
+  .content{padding-block:16px 24px}
+  .page-header{margin-bottom:16px}
+  .panel{padding:clamp(15px,1.8vw,22px);margin-bottom:14px}
+  .panel h2{margin-bottom:13px}
+  .stats{margin-bottom:14px}
+  .stat{gap:7px;padding:13px 16px}
+  .stat-icon{width:35px;height:35px}
+  .welcome-panel{padding:18px 22px}
+  .cart-scene-canvas{height:clamp(230px,40dvh,340px)}
+  .teacher-main{padding-top:18px;padding-bottom:25px}
+  .teacher-topbar{min-height:60px}
+  .calendar-grid{max-height:max(240px,calc(100dvh - 340px))}
+  .auth-shell{padding:12px 18px}
+  .auth-panel{padding:clamp(18px,3vh,30px)}
+  .auth-panel .brand{margin-bottom:clamp(16px,3vh,34px)}
+  .auth-intro p{margin-bottom:14px}
+  .reservation-date-popover{
+    position:static;min-width:0;
+    width:min(100%,460px);max-width:100%;
+    margin-top:9px;box-shadow:none
+  }
+}
+@media(max-height:570px){
+  .sidebar-top{margin-bottom:8px}
+  .sidebar .nav-item{padding-block:7px}
+  .topbar{height:56px}
+  .content{padding-top:12px;padding-bottom:18px}
+  .page-header h1{font-size:clamp(21px,2.5vw,27px)}
+  .stat strong{font-size:24px}
+  .teacher-main{padding-top:12px}
+  .teacher-topbar{min-height:54px}
+  .auth-shell{align-items:start}
+}
+/* Laptops estreitos: 2 colunas só quando realmente há espaço útil. */
+@media(min-width:691px) and (max-width:1120px){
+  .sidebar{width:clamp(205px,21vw,235px);flex-basis:clamp(205px,21vw,235px)}
+  .visual3d-layout,.teacher-layout{grid-template-columns:1fr}
+  .calendar-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
+}
+@media(min-width:691px) and (max-width:900px){
+  .topbar .phase-tag{display:none}
+  .topbar{gap:6px}
+  .topbar-main>span{font-size:12px}
+  .stats,.calendar-stats,.visual3d-stats{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .calendar-filter-grid,.visual3d-filters{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(max-width:690px){
+  .app-shell{width:100%;height:100dvh}
+  .sidebar{
+    position:fixed;inset:0 auto 0 0;
+    width:min(84vw,300px);max-height:100dvh;
+    height:100dvh;flex:0 0 auto
+  }
+  .main{width:100%;height:100%;min-width:0}
+  .topbar{height:64px;min-height:64px;padding-inline:16px}
+  .content{padding:20px 16px 30px;scrollbar-gutter:auto}
+  .teacher-main{padding:20px 16px 34px;scrollbar-gutter:auto}
+  .teacher-layout,.visual3d-layout{grid-template-columns:1fr}
+  .teacher-topbar{padding-inline:16px}
+  .calendar-grid{grid-template-columns:repeat(2,minmax(0,1fr));max-height:none}
+  .reservation-date-popover{
+    position:static;min-width:0;width:100%;
+    max-width:100%;max-height:none;box-shadow:none
+  }
+}
+@media(max-width:370px){
+  .calendar-grid{grid-template-columns:1fr}
+  .topbar .phase-tag{display:none}
+}
+@media(prefers-reduced-motion:reduce){
+  .content,.teacher-main,.sidebar,.calendar-grid{scroll-behavior:auto}
+}
