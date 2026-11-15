@@ -44,11 +44,20 @@ Planejamento conforme `.agents/skills/educart-frontend/SKILL.md`:
 - [x] Migração idempotente quanto a pares evento/destinatário no disparo por trigger, com RLS restrita.
 - [x] Página compartilhada por ambos os perfis e sino com contador.
 - [x] Testes unitários do contador e E2E com Supabase simulado de marcação e isolamento.
-- [ ] Compilação, Vitest, Playwright e publicação do commit final aprovados.
-- [ ] Conferência SQL da migração aplicada no projeto Educart e privilégios RLS.
+- [x] Compilação, 43 testes Vitest e 21 testes Playwright aprovados no PR #18. Publicação do commit final em validação.
+- [x] Migração educart_phase7_notifications aplicada somente ao projeto Educart; RLS por destinatário verificada, SELECT somente para authenticated, sem grants de INSERT/UPDATE/DELETE ou SELECT anônimo; trigger ativado.
 - [ ] Testes reais com pelo menos duas contas de professor distintas e uma conta administrativa, incluindo geração de evento pelas RPCs.
 - [ ] Revisão visual e de teclado em celular físico e revisão do PR #18 antes de integração à main.
 
 ## Fora do escopo
 
 Alertas por e-mail, WhatsApp ou push, configuração de preferências e horários de recebimento, notificações sobre cancelamento de reservas previamente confirmadas, histórico de leitura auditável por administrador e notificações retroativas.
+
+## Verificações da entrega
+
+- [CI com 43 testes unitários e 21 E2E](https://github.com/dev-oestagiario/Educart/actions/runs/43761765335).
+- Supabase Educart: `user_notifications` tem `relrowsecurity=true` e política `recipient_user_id = auth.uid()`; sem acesso `anon`; sem mutações diretas de `authenticated`.
+- Identidade autenticada não autorizada, em transação somente leitura, não enxergou notificações de terceiros.
+- `mark_notification_read` é executável apenas por `authenticated` e verifica destinatário na RPC; o gatilho `reservation_request_event_notification` está ativo.
+- O Security Advisor sinaliza RPCs intencionais `SECURITY DEFINER` e proteção contra senhas vazadas desativada: revisar os limites dessas funções e habilitar a proteção no Supabase antes da homologação de produção.
+- Ainda pendente: criar eventos reais de solicitação/aprovação com duas contas de professor e uma da TI, conferir geração e isolamento das notificações sem compartilhamento de senhas, e validar a interface em dispositivo físico.
