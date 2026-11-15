@@ -172,3 +172,31 @@ button{touch-action:manipulation}
  .calendar-header .reservation-actions button{flex:1}
 }
 @media(max-width:370px){.calendar-grid{grid-template-columns:1fr}}
+
+/* Fase 5 — modelo Three.js, com controle textual equivalente e layout responsivo. */
+.visual3d-filters{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+.visual3d-filters .field{min-width:0}
+.visual3d-stats{grid-template-columns:repeat(4,minmax(0,1fr))}
+.visual3d-period-title{font-size:19px!important;letter-spacing:-.1px!important}
+.visual3d-layout{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(280px,1fr);gap:18px;align-items:start}
+.visual3d-layout .panel{min-width:0}
+.visual3d-layout .panel h2{display:flex;align-items:center;gap:9px}
+.visual3d-legend{display:flex;flex-wrap:wrap;gap:16px;margin-bottom:14px;font-size:12px;color:#526a80}
+.visual3d-legend span{display:flex;gap:7px;align-items:center}
+.visual3d-dot{width:11px;height:11px;border-radius:50%;display:inline-block;border:1px solid #203950}
+.visual3d-dot.free{background:#51a4a1}.visual3d-dot.busy{background:#e2a15b}
+.cart-scene{margin-top:10px}
+.cart-scene-canvas{width:100%;height:clamp(300px,42vw,490px);min-width:0;overflow:hidden;border-radius:12px;border:1px solid #dce7f2;background:#f1f6fc;touch-action:pan-y}
+.cart-scene-canvas canvas{display:block;max-width:100%;outline-offset:3px}
+.visual3d-details{display:grid;gap:8px;overflow-wrap:anywhere}
+.visual3d-details h3{font-size:17px;margin:0 0 6px}
+.visual3d-details p{font-size:13px;line-height:1.55;margin:0;color:#425970}
+.visual3d-text-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(124px,1fr));gap:9px;margin-top:14px}
+.visual3d-slot{min-height:82px;border:1px solid #bfd7e9;background:#f0faf9;border-radius:10px;color:#1f4b52;text-align:left;padding:10px;display:flex;flex-direction:column;gap:5px;justify-content:center}
+.visual3d-slot span,.visual3d-slot small{font-size:11px;overflow-wrap:anywhere}
+.visual3d-slot strong{font-size:12px}
+.visual3d-slot.reserved{background:#fff6ec;border-color:#f5d8b5;color:#74451d}
+.visual3d-slot[aria-pressed="true"]{outline:3px solid #2f78c3;outline-offset:2px}
+@media(max-width:1050px){.visual3d-layout{grid-template-columns:1fr}.visual3d-filters{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:690px){.visual3d-filters{grid-template-columns:1fr}.visual3d-stats{grid-template-columns:repeat(2,minmax(0,1fr))}.cart-scene-canvas{height:300px}.visual3d-text-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:365px){.visual3d-text-grid{grid-template-columns:1fr}}

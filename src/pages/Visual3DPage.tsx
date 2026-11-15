@@ -64,11 +64,12 @@ export default function Visual3DPage(){
   const selected=slots.find(s=>s.position===selectedPosition);
   const booked=selected?.reservationId?bookings.data?.find(b=>b.id===selected.reservationId):null;
   const teacher=booked?teachers.data?.find(t=>t.id===booked.requester_id):null;
-  const reserved=slots.filter(s=>s.reserved).length;
-  const remaining=slots.length-reserved;
   const loading=periods.isLoading||carts.isLoading||notebooks.isLoading||teachers.isLoading||
     (periodIds.length>0&&assignments.isLoading)||(bookingIds.length>0&&bookings.isLoading);
   const hasError=periods.error||carts.error||notebooks.error||teachers.error||assignments.error||bookings.error;
+  const ready=!loading&&!hasError;
+  const reserved=slots.filter(s=>s.reserved).length;
+  const remaining=slots.length-reserved;
   useEffect(()=>setSelectedPosition(null),[cartId,date,shift]);
   return <div className="visual3d-page">
     <div className="page-header"><h1>Laboratório móvel em 3D</h1>
@@ -99,8 +100,8 @@ export default function Visual3DPage(){
     {cart&&<>
       <div className="stats visual3d-stats">
         <div className="stat"><span className="stat-label">Capacidade configurada</span><strong>{cart.capacity}</strong></div>
-        <div className="stat"><span className="stat-label">Reservados</span><strong>{loading?'—':reserved}</strong></div>
-        <div className="stat"><span className="stat-label">Disponíveis</span><strong>{loading?'—':remaining}</strong></div>
+        <div className="stat"><span className="stat-label">Reservados</span><strong>{ready?reserved:'—'}</strong></div>
+        <div className="stat"><span className="stat-label">Disponíveis</span><strong>{ready?remaining:'—'}</strong></div>
         <div className="stat"><span className="stat-label">Período</span><strong className="visual3d-period-title">{shiftLabel[shift]}</strong></div>
       </div>
       <div className="visual3d-layout">
@@ -138,7 +139,8 @@ export default function Visual3DPage(){
       <section className="panel">
         <h2>Consulta textual equivalente</h2>
         <p className="reservation-subtle">Use os botões para consultar cada posição mesmo sem acesso ao WebGL. O total corresponde à capacidade configurada, independentemente de quantos códigos estão cadastrados.</p>
-        <div className="visual3d-text-grid">{slots.map(slot=><button key={slot.position} type="button"
+        {hasError&&<p role="alert" className="notice error">Não foi possível confirmar a ocupação. Tente novamente quando a conexão estiver disponível.</p>}
+        <div className="visual3d-text-grid">{ready&&slots.map(slot=><button key={slot.position} type="button"
           className={'visual3d-slot '+(slot.reserved?'reserved':'available')}
           aria-pressed={selectedPosition===slot.position}
           onClick={()=>setSelectedPosition(slot.position)}>
