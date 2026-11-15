@@ -1,11 +1,14 @@
-import {useMemo,useState,type FormEvent} from 'react';
+import {lazy,Suspense,useMemo,useState,type FormEvent} from 'react';
 import {useMutation,useQuery,useQueryClient} from '@tanstack/react-query';
 import {CalendarDays,ClipboardList,Laptop,LogOut,Send,ShieldCheck} from 'lucide-react';
 import {supabase,type Cart} from '../lib/supabase';
 import {addCalendarDays,expandReservationDates,isWeekday,SHIFTS,shiftLabel,showDate,todayInSaoPaulo,type Shift} from '../lib/reservations';
 import {requestStatusLabel,validateTeacherRequest,type TeacherRequest} from '../lib/teacherRequests';
+import NotificationBell from '../components/NotificationBell';
+const NotificationsPage = lazy(()=>import('./NotificationsPage'));
 
-type Props={requesterId:string;email:string;onLogout:()=>void};
+
+type Props={requesterId:string;userId:string;email:string;onLogout:()=>void};
 const today=todayInSaoPaulo();
 function firstWeekday(){
   let day=today;
@@ -19,8 +22,9 @@ const explain=(error:unknown)=>{
   return 'Não foi possível concluir a operação.';
 };
 
-export default function TeacherPortal({requesterId,email,onLogout}:Props){
+export default function TeacherPortal({requesterId,userId,email,onLogout}:Props){
   const qc=useQueryClient();
+  const [showNotifications,setShowNotifications]=useState(false);
   const [cartId,setCartId]=useState('');
   const [mode,setMode]=useState<'PARCIAL'|'COMPLETA'>('PARCIAL');
   const [quantity,setQuantity]=useState('1');
@@ -111,10 +115,14 @@ export default function TeacherPortal({requesterId,email,onLogout}:Props){
     <header className="teacher-topbar">
       <div className="brand"><span className="brand-mark"><Laptop size={21} aria-hidden="true"/></span><span>educart</span></div>
       <div className="teacher-account"><span title={email}>{teacher.data?.name??'Portal do professor'}</span>
+        <NotificationBell userId={userId} onOpen={()=>setShowNotifications(true)}/>
         <button type="button" className="ghost" onClick={onLogout}><LogOut size={17} aria-hidden="true"/> Sair</button>
       </div>
     </header>
     <main id="teacher-main" tabIndex={-1} className="teacher-main">
+      {showNotifications?<Suspense fallback={<p role="status">Carregando notificações…</p>}>
+        <NotificationsPage userId={userId} audience="teacher" onReturn={()=>setShowNotifications(false)} onViewRequests={()=>setShowNotifications(false)}/>
+      </Suspense>:<>
       <div className="page-header">
         <span className="eyebrow">ACESSO DO PROFESSOR</span>
         <h1>Solicitar laboratório móvel</h1>
@@ -212,6 +220,7 @@ export default function TeacherPortal({requesterId,email,onLogout}:Props){
         </section>
       </div>
       <p className="teacher-footer"><CalendarDays size={17} aria-hidden="true"/> Para alterações em reservas já confirmadas, procure a equipe de TI.</p>
+      </>}
     </main>
   </div>;
 }

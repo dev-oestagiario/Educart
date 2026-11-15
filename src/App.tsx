@@ -1,20 +1,22 @@
 import { lazy, Suspense, useEffect, useRef, useState, type FormEvent, type ChangeEvent } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { BarChart3, BookOpen, Boxes, CalendarDays, ClipboardList, Laptop, LogOut, Box, ClipboardCheck, Menu, ShieldCheck, UserRound, UserRoundPlus, X } from 'lucide-react';
+import { BarChart3, BookOpen, Boxes, CalendarDays, ClipboardList, Laptop, LogOut, Box, ClipboardCheck, Bell, Menu, ShieldCheck, UserRound, UserRoundPlus, X } from 'lucide-react';
 import { create } from 'zustand';
 import { supabase, isConfigured, type Cart, type Requester, type Notebook } from './lib/supabase';
 import { cartSchema, errorMessage, notebookSchema, requesterSchema, validateCodes } from './lib/validation';
 import { configuredCapacity } from './lib/capacity';
 import { parseImportFile } from './lib/importSpreadsheet';
+import NotificationBell from './components/NotificationBell';
 
 const ReservationsPage = lazy(()=>import('./pages/ReservationsPage'));
 const CalendarReportsPage = lazy(()=>import('./pages/CalendarReportsPage'));
 const Visual3DPage = lazy(()=>import('./pages/Visual3DPage'));
 const TeacherPortal = lazy(()=>import('./pages/TeacherPortal'));
 const TeacherApprovalsPage = lazy(()=>import('./pages/TeacherApprovalsPage'));
+const NotificationsPage = lazy(()=>import('./pages/NotificationsPage'));
 
-type Page = 'overview' | 'carts' | 'requesters' | 'notebooks' | 'reservations' | 'calendar' | 'visual3d' | 'approvals';
+type Page = 'overview' | 'carts' | 'requesters' | 'notebooks' | 'reservations' | 'calendar' | 'visual3d' | 'approvals' | 'notifications';
 const useUi = create<{page:Page; setPage:(page:Page)=>void; cartId:string; setCartId:(id:string)=>void}>()(
   set => ({page:'overview',setPage:page=>set({page}),cartId:'',setCartId:cartId=>set({cartId})})
 );
@@ -297,7 +299,7 @@ export default function App() {
       <button className="secondary" onClick={()=>void qc.invalidateQueries({queryKey:['teacher-account']})}>Tentar novamente</button>
       <button className="ghost" onClick={()=>void supabase.auth.signOut()}>Sair</button></div>;
     if(teacherAccess.data)return <Suspense fallback={<div role="status" className="center-status">Carregando portal do professor…</div>}>
-      <TeacherPortal requesterId={teacherAccess.data.requester_id} email={session.user.email??''}
+      <TeacherPortal requesterId={teacherAccess.data.requester_id} userId={session.user.id} email={session.user.email??''}
         onLogout={()=>{void supabase.auth.signOut()}}/>
     </Suspense>;
     return <div className="setup"><ShieldCheck size={34}/><h1>Conta criada, aguardando autorização</h1>
@@ -305,7 +307,7 @@ export default function App() {
       <button className="secondary" onClick={()=>{void qc.invalidateQueries({queryKey:['admin']});void qc.invalidateQueries({queryKey:['teacher-account']})}}>Verificar autorização</button>
       <button className="ghost" onClick={()=>void supabase.auth.signOut()}>Sair desta conta</button></div>;
   }
-  const nav:[Page,string,typeof Boxes][]=[['overview','Visão geral',ClipboardList],['carts','Carrinhos',Boxes],['requesters','Professores',UserRoundPlus],['notebooks','Notebooks',Laptop],['reservations','Reservas',CalendarDays],['calendar','Calendário',BarChart3],['visual3d','Visualização 3D',Box],['approvals','Solicitações',ClipboardCheck]];
+  const nav:[Page,string,typeof Boxes][]=[['overview','Visão geral',ClipboardList],['carts','Carrinhos',Boxes],['requesters','Professores',UserRoundPlus],['notebooks','Notebooks',Laptop],['reservations','Reservas',CalendarDays],['calendar','Calendário',BarChart3],['visual3d','Visualização 3D',Box],['approvals','Solicitações',ClipboardCheck],['notifications','Notificações',Bell]];
   return <div className="app-shell">
     <a className="skip-link" href="#main-content">Pular para o conteúdo</a>
     {menuOpen&&<button type="button" tabIndex={-1} className="mobile-menu-backdrop" aria-label="Fechar navegação" onClick={closeMobileMenu}/>}
@@ -331,10 +333,11 @@ export default function App() {
           </button>
           <span>Gestão dos laboratórios móveis</span>
         </div>
-        <span className="phase-tag">Fase 6 • Solicitações</span>
+        <div className="topbar-actions"><span className="phase-tag">Fase 7 • Notificações</span>
+          <NotificationBell userId={session.user.id} onOpen={()=>navigateTo('notifications')}/></div>
       </header>
       <div className="content">
-        {page==='overview'?<Overview/>:page==='carts'?<CartsPage/>:page==='requesters'?<RequestersPage/>:page==='notebooks'?<NotebooksPage/>:page==='reservations'?<Suspense fallback={<p role="status">Carregando reservas…</p>}><ReservationsPage/></Suspense>:page==='calendar'?<Suspense fallback={<p role="status">Carregando calendário…</p>}><CalendarReportsPage/></Suspense>:page==='visual3d'?<Suspense fallback={<p role="status">Carregando visualização 3D…</p>}><Visual3DPage/></Suspense>:<Suspense fallback={<p role="status">Carregando solicitações…</p>}><TeacherApprovalsPage/></Suspense>}
+        {page==='overview'?<Overview/>:page==='carts'?<CartsPage/>:page==='requesters'?<RequestersPage/>:page==='notebooks'?<NotebooksPage/>:page==='reservations'?<Suspense fallback={<p role="status">Carregando reservas…</p>}><ReservationsPage/></Suspense>:page==='calendar'?<Suspense fallback={<p role="status">Carregando calendário…</p>}><CalendarReportsPage/></Suspense>:page==='visual3d'?<Suspense fallback={<p role="status">Carregando visualização 3D…</p>}><Visual3DPage/></Suspense>:page==='approvals'?<Suspense fallback={<p role="status">Carregando solicitações…</p>}><TeacherApprovalsPage/></Suspense>:<Suspense fallback={<p role="status">Carregando notificações…</p>}><NotificationsPage userId={session.user.id} audience="admin" onReturn={()=>navigateTo('overview')} onViewRequests={()=>navigateTo('approvals')}/></Suspense>}
       </div>
     </main>
   </div>;
