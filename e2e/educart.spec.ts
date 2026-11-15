@@ -179,3 +179,56 @@ test('menu permanece lateral e navegável no celular, sem rolagem horizontal', a
   const doesNotOverflow=await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth);
   expect(doesNotOverflow).toBe(true);
 });
+
+
+test('layout responsivo, navegação e área de toque em seis larguras', async ({page}, testInfo) => {
+  await useFakeSupabase(page);
+  await login(page);
+  await expect(page.getByRole('heading', {name:'Visão geral'})).toBeVisible();
+
+  for(const width of [320,360,390,768,1024,1280]) {
+    await page.setViewportSize({width, height:800});
+    const opener=page.getByRole('button',{name:'Abrir menu lateral'});
+    const nav=page.getByRole('navigation',{name:'Menu principal'});
+    if(width<=690) {
+      await expect(opener).toBeVisible();
+      const size=await opener.boundingBox();
+      expect(size?.width).toBeGreaterThanOrEqual(44);
+      expect(size?.height).toBeGreaterThanOrEqual(44);
+      await opener.click();
+      await expect(nav).toBeVisible();
+      await nav.getByRole('button',{name:'Notebooks'}).click();
+      await expect(page.getByRole('heading',{name:'Notebooks',exact:true})).toBeVisible();
+      await expect(nav).toBeHidden();
+    } else {
+      await expect(opener).toBeHidden();
+      await expect(nav).toBeVisible();
+      await nav.getByRole('button',{name:'Notebooks'}).click();
+    }
+    await expect(page.getByLabel('Laboratório móvel')).toBeVisible();
+    const noOverflow=await page.evaluate(() =>
+      document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1
+    );
+    expect(noOverflow, 'A tela não deve gerar rolagem horizontal em '+width+'px').toBe(true);
+    const screenshot=await page.screenshot({fullPage:true,animations:'disabled'});
+    await testInfo.attach('educart-'+width+'px',{body:screenshot,contentType:'image/png'});
+  }
+});
+
+test('gaveta lateral permite fechar tocando fora e mantém foco no menu ao usar Tab', async ({page}) => {
+  await page.setViewportSize({width:390,height:844});
+  await useFakeSupabase(page);
+  await login(page);
+  const opener=page.getByRole('button',{name:'Abrir menu lateral'});
+  const nav=page.getByRole('navigation',{name:'Menu principal'});
+  await opener.click();
+  await expect(nav).toBeVisible();
+  await expect(page.getByRole('button',{name:'Fechar menu lateral'})).toBeFocused();
+  await page.keyboard.press('Shift+Tab');
+  await expect(nav.getByRole('button',{name:'Sair'})).toBeFocused();
+  await page.keyboard.press('Tab');
+  await expect(page.getByRole('button',{name:'Fechar menu lateral'})).toBeFocused();
+  await page.getByRole('button',{name:'Fechar navegação'}).click({position:{x:300,y:100}});
+  await expect(nav).toBeHidden();
+  await expect(opener).toBeFocused();
+});

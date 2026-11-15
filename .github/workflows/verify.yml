@@ -31,10 +31,10 @@ jobs:
         run: npx playwright install --with-deps chromium
       - name: Executar testes E2E com backend simulado
         run: npm run test:e2e
-      - name: Guardar evidências quando falhar
-        if: failure()
+      - name: Guardar evidências dos testes (incluindo screenshots)
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: playwright-results
+          name: playwright-evidencias
           path: test-results
           if-no-files-found: ignore

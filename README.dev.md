@@ -28,3 +28,7 @@ Na tela Notebooks, selecione um carrinho e importe CSV ou XLSX (primeira aba). A
 ## Testes E2E
 
 Execute `npm run test:e2e` após `npm install` e `npx playwright install chromium`. O Playwright usa um backend **simulado**, configurado em `playwright.config.ts`, sem alterar cadastros do Supabase real. Os testes cobrem login autorizado/não autorizado, carrinhos, professores, importação CSV, duplicados e menu lateral mobile. A CI instala o Chromium e executa estes cenários. A validação de RLS com sessões reais é uma etapa separada antes do encerramento da Fase 1.
+
+## Responsividade
+
+No GitHub Actions, o job de Playwright executa a navegação em seis larguras e anexa screenshots dos viewports nos resultados dos testes. Essas imagens podem ser consultadas no artefato `playwright-evidencias` do workflow. Isso não equivale a revisão visual manual e não valida a autenticação real.

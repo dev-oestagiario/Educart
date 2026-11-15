@@ -47,3 +47,10 @@ O administrador de TI precisa cadastrar carrinhos, professores e notebooks com p
 ## Evidências automatizadas
 
 O `e2e/educart.spec.ts` usa Playwright Chromium com Supabase simulado e verifica quatro jornadas: usuário não autorizado, cadastros, importação/revisão e gaveta mobile (360px, Escape e ausência de overflow). Ainda é necessária verificação com contas reais das políticas RLS e aprovação visual num dispositivo móvel real antes da entrega final.
+
+## Regressões ampliadas (15/11/2026)
+
+- Playwright testa agora os breakpoints 320, 360, 390, 768, 1024 e 1280px.
+- Para cada largura, testa o acesso ao menu e a ausência de rolagem horizontal, além de anexar uma captura para revisão visual.
+- Testa fechamento por backdrop, Escape e a sequência de foco por teclado.
+- Este material é evidência automatizada em Chromium, **não** substitui avaliação em celular físico nem teste com contas Supabase reais.

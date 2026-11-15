@@ -209,7 +209,7 @@ export default function App() {
   useEffect(()=>{
     let current=true;
     supabase.auth.getSession().then(({data})=>{if(current){setSession(data.session);setLoading(false)}});
-    const {data:{subscription}}=supabase.auth.onAuthStateChange((_event,session)=>{setSession(session);if(!session)qc.clear();});
+    const {data:{subscription}}=supabase.auth.onAuthStateChange((_event,session)=>{setSession(session);if(!session){qc.clear();setMenuOpen(false)};});
     return ()=>{current=false;subscription.unsubscribe()};
   },[qc]);
   useEffect(()=>{
