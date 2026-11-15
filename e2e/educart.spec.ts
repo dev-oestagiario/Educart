@@ -1,3 +1,4 @@
+import { XLSX_FIXTURE_BASE64 } from './fixtures/workbook';
 import { expect, test, type Page } from '@playwright/test';
 
 type Row = Record<string, unknown>;
@@ -129,6 +130,32 @@ test('CSV mostra prévia editável e impede duplicação de notebook', async ({p
   await expect(page.getByText('NT-001',{exact:true})).toBeVisible();
   await expect(page.getByText('NT-002',{exact:true})).toBeVisible();
   await expect(page.getByText('Capacidade configurada:')).toBeVisible();
+});
+
+// XLSX real, com uma coluna "codigo" e duas células inlineStr.
+// O arquivo de teste é pequeno e não contém informações de usuários reais.
+test('importa arquivo XLSX real com prévia antes de salvar', async ({page}) => {
+  await useFakeSupabase(page);
+  await login(page);
+  await page.getByRole('button',{name:'Carrinhos',exact:true}).click();
+  await page.getByLabel('Código do carrinho').fill('CXLSX');
+  await page.getByLabel('Nome do laboratório móvel').fill('Carrinho de planilhas');
+  await page.getByLabel('Capacidade de notebooks').fill('30');
+  await page.getByRole('button',{name:'Cadastrar carrinho'}).click();
+  await expect(page.getByText('CXLSX · 30 notebooks de capacidade')).toBeVisible();
+  await page.getByRole('button',{name:'Notebooks',exact:true}).click();
+  await page.getByLabel('Laboratório móvel').selectOption({label:'Carrinho de planilhas (CXLSX)'});
+  const workbook = Buffer.from(XLSX_FIXTURE_BASE64,'base64');
+  await page.locator('#csv-import').setInputFiles({
+    name:'notebooks.xlsx',
+    mimeType:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    buffer:workbook
+  });
+  await expect(page.getByText(/Importados 2 código/)).toBeVisible();
+  await expect(page.getByLabel('Códigos (um por linha)')).toHaveValue('NT-XLSX-01\nNT-XLSX-02');
+  await page.getByRole('button',{name:'Salvar códigos revisados'}).click();
+  await expect(page.getByText('NT-XLSX-01',{exact:true})).toBeVisible();
+  await expect(page.getByText('NT-XLSX-02',{exact:true})).toBeVisible();
 });
 
 test('menu permanece lateral e navegável no celular, sem rolagem horizontal', async ({page}) => {

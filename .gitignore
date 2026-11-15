@@ -6,3 +6,6 @@ dist/
 *.local
 coverage/
 .DS_Store
+
+playwright-report/
+test-results/
