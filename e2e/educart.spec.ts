@@ -1118,3 +1118,154 @@ test('Portal do professor — listagem inicial, formulário só sob demanda',asy
   await expect(page.getByRole('heading',{name:'Pedidos de reserva'})).toBeVisible();
   await expect(page.locator('#teacher-cart')).toHaveCount(0);
 });
+
+
+// Regressão de viewport: dimensões de monitores/notebooks, incluindo baixa altura.
+async function expectDesktopViewportFit(page:Page,width:number,height:number){
+  const layout=await page.evaluate(()=>{
+    const shell=document.querySelector<HTMLElement>('.app-shell');
+    const sidebar=document.querySelector<HTMLElement>('.sidebar');
+    const main=document.getElementById('main-content');
+    const header=document.querySelector<HTMLElement>('.topbar');
+    const content=document.querySelector<HTMLElement>('.content');
+    if(!shell||!sidebar||!main||!header||!content)throw new Error('Estrutura principal não localizada');
+    const r=(node:HTMLElement)=>node.getBoundingClientRect();
+    const shellRect=r(shell),navRect=r(sidebar),mainRect=r(main),headerRect=r(header),contentRect=r(content);
+    return {
+      overflowX:document.documentElement.scrollWidth-document.documentElement.clientWidth,
+      shellTop:shellRect.top,shellBottom:shellRect.bottom,shellWidth:shellRect.width,
+      sidebarHeight:navRect.height,sidebarTop:navRect.top,
+      mainRight:mainRect.right,mainHeight:mainRect.height,
+      headerBottom:headerRect.bottom,
+      contentTop:contentRect.top,contentBottom:contentRect.bottom,
+      contentClientHeight:content.clientHeight,contentScrollHeight:content.scrollHeight,
+      bodyScrollY:window.scrollY
+    };
+  });
+  expect(layout.overflowX,'Documento não deve ter rolagem horizontal').toBeLessThanOrEqual(1);
+  expect(layout.shellWidth,'Shell deve preencher a largura disponível').toBeLessThanOrEqual(width+1);
+  expect(layout.shellTop).toBeGreaterThanOrEqual(-1);
+  expect(layout.shellBottom,'Shell não pode ultrapassar a altura do viewport').toBeLessThanOrEqual(height+1);
+  expect(layout.sidebarHeight,'Menu deve ocupar só a altura da janela').toBeLessThanOrEqual(height+1);
+  expect(layout.sidebarTop).toBeGreaterThanOrEqual(-1);
+  expect(layout.mainRight,'Conteúdo principal não pode ficar fora do viewport').toBeLessThanOrEqual(width+1);
+  expect(layout.mainHeight).toBeLessThanOrEqual(height+1);
+  expect(layout.contentTop).toBeGreaterThanOrEqual(layout.headerBottom-1);
+  expect(layout.contentBottom).toBeLessThanOrEqual(height+1);
+  expect(layout.contentClientHeight).toBeGreaterThan(100);
+  expect(layout.bodyScrollY).toBe(0);
+}
+
+test('Responsivo desktop — largura e altura se adaptam em oito tamanhos de monitor',async({page},testInfo)=>{
+  test.setTimeout(100000);
+  const db=await useFakeSupabase(page);
+  for(let i=0;i<40;i++)db.carts.push({
+    id:crypto.randomUUID(),code:'MON-'+i,name:'Carrinho laboratório '+String(i).padStart(2,'0'),
+    capacity:30,active:true,created_at:new Date().toISOString()
+  });
+  await login(page);
+  const sizes:[[number,number],...[number,number][]]=[
+    [768,600],[820,480],[1024,600],[1280,720],
+    [1366,768],[1440,900],[1920,1080],[2560,1080]
+  ];
+  for(const [width,height] of sizes){
+    await page.setViewportSize({width,height});
+    await expect(page.getByRole('heading',{name:'Visão geral'})).toBeVisible();
+    await expectDesktopViewportFit(page,width,height);
+    await page.getByRole('button',{name:'Carrinhos',exact:true}).click();
+    await expect(page.getByRole('heading',{name:'Carrinhos cadastrados'})).toBeVisible();
+    await expectDesktopViewportFit(page,width,height);
+    const scrollInfo=await page.locator('.content').evaluate(el=>{
+      const hasOverflow=el.scrollHeight>el.clientHeight+1;
+      el.scrollTop=el.scrollHeight;
+      return {hasOverflow,remaining:el.scrollHeight-el.clientHeight-el.scrollTop};
+    });
+    if(height<=720)expect(scrollInfo.hasOverflow,'Lista longa deve rolar dentro do painel').toBe(true);
+    expect(scrollInfo.remaining).toBeLessThanOrEqual(2);
+    await expect(page.locator('.topbar')).toBeVisible();
+    await page.getByRole('button',{name:'Cadastrar carrinho'}).click();
+    await expect(page.getByLabel('Código do carrinho')).toBeVisible();
+    await expectDesktopViewportFit(page,width,height);
+    await page.getByRole('button',{name:'Voltar para carrinhos'}).click();
+    if([820,1366,1920].includes(width)){
+      const screenshot=await page.screenshot({fullPage:false,animations:'disabled'});
+      await testInfo.attach('cadastros-'+width+'x'+height,{
+        body:screenshot,contentType:'image/png'
+      });
+    }
+    await page.getByRole('button',{name:'Visão geral'}).click();
+  }
+});
+
+test('Responsivo desktop — calendário, reservas e 3D sem conteúdo cortado',async({page},testInfo)=>{
+  test.setTimeout(90000);
+  const db=await useFakeSupabase(page);
+  db.carts.push({
+    id:crypto.randomUUID(),code:'RES-01',name:'Carrinho de referência',
+    capacity:30,active:true,created_at:new Date().toISOString()
+  });
+  db.requesters.push({id:crypto.randomUUID(),name:'Professor de teste',active:true});
+  await login(page);
+  for(const [width,height] of [[1024,600],[1280,720],[1366,768],[1920,900]]){
+    await page.setViewportSize({width,height});
+    for(const [button,heading] of [
+      ['Reservas','Reservas'],['Calendário','Calendário e relatórios'],
+      ['Visualização 3D','Visualização 3D'],['Solicitações','Solicitações de professores']
+    ]){
+      await page.getByRole('button',{name:button,exact:true}).click();
+      await expect(page.getByRole('heading',{name:heading,exact:true})).toBeVisible();
+      await expectDesktopViewportFit(page,width,height);
+      if(button==='Calendário'){
+        const styles=await page.locator('.calendar-grid').evaluate(el=>{
+          const computed=getComputedStyle(el);
+          return {scrollY:computed.overflowY,height:el.getBoundingClientRect().height};
+        });
+        expect(styles.height).toBeLessThanOrEqual(height);
+        expect(styles.scrollY).toBe('auto');
+      }
+      if(button==='Visualização 3D'){
+        await page.locator('#visual-cart').selectOption(db.carts[0].id);
+        await expectDesktopViewportFit(page,width,height);
+      }
+    }
+    if(width===1366){
+      const screenshot=await page.screenshot({fullPage:false,animations:'disabled'});
+      await testInfo.attach('solicitacoes-1366x768',{body:screenshot,contentType:'image/png'});
+    }
+  }
+});
+
+test('Responsivo professor — portal se ajusta à altura do notebook e ao celular',async({page})=>{
+  test.setTimeout(70000);
+  const db=await useFakeSupabase(page,false);
+  const teacherId=crypto.randomUUID();
+  db.requesters.push({id:teacherId,name:'Professor do teste de viewport',active:true});
+  db.teacher_account_links.push({user_id:ADMIN_ID,requester_id:teacherId,active:true});
+  await login(page);
+  for(const [width,height] of [[360,640],[768,550],[1024,600],[1366,768],[1920,900]]){
+    await page.setViewportSize({width,height});
+    await expect(page.getByRole('heading',{name:'Pedidos de reserva'})).toBeVisible();
+    const before=await page.evaluate(()=>{
+      const shell=document.querySelector<HTMLElement>('.teacher-shell')!;
+      const main=document.querySelector<HTMLElement>('.teacher-main')!;
+      const top=document.querySelector<HTMLElement>('.teacher-topbar')!;
+      return {
+        shellBottom:shell.getBoundingClientRect().bottom,
+        mainBottom:main.getBoundingClientRect().bottom,
+        mainTop:main.getBoundingClientRect().top,
+        headerBottom:top.getBoundingClientRect().bottom,
+        overflow:document.documentElement.scrollWidth-document.documentElement.clientWidth
+      };
+    });
+    expect(before.shellBottom).toBeLessThanOrEqual(height+1);
+    expect(before.mainBottom).toBeLessThanOrEqual(height+1);
+    expect(before.mainTop).toBeGreaterThanOrEqual(before.headerBottom-1);
+    expect(before.overflow).toBeLessThanOrEqual(1);
+    await page.getByRole('button',{name:'Nova solicitação'}).click();
+    await expect(page.getByRole('heading',{name:'Solicitar laboratório móvel'})).toBeVisible();
+    const after=await page.evaluate(()=>
+      document.documentElement.scrollWidth-document.documentElement.clientWidth);
+    expect(after).toBeLessThanOrEqual(1);
+    await page.getByRole('button',{name:'Voltar para solicitações'}).click();
+  }
+});
