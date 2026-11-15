@@ -90,7 +90,19 @@ flowchart TD
 
 **Conteúdo:** modalidade, notebooks por identificador, datas/turnos efetivos, mouse, observações e histórico dos períodos cancelados.
 
-**Ações:** voltar ao painel, abrir carrinho no 3D e cancelar a reserva inteira ou datas elegíveis. Edição dos demais campos será definida em etapa posterior.
+**Ações:** voltar ao painel, abrir carrinho no 3D, **Editar reserva** e cancelar a reserva inteira ou datas elegíveis. A edição permite alterar solicitante, notebooks/carrinho, datas e turnos, com nova validação de disponibilidade e histórico de alterações.
+
+## T04-A — Editar reserva confirmada
+
+1. No detalhe da reserva, o administrador seleciona **Editar reserva**.
+2. O formulário é preenchido com o solicitante, carrinho, notebooks, datas, turnos, necessidade de mouse e observações atuais.
+3. O administrador modifica os campos desejados e vê um resumo comparando **antes** e **depois**.
+4. Ao continuar, o sistema verifica novamente a disponibilidade em todas as datas e turnos resultantes, considerando os bloqueios de outras reservas.
+5. Havendo conflito, a tela indica exatamente equipamento, data e turno e oferece voltar para corrigir; **não altera nem libera a reserva anterior**.
+6. Em confirmação bem-sucedida, salva a edição e as ocupações de forma indivisível, atualiza painel, consulta 3D e relatórios e registra data/hora, administrador e alterações no histórico.
+7. Os detalhes da reserva permitem consultar o histórico de alterações sem apagar dados anteriores.
+
+**Pendente:** definir se uma edição que altere período já iniciado ou posterior ao limite de cancelamento deve ser bloqueada ou tratada como exceção administrativa. A edição não deve servir de atalho implícito para contornar a regra de cancelamento.
 
 ## T05 — Cancelamento total ou parcial por data
 
@@ -155,6 +167,9 @@ A confirmação de cancelamento não apaga o histórico.
 | Administrador seleciona dia útil sem aula | Permitir a seleção, sem exigir cadastro de calendário escolar |
 | Professor solicita somente segunda, quarta e sexta ou um único dia | Permitir seleção avulsa sem obrigar o preenchimento de datas intermediárias |
 | Cancelamento elegível apenas da terça | Libera terça e mantém segunda/quarta, com histórico |
+| Administrador altera professor solicitante em reserva confirmada | Mantém ocupação, atualiza o responsável e registra autor, data e mudança no histórico |
+| Administrador troca notebook ou turno por outro livre | Revalida e atualiza os bloqueios e o 3D sem duplicidade |
+| Administrador tenta trocar notebook por outro ocupado no mesmo turno | Impede salvar, mostra conflito e mantém a reserva anterior intacta |
 | Cancelamento solicitado na própria data | Bloqueio conforme prazo acordado |
 | Exportação semanal com reservas completas, parciais e canceladas | Dados e situações consistentes com o painel e com a ocupação |
 | Cadastro em lote com geração de 10 códigos | A tela propõe 10 códigos distintos, permite editá-los e os valida antes de salvar |
@@ -167,6 +182,6 @@ A confirmação de cancelamento não apaga o histórico.
 1. No cadastro dos carrinhos, a capacidade deve ser derivada dos notebooks cadastrados ou pode divergir temporariamente?
 2. **Mouse (decidido):** somente marcação de necessidade sim/não, sem estoque ou quantidade por reserva.
 3. **Decidido:** oferecer intervalo contínuo e dias avulsos, inclusive uma data única, **apenas de segunda a sexta-feira**; sábados e domingos são excluídos/indisponíveis. **Decidido:** feriados e demais dias sem aula de segunda a sexta-feira não recebem tratamento especial; podem ser reservados e permanecem bloqueando os equipamentos durante os turnos escolhidos.
-4. Permitir editar uma reserva já confirmada, além de cancelar períodos, e quais limites seriam aplicados?
+4. **Decidido:** administradores podem editar reservas confirmadas, revalidando disponibilidade e registrando histórico. **Pendente:** limites de edição para períodos já iniciados e períodos cujo prazo de cancelamento passou.
 
 Este documento **descreve os fluxos**, não indica que as telas já estejam implementadas.
