@@ -1,9 +1,9 @@
-name: Publicar previa web do Educart — Fase 5
+name: Publicar previa web do Educart — Fase 6
 
 on:
   push:
     branches:
-      - feat/fase-5-visualizacao-3d
+      - feat/fase-6-portal-professores
     paths:
       - 'src/**'
       - 'index.html'
