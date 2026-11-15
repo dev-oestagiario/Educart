@@ -61,18 +61,18 @@ flowchart TD
 
 ### Etapa 2 — Equipamentos e complementos
 
-- Selecionar laboratório móvel pelo identificador e consultar sua capacidade.
+- Selecionar laboratório móvel pelo identificador e consultar **capacidade configurada, quantidade já reservada e saldo disponível por data e turno**. Não diminuir o saldo em razão de identificadores individuais que ainda não foram cadastrados.
 - Escolher entre **Laboratório móvel completo** ou **Notebooks individuais**.
-- Para notebooks individuais, informar quantidade e selecionar **os identificadores de cada notebook**; conferir coincidência entre quantidade e seleção.
+- Para notebooks individuais, informar a **quantidade**, selecionar ou informar os identificadores dos equipamentos específicos quando disponíveis e conferir os códigos efetivamente associados à reserva. A quantidade é validada contra o saldo do carrinho, **não** contra o número de códigos previamente cadastrados. A atribuição dos códigos ainda desconhecidos ao preparar os equipamentos é uma interação a detalhar.
 - Exibir um checkbox **Precisa de mouse** (sim/não) e um campo de observações (opcional). A marcação apenas informa à equipe de TI que deve considerar o acessório ao preparar os equipamentos; não exige quantidade nem consulta estoque de mouses.
-- Exibir quais notebooks estão livres e quais ocupados, considerando todas as datas e turnos selecionados.
+- Exibir **capacidade total, quantidade reservada e quantidade disponível** para cada data/turno; mostrar os códigos individuais que forem conhecidos, sem exigir que existam códigos prévios para toda a capacidade.
 - Não aceitar notebook pertencente a outro carrinho sem alteração explícita do carrinho escolhido.
 
 ### Etapa 3 — Validação e revisão
 
 - Exibir resumo: solicitante, registrante, datas, turnos, carrinho, modalidade, identificadores e quantidade de notebooks, indicador de necessidade de mouse (sim/não) e observação. A necessidade de mouse não participa da validação de disponibilidade.
 - Mostrar a lista de datas resultantes do intervalo ou da seleção avulsa para revisão antes de confirmar.
-- Revalidar a disponibilidade **para cada combinação de data e turno**, mesmo quando for um mês inteiro.
+- Revalidar a disponibilidade **para cada combinação de data e turno**, mesmo quando for um mês inteiro, verificando **a soma das quantidades ativas contra a capacidade configurada** e possíveis conflitos entre identificadores informados.
 - Se houver conflito, informar exatamente onde e quais notebooks estão indisponíveis, oferecendo voltar para trocar equipamento, reduzir a seleção ou trocar carrinho.
 - Reserva completa com ocupação parcial naquele período não pode ser confirmada como completa; oferecer alternativa de reserva parcial.
 - Só habilitar confirmação quando todo o conjunto estiver válido.
@@ -119,7 +119,7 @@ A confirmação de cancelamento não apaga o histórico.
 
 - Filtros de carrinho, data e turno, e resumo dos notebooks reservados/disponíveis.
 - Modelo genérico com carrinho e notebooks individualmente selecionáveis; permitir girar e aproximar.
-- **Clique no notebook:** identificador, estado, professor solicitante se reservado, data, turno, mouse e observação.
+- **Clique na representação de notebook:** mostrar estado e dados da reserva correspondente; apresentar identificador quando conhecido, sem inventar código físico para posições visuais ainda não identificadas. Quando reservado, exibir professor, data, turno, mouse e observação.
 - **Clique no carrinho:** identificador, capacidade, ocupação, reservas parciais/completas e disponibilidade.
 - Legenda e tabela/lista textual equivalente: o acesso à informação não depende de 3D, clique preciso ou distinção somente por cor.
 - Modelo sem dados ou falha de renderização não impedem registrar, consultar nem cancelar reservas.
@@ -140,8 +140,8 @@ A confirmação de cancelamento não apaga o histórico.
 - Ao gerar códigos, o administrador informa a quantidade; a tela mostra os códigos propostos e permite editá-los antes de concluir.
 - Na importação, permitir revisar e corrigir códigos antes de confirmar. Não exigir que os identificadores sejam números de patrimônio.
 - Validar campos obrigatórios e códigos duplicados, mostrando erros no item correspondente, sem gravar registros inválidos.
-- Mostrar quantidade de notebooks efetivamente cadastrados no carrinho após o registro.
-- **Pendente de decisão:** como a interface deve lidar com diferença entre capacidade configurada e quantidade de notebooks individuais efetivamente cadastrados; não aplicar uma regra silenciosa.
+- Mostrar separadamente a **capacidade configurada**, a contagem de **identificadores cadastrados** e o **saldo reservável por data e turno**. A quantidade de códigos cadastrados não limita o saldo.
+- **Decidido:** o saldo do carrinho usa a capacidade numérica configurada, **mesmo se houver menos códigos individuais cadastrados**. Exemplo: capacidade 30 e 28 códigos cadastrados, nenhuma reserva = 30 disponíveis. Fica pendente o procedimento para informar os identificadores ainda desconhecidos durante a separação física.
 
 ## T09 — Pedidos de reserva pelos professores (futuro)
 
@@ -181,7 +181,7 @@ A confirmação de cancelamento não apaga o histórico.
 
 ## Pontos para a próxima rodada de decisões
 
-1. No cadastro dos carrinhos, a capacidade deve ser derivada dos notebooks cadastrados ou pode divergir temporariamente?
+1. **Decidido:** a capacidade é o número configurado pelo administrador, independente da contagem de códigos individuais. Disponibilidade por turno = capacidade − quantidade já reservada.
 2. **Mouse (decidido):** somente marcação de necessidade sim/não, sem estoque ou quantidade por reserva.
 3. **Decidido:** oferecer intervalo contínuo e dias avulsos, inclusive uma data única, **apenas de segunda a sexta-feira**; sábados e domingos são excluídos/indisponíveis. **Decidido:** feriados e demais dias sem aula de segunda a sexta-feira não recebem tratamento especial; podem ser reservados e permanecem bloqueando os equipamentos durante os turnos escolhidos.
 4. **Decidido:** administradores podem editar reservas confirmadas inclusive no próprio dia da utilização, revalidando disponibilidade e registrando histórico. O cancelamento integral no próprio dia continua proibido. **Pendente:** tratamento de alterações retroativas após a data de uso.
