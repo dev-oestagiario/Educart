@@ -14,10 +14,27 @@ O Educart organiza a reserva de laboratórios móveis (carrinhos) e notebooks pa
 ## Cadastro de equipamentos
 
 - Cada laboratório móvel possui identificador próprio e capacidade configurável, pois carrinhos podem ter quantidades distintas de notebooks.
-- Cada notebook possui identificador individual e associação a um laboratório móvel.
+- Cada notebook possui identificador individual e associação a um laboratório móvel. Identificadores podem ser códigos próprios da equipe de TI; não é obrigatório utilizar número de patrimônio.
+- O administrador pode informar identificadores manualmente, importar identificadores por planilha ou solicitar geração automática de códigos para diversos notebooks, com possibilidade de editar os códigos gerados antes de concluir o cadastro.
 - A quantidade reservada em modalidade parcial corresponde aos notebooks efetivamente selecionados por identificador.
 - A disponibilidade de cada notebook é consultada para cada **data e turno**, não somente por carrinho ou dia.
 - Mouse é uma necessidade/acessório informada separadamente da seleção do laboratório móvel ou notebooks. O controle de unidades de mouse permanece por detalhar.
+
+## RF-08 — Cadastrar notebooks por código manual ou automático
+
+O administrador pode cadastrar notebooks individualmente ou em lote para um laboratório móvel, com estas alternativas:
+- Informar manualmente os códigos existentes, inclusive em cadastro em lote.
+- Importar uma planilha contendo os códigos existentes (formato exato da planilha a definir).
+- Solicitar geração automática de identificadores para uma quantidade indicada e editar os códigos gerados antes de salvar.
+
+O identificador de cada notebook deve ser único entre os notebooks cadastrados, independentemente de ter sido digitado, importado ou gerado. O sistema não substituirá automaticamente os códigos informados pelo administrador. Todos os registros criados devem ficar associados ao carrinho escolhido.
+
+**Critérios de aceitação:**
+- Dado um carrinho, quando o administrador informar cinco identificadores válidos, o sistema cadastra cinco notebooks associados a ele.
+- Ao solicitar a geração de cinco códigos, o sistema apresenta cinco identificadores distintos, editáveis antes da confirmação.
+- Ao importar planilha com identificadores, o administrador revisa e valida os dados antes do registro.
+- Identificadores duplicados ou vazios impedem a confirmação dos respectivos cadastros e a tela indica o problema.
+- A quantidade de notebooks cadastrados no carrinho é consultável após concluir a operação.
 
 ## RF-01 — Registrar reserva administrativamente
 
