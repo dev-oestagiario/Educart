@@ -160,6 +160,26 @@ async function useFakeSupabase(page: Page, authorized = true) {
       }
       await respond(modified);return;
     }
+
+    // Fase 8: leitura agregada por dia/turno, sem nomes, códigos ou reservas individuais.
+    if (url.pathname === '/rest/v1/rpc/preview_teacher_availability') {
+      const body=req.postDataJSON() as {p_cart_id:string;p_dates:string[];p_shifts:string[]};
+      const authorizedReader=authorized||database.teacher_account_links.some(l=>l.user_id===ADMIN_ID&&l.active);
+      const cart=database.carts.find(c=>c.id===body.p_cart_id&&c.active);
+      if(!authorizedReader){await respond({message:'Conta não autorizada'},403);return;}
+      if(!cart){await respond({message:'Carrinho inativo ou inexistente'},400);return;}
+      if(!body.p_dates?.length||!body.p_shifts?.length){
+        await respond({message:'Escolha datas e turnos'},400);return;
+      }
+      const rows=body.p_dates.flatMap(date=>body.p_shifts.map(shift=>{
+        const booked=database.reservation_periods.filter(p=>
+          p.cart_id===cart.id&&p.usage_date===date&&p.shift===shift&&p.active
+        ).reduce((sum,p)=>sum+Number(p.quantity),0);
+        return {usage_date:date,shift,capacity:Number(cart.capacity),
+          reserved:booked,remaining:Math.max(0,Number(cart.capacity)-booked)};
+      }));
+      await respond(rows);return;
+    }
     // Fase 6: simulação dos endpoints protegidos. Não acessa o Supabase real.
     if (url.pathname === '/rest/v1/rpc/list_teacher_accounts') {
       if(!authorized){await respond({message:'Sem permissão'},403);return;}
@@ -804,4 +824,89 @@ test('Fase 7 — não é possível marcar notificação de outro usuário',async
   await page.locator('.notifications-trigger').click();
   await expect(page.getByText('Não há notificações ainda. As atualizações aparecerão aqui quando houver solicitações ou decisões da TI.')).toBeVisible();
   expect(db.user_notifications[0].read_at).toBeNull();
+});
+
+
+test('Fase 8 — professor consulta saldo sem códigos físicos e sem contar pendências',async({page})=>{
+  const db=await useFakeSupabase(page,false);
+  const cartId=crypto.randomUUID(),teacherId=crypto.randomUUID();
+  const d=new Date(Date.now()+14*86400000);
+  while(d.getUTCDay()===0||d.getUTCDay()===6)d.setUTCDate(d.getUTCDate()+1);
+  const day=d.toISOString().slice(0,10);
+  db.carts.push({id:cartId,code:'CAP-30',name:'Carrinho Capacidade',capacity:30,active:true});
+  db.requesters.push({id:teacherId,name:'Professora Disponibilidade',active:true});
+  db.teacher_account_links.push({user_id:ADMIN_ID,requester_id:teacherId,active:true});
+  db.reservation_periods.push({
+    id:crypto.randomUUID(),reservation_id:crypto.randomUUID(),cart_id:cartId,
+    usage_date:day,shift:'MATUTINO',quantity:12,active:true
+  });
+  db.reservation_requests.push({
+    id:crypto.randomUUID(),cart_id:cartId,requester_id:teacherId,requested_by:ADMIN_ID,
+    quantity:5,mode:'PARCIAL',dates:[day],shifts:['MATUTINO'],
+    status:'PENDENTE',needs_mouse:false,notes:null,review_notes:null,reservation_id:null,
+    created_at:new Date().toISOString()
+  });
+  await page.setViewportSize({width:360,height:780});
+  await login(page);
+  await expect(page.getByRole('heading',{name:'Solicitar laboratório móvel'})).toBeVisible();
+  await page.locator('#teacher-cart').selectOption(cartId);
+  await page.locator('#teacher-start').fill(day);
+  await page.locator('#teacher-end').fill(day);
+  await expect(page.getByText(/1 de 1 períodos possuem saldo estimado para 1 notebook/)).toBeVisible();
+  await page.getByText(/Ver saldo por data e turno/).click();
+  const detail=page.locator('.teacher-availability-table-wrap');
+  await expect(detail.getByRole('row')).toHaveCount(2);
+  await expect(detail.getByRole('cell',{name:'30'})).toBeVisible();
+  await expect(detail.getByRole('cell',{name:'12'})).toBeVisible();
+  await expect(detail.getByRole('cell',{name:'18'})).toBeVisible();
+  await page.locator('#teacher-quantity').fill('20');
+  await expect(page.getByText(/Saldo abaixo do solicitado em 1 período/)).toBeVisible();
+  await expect(page.getByText(/18 disponível\(is\) de 30/)).toBeVisible();
+  await expect(page.getByRole('button',{name:'Enviar solicitação para aprovação'})).toBeEnabled();
+  expect(db.notebook_codes).toHaveLength(0);
+  expect(await page.evaluate(()=>
+    document.documentElement.scrollWidth<=document.documentElement.clientWidth+1)).toBe(true);
+});
+
+test('Fase 8 — sem reservas confirmadas, capacidade permanece 30 e pedidos pendentes não ocupam',async({page})=>{
+  const db=await useFakeSupabase(page,false);
+  const cartId=crypto.randomUUID(),teacherId=crypto.randomUUID();
+  db.carts.push({id:cartId,code:'L-30',name:'Carrinho Livre',capacity:30,active:true});
+  db.requesters.push({id:teacherId,name:'Professor Livre',active:true});
+  db.teacher_account_links.push({user_id:ADMIN_ID,requester_id:teacherId,active:true});
+  const d=new Date(Date.now()+21*86400000);
+  while(d.getUTCDay()===0||d.getUTCDay()===6)d.setUTCDate(d.getUTCDate()+1);
+  const day=d.toISOString().slice(0,10);
+  db.reservation_requests.push({
+    id:crypto.randomUUID(),cart_id:cartId,requester_id:teacherId,requested_by:ADMIN_ID,
+    quantity:30,mode:'COMPLETA',dates:[day],shifts:['MATUTINO'],status:'PENDENTE',
+    needs_mouse:false,notes:null,review_notes:null,reservation_id:null,
+    created_at:new Date().toISOString()
+  });
+  await login(page);
+  await page.locator('#teacher-cart').selectOption(cartId);
+  await page.locator('#teacher-start').fill(day);
+  await page.locator('#teacher-end').fill(day);
+  await page.getByLabel('Carrinho completo').check();
+  await expect(page.getByText(/1 de 1 períodos possuem saldo estimado para 30 notebook/)).toBeVisible();
+  await page.getByText(/Ver saldo por data e turno/).click();
+  await expect(page.locator('.teacher-availability-table-wrap').getByRole('cell',{name:'0'})).toBeVisible();
+  await expect(page.locator('.teacher-availability-table-wrap').getByRole('cell',{name:'30'})).toBeVisible();
+});
+
+test('Fase 8 — indisponibilidade da consulta não inventa saldo nem bloqueia o pedido',async({page})=>{
+  const db=await useFakeSupabase(page,false);
+  const cartId=crypto.randomUUID(),teacherId=crypto.randomUUID();
+  db.carts.push({id:cartId,code:'C-ERRO',name:'Carrinho Erro',capacity:20,active:true});
+  db.requesters.push({id:teacherId,name:'Professor Erro',active:true});
+  db.teacher_account_links.push({user_id:ADMIN_ID,requester_id:teacherId,active:true});
+  await page.route('https://educart-e2e.supabase.co/rest/v1/rpc/preview_teacher_availability',
+    route=>route.fulfill({status:500,headers:{
+      'access-control-allow-origin':'*','content-type':'application/json'
+    },json:{message:'Serviço temporariamente indisponível'}}));
+  await login(page);
+  await page.locator('#teacher-cart').selectOption(cartId);
+  await expect(page.getByRole('alert')).toContainText('Não foi possível consultar o saldo agora');
+  await expect(page.getByRole('button',{name:'Enviar solicitação para aprovação'})).toBeEnabled();
+  await expect(page.getByText(/1 de 1 períodos possuem saldo estimado/)).toHaveCount(0);
 });
