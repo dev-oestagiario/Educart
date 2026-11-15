@@ -1,10 +1,11 @@
 import {lazy,Suspense,useMemo,useState,type FormEvent} from 'react';
 import {useMutation,useQuery,useQueryClient} from '@tanstack/react-query';
-import {CalendarDays,ClipboardList,Laptop,LogOut,Send,ShieldCheck} from 'lucide-react';
+import {CalendarDays,ClipboardList,LogOut,Send,ShieldCheck} from 'lucide-react';
 import {supabase,type Cart} from '../lib/supabase';
 import {addCalendarDays,expandReservationDates,isWeekday,SHIFTS,shiftLabel,showDate,todayInSaoPaulo,type Shift} from '../lib/reservations';
 import {requestStatusLabel,validateTeacherRequest,type TeacherRequest} from '../lib/teacherRequests';
 import NotificationBell from '../components/NotificationBell';
+import BrandLogo from '../components/BrandLogo';
 import RecordsHeader from '../components/RecordsHeader';
 import TeacherAvailabilityPreview from '../components/TeacherAvailabilityPreview';
 const NotificationsPage = lazy(()=>import('./NotificationsPage'));
@@ -123,7 +124,7 @@ export default function TeacherPortal({requesterId,userId,email,onLogout}:Props)
   return <div className="teacher-shell">
     <a href="#teacher-main" className="skip-link">Ir ao conteúdo</a>
     <header className="teacher-topbar">
-      <div className="brand"><span className="brand-mark"><Laptop size={21} aria-hidden="true"/></span><span>educart</span></div>
+      <BrandLogo tone="light"/>
       <div className="teacher-account"><span title={email}>{teacher.data?.name??'Portal do professor'}</span>
         <NotificationBell userId={userId} onOpen={()=>setShowNotifications(true)}/>
         <button type="button" className="ghost" onClick={onLogout}><LogOut size={17} aria-hidden="true"/> Sair</button>

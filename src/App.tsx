@@ -7,6 +7,7 @@ import { supabase, isConfigured, type Cart, type Requester, type Notebook } from
 import {errorMessage} from './lib/validation';
 import { configuredCapacity } from './lib/capacity';
 import NotificationBell from './components/NotificationBell';
+import BrandLogo from './components/BrandLogo';
 
 const CartsPage = lazy(()=>import('./pages/CartsPage'));
 const RequestersPage = lazy(()=>import('./pages/RequestersPage'));
@@ -66,8 +67,8 @@ function Login({onLogin}:{onLogin:()=>void}) {
     } finally {setBusy(false)}
   }
   return <div className="auth-shell"><section className="auth-panel">
-    <div className="brand"><span className="brand-mark"><Laptop size={22}/></span><span>educart</span></div>
-    <div className="auth-intro"><span className="eyebrow">ACESSO • TI</span>
+    <BrandLogo tone="light"/>
+    <div className="auth-intro"><span className="eyebrow">PLATAFORMA EDUCACIONAL</span>
       <h1>{mode==='signup'?'Criar conta no Educart':'Acesso ao Educart'}</h1>
       <p>{mode==='signup'?'Cadastre seu e-mail. A TI autoriza o acesso de professor ou administrador depois da confirmação da conta.':'Entre com sua conta para acessar o painel da TI ou o portal do professor.'}</p></div>
     <form onSubmit={submit} className="form-stack">
@@ -98,7 +99,7 @@ function Overview() {
       <div className="stat"><span className="stat-icon"><ClipboardList/></span><span className="stat-label">Notebooks identificados</span><strong>{notebooks.data?.length??'—'}</strong></div>
     </div>
     {(carts.error||requesters.error||notebooks.error)&&<Notice message="Não foi possível carregar alguns indicadores. Confira a conexão."/>}
-    <div className="panel welcome-panel"><div><span className="eyebrow">FASE 1 • CADASTROS</span><h2>Organize os equipamentos</h2><p>Cadastre os carrinhos, professores e códigos de notebooks. A contagem de códigos não altera a capacidade configurada do carrinho.</p></div><button className="secondary" onClick={()=>setPage('carts')}>Gerenciar carrinhos</button></div>
+    <div className="panel welcome-panel"><div><span className="eyebrow">GESTÃO DE EQUIPAMENTOS</span><h2>Organize os equipamentos</h2><p>Cadastre os carrinhos, professores e códigos de notebooks. A contagem de códigos não altera a capacidade configurada do carrinho.</p></div><button className="secondary" onClick={()=>setPage('carts')}>Gerenciar carrinhos</button></div>
     <div className="panel muted-panel"><BookOpen size={19}/><p>Agora você já pode reservar carrinhos completos ou quantidades parciais por turno na área Reservas.</p></div>
   </>;
 }
@@ -208,7 +209,7 @@ export default function App() {
     {menuOpen&&<button type="button" tabIndex={-1} className="mobile-menu-backdrop" aria-label="Fechar navegação" onClick={closeMobileMenu}/>}
     <aside id="main-nav-panel" ref={sidebarRef} className={'sidebar '+(menuOpen?'sidebar-open':'')} role={menuOpen?'dialog':undefined} aria-modal={menuOpen||undefined} aria-label="Navegação principal">
       <div className="sidebar-top">
-        <div className="brand"><span className="brand-mark"><Laptop size={22} aria-hidden="true"/></span><span>educart</span></div>
+        <BrandLogo tone="light"/>
         <button type="button" ref={closeButtonRef} className="sidebar-close" aria-label="Fechar menu lateral" onClick={closeMobileMenu}><X size={22} aria-hidden="true"/></button>
       </div>
       <p className="sidebar-label">GERENCIAMENTO</p>
@@ -228,7 +229,7 @@ export default function App() {
           </button>
           <span>Gestão dos laboratórios móveis</span>
         </div>
-        <div className="topbar-actions"><span className="phase-tag">Fase 7 • Notificações</span>
+        <div className="topbar-actions"><span className="phase-tag">Gestão de laboratórios</span>
           <NotificationBell userId={session.user.id} onOpen={()=>navigateTo('notifications')}/></div>
       </header>
       <div className="content">
