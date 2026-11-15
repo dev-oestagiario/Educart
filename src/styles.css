@@ -657,3 +657,9 @@ html,body,#root{width:100%;height:100%;min-width:0;margin:0}
 @media(prefers-reduced-motion:reduce){
   .content,.teacher-main,.sidebar,.calendar-grid{scroll-behavior:auto}
 }
+
+/* Não gerar colunas implícitas ao reduzir o calendário de 5 para 3/2/1 dias. */
+.calendar-grid>.calendar-day:first-child{grid-column:var(--calendar-start,auto)}
+@media(max-width:1100px){
+  .calendar-grid>.calendar-day:first-child{grid-column:auto}
+}

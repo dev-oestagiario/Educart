@@ -1,4 +1,4 @@
-import {useMemo,useState} from 'react';
+import {useMemo,useState,type CSSProperties} from 'react';
 import {useQuery} from '@tanstack/react-query';
 import {CalendarDays,Download,FileText,Filter} from 'lucide-react';
 import {supabase,type Cart,type Requester} from '../lib/supabase';
@@ -170,7 +170,7 @@ export default function CalendarReportsPage(){
           const dayRows=rows.filter(r=>r.dateIso===day);
           const weekday=new Date(day+'T12:00:00Z').getUTCDay();
           return <article className="calendar-day" key={day}
-            style={index===0?{gridColumn:weekday===0?5:weekday}:undefined}>
+            style={index===0?{'--calendar-start':String(weekday===0?5:weekday)} as CSSProperties:undefined}>
             <header><strong>{showDate(day)}</strong><span>{['','Seg','Ter','Qua','Qui','Sex'][weekday]}</span></header>
             {dayRows.length===0?<p className="calendar-empty">Sem reservas</p>:
               <div className="calendar-items">{dayRows.map((r,i)=><div key={r.bookingId+'-'+r.shiftCode+'-'+i}
