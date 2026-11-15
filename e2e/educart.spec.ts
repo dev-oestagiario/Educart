@@ -458,31 +458,36 @@ test('gaveta lateral permite fechar tocando fora e mantém foco no menu ao usar 
 
 test('Fase 2 — reserva parcial por turno preserva saldo e bloqueia reserva completa', async ({page})=>{
   const database=await useFakeSupabase(page);
-  const cartId=crypto.randomUUID();
-  const requesterId=crypto.randomUUID();
+  const cartId=crypto.randomUUID(), requesterId=crypto.randomUUID();
   database.carts.push({id:cartId,name:'Carrinho de teste',code:'C-01',capacity:30,active:true,created_at:new Date().toISOString()});
   database.requesters.push({id:requesterId,name:'Professora Reserva',reference_code:'R-1',active:true,created_at:new Date().toISOString()});
   await login(page);
   await page.getByRole('button',{name:'Reservas',exact:true}).click();
+  await expect(page.getByRole('heading',{name:'Reservas',exact:true})).toBeVisible();
+  await expect(page.getByRole('heading',{name:'Nova reserva'})).toHaveCount(0);
+  await page.getByRole('button',{name:'Nova reserva'}).click();
   await expect(page.getByRole('heading',{name:'Nova reserva'})).toBeVisible();
 
   const monday=new Date(Date.now()+14*24*60*60*1000);
   while(monday.getUTCDay()!==1)monday.setUTCDate(monday.getUTCDate()+1);
   const iso=monday.toISOString().slice(0,10);
-
   await page.getByLabel('Professor solicitante').selectOption(requesterId);
   await page.locator('#reservation-cart').selectOption(cartId);
-  await page.getByLabel('Data inicial').fill(iso);
-  await page.getByLabel('Data final').fill(iso);
+  await chooseReservationDate(page,iso);
   await page.getByRole('radio',{name:'Notebooks avulsos'}).check();
   await page.getByLabel('Quantidade de notebooks').fill('10');
   await expect(page.getByText('30/30')).toBeVisible();
   await page.getByRole('button',{name:'Confirmar reserva'}).click();
   await expect(page.getByText('Reserva confirmada para todos os períodos selecionados.')).toBeVisible();
-  await expect(page.getByText('20/30')).toBeVisible();
+  await expect(page.getByRole('heading',{name:'Reservas cadastradas'})).toBeVisible();
   expect(database.reservations).toHaveLength(1);
   expect(database.reservation_periods).toHaveLength(1);
-  await page.getByRole('radio',{name:'Carrinho completo'}).check();
+
+  await page.getByRole('button',{name:'Nova reserva'}).click();
+  await page.getByLabel('Professor solicitante').selectOption(requesterId);
+  await page.locator('#reservation-cart').selectOption(cartId);
+  await chooseReservationDate(page,iso);
+  await expect(page.getByText('20/30')).toBeVisible();
   await expect(page.getByRole('button',{name:'Confirmar reserva'})).toBeDisabled();
   await expect(page.getByText('Conflito',{exact:true})).toBeVisible();
   await page.getByLabel('Manhã').uncheck();
@@ -491,24 +496,25 @@ test('Fase 2 — reserva parcial por turno preserva saldo e bloqueia reserva com
   await expect(page.getByRole('button',{name:'Confirmar reserva'})).toBeEnabled();
 });
 
-test('Fase 2 — datas avulsas recusam sábado e domingo', async ({page})=>{
+test('Fase 2 — calendário visual desativa sábado e domingo', async ({page})=>{
   const database=await useFakeSupabase(page);
   const cartId=crypto.randomUUID(), requesterId=crypto.randomUUID();
   database.carts.push({id:cartId,name:'Carrinho 2',code:'C-02',capacity:30,active:true,created_at:new Date().toISOString()});
   database.requesters.push({id:requesterId,name:'Professora Data',active:true,created_at:new Date().toISOString()});
   await login(page);
   await page.getByRole('button',{name:'Reservas',exact:true}).click();
+  await page.getByRole('button',{name:'Nova reserva'}).click();
   await page.getByLabel('Professor solicitante').selectOption(requesterId);
   await page.locator('#reservation-cart').selectOption(cartId);
-  await page.getByLabel('Escolha das datas').selectOption('avulsas');
+  await page.locator('#reservation-date-trigger').click();
+  await page.getByRole('button',{name:'Dias avulsos'}).click();
   const saturday=new Date(Date.now()+14*24*60*60*1000);
   while(saturday.getUTCDay()!==6)saturday.setUTCDate(saturday.getUTCDate()+1);
-  await page.getByLabel('Adicionar dia').fill(saturday.toISOString().slice(0,10));
-  await page.getByRole('button',{name:'Adicionar data'}).click();
-  await expect(page.getByText('Só é possível selecionar datas de segunda a sexta.')).toBeVisible();
-  await expect(page.getByRole('button',{name:'Confirmar reserva'})).toBeDisabled();
+  const weekend=await findCalendarDay(page,saturday.toISOString().slice(0,10));
+  await expect(weekend).toBeDisabled();
+  await expect(page.getByRole('button',{name:'Concluir'})).toBeVisible();
+  await expect(page.getByRole('combobox',{name:'Escolha das datas'})).toHaveCount(0);
 });
-
 
 test('Fase 3 — cancelamento individual preserva outro período e edição registra histórico',async({page})=>{
   const database=await useFakeSupabase(page);
@@ -517,6 +523,7 @@ test('Fase 3 — cancelamento individual preserva outro período e edição regi
   database.requesters.push({id:teacherId,name:'Professor Gestão',active:true,created_at:new Date().toISOString()});
   await login(page);
   await page.getByRole('button',{name:'Reservas',exact:true}).click();
+  await page.getByRole('button',{name:'Nova reserva'}).click();
 
   const monday=new Date(Date.now()+14*24*60*60*1000);
   while(monday.getUTCDay()!==1)monday.setUTCDate(monday.getUTCDate()+1);
@@ -525,8 +532,7 @@ test('Fase 3 — cancelamento individual preserva outro período e edição regi
 
   await page.getByLabel('Professor solicitante').selectOption(teacherId);
   await page.locator('#reservation-cart').selectOption(cartId);
-  await page.locator('#reservation-start').fill(start);
-  await page.locator('#reservation-end').fill(end);
+  await chooseReservationRange(page,start,end);
   await page.getByRole('radio',{name:'Notebooks avulsos'}).check();
   await page.getByLabel('Quantidade de notebooks').fill('10');
   await page.getByRole('button',{name:'Confirmar reserva'}).click();
@@ -541,11 +547,17 @@ test('Fase 3 — cancelamento individual preserva outro período e edição regi
 
   await page.getByRole('button',{name:'Editar',exact:true}).click();
   await expect(page.getByRole('heading',{name:'Editar reserva'})).toBeVisible();
+  await expect(page.getByText('Histórico de alterações')).toHaveCount(0);
   await page.getByLabel('Quantidade de notebooks').fill('5');
   await page.getByRole('button',{name:'Salvar alterações'}).click();
   await expect(page.getByText('Reserva editada e alteração registrada no histórico.')).toBeVisible();
   expect(database.reservations[0].quantity).toBe(5);
   expect(database.reservation_events.filter(e=>e.event_type==='EDICAO')).toHaveLength(1);
+
+  await page.getByRole('button',{name:'Ver histórico'}).click();
+  await expect(page.getByRole('heading',{name:'Auditoria de reservas'})).toBeVisible();
+  await page.getByRole('button',{name:'Voltar à lista'}).click();
+  await expect(page.getByRole('heading',{name:'Reservas cadastradas'})).toBeVisible();
 });
 
 test('Fase 3 — cancelamento total desativa os períodos e preserva evento',async({page})=>{
@@ -909,4 +921,78 @@ test('Fase 8 — indisponibilidade da consulta não inventa saldo nem bloqueia o
   await expect(page.getByRole('alert')).toContainText('Não foi possível consultar o saldo agora');
   await expect(page.getByRole('button',{name:'Enviar solicitação para aprovação'})).toBeEnabled();
   await expect(page.getByText(/1 de 1 períodos possuem saldo estimado/)).toHaveCount(0);
+});
+
+
+async function findCalendarDay(page:Page,iso:string){
+  const label=new Intl.DateTimeFormat('pt-BR',{timeZone:'UTC',day:'2-digit',month:'2-digit',year:'numeric'})
+    .format(new Date(iso+'T12:00:00Z'));
+  const selector=page.getByRole('button',{name:'Selecionar '+label});
+  for(let i=0;i<14;i++){
+    if(await selector.isVisible().catch(()=>false))return selector;
+    await page.getByRole('button',{name:'Próximo mês'}).click();
+  }
+  throw new Error('O calendário não mostrou o dia '+iso);
+}
+async function chooseReservationDate(page:Page,iso:string){
+  await page.locator('#reservation-date-trigger').click();
+  await (await findCalendarDay(page,iso)).click();
+}
+async function chooseReservationRange(page:Page,start:string,end:string){
+  await page.locator('#reservation-date-trigger').click();
+  await page.getByRole('button',{name:'Período',exact:true}).click();
+  await (await findCalendarDay(page,start)).click();
+  await (await findCalendarDay(page,end)).click();
+}
+
+test('UX de reservas — lista inicial, filtro e formulário limpo',async({page})=>{
+  const database=await useFakeSupabase(page);
+  const cartId=crypto.randomUUID(),teacherId=crypto.randomUUID(),resId=crypto.randomUUID();
+  database.carts.push({id:cartId,name:'Carrinho de Informática',code:'CI-01',capacity:30,active:true});
+  database.requesters.push({id:teacherId,name:'Professor de Informática',active:true});
+  database.reservations.push({id:resId,requester_id:teacherId,cart_id:cartId,
+    mode:'COMPLETA',quantity:30,needs_mouse:false,notes:null,status:'CONFIRMADA',
+    created_at:new Date().toISOString()});
+  await login(page);
+  await page.getByRole('button',{name:'Reservas',exact:true}).click();
+  await expect(page.getByRole('heading',{name:'Reservas cadastradas'})).toBeVisible();
+  await expect(page.getByText('Professor de Informática')).toBeVisible();
+  await page.locator('#reservation-search').fill('não existe');
+  await expect(page.getByText('Nenhuma reserva corresponde à busca ou ao filtro.')).toBeVisible();
+  await page.locator('#reservation-search').fill('Informática');
+  await expect(page.getByText('Professor de Informática')).toBeVisible();
+  await page.getByRole('button',{name:'Nova reserva'}).click();
+  await expect(page.getByRole('heading',{name:'Nova reserva'})).toBeVisible();
+  await expect(page.locator('.reservation-form-panel')).toHaveCount(1);
+  await expect(page.getByRole('heading',{name:'Reservas cadastradas'})).toHaveCount(0);
+  await expect(page.getByRole('heading',{name:'Histórico de alterações'})).toHaveCount(0);
+  await expect(page.getByText('Notebooks identificados (opcional)')).toHaveCount(0);
+  await page.getByRole('radio',{name:'Notebooks avulsos'}).check();
+  await expect(page.getByText('Notebooks identificados (opcional)')).toBeVisible();
+  await page.getByRole('radio',{name:'Carrinho completo'}).check();
+  await expect(page.getByText('Notebooks identificados (opcional)')).toHaveCount(0);
+  await page.getByRole('button',{name:'Voltar para reservas'}).click();
+  await expect(page.getByRole('heading',{name:'Reservas cadastradas'})).toBeVisible();
+});
+
+test('UX de reservas — calendário oferece dia, semana, mês e datas avulsas no celular',async({page})=>{
+  await page.setViewportSize({width:360,height:780});
+  await useFakeSupabase(page);
+  await login(page);
+  await page.getByRole('button',{name:'Abrir menu lateral'}).click();
+  await page.getByRole('navigation',{name:'Menu principal'}).getByRole('button',{name:'Reservas',exact:true}).click();
+  await page.getByRole('button',{name:'Nova reserva'}).click();
+  await page.locator('#reservation-date-trigger').click();
+  await expect(page.getByRole('button',{name:'1 dia'})).toBeVisible();
+  await page.getByRole('button',{name:'1 semana'}).click();
+  await expect(page.getByText('5 dia(s)')).toBeVisible();
+  await page.locator('#reservation-date-trigger').click();
+  await page.getByRole('button',{name:'1 mês'}).click();
+  await expect(page.getByText(/\d+ dia\(s\)/).first()).toBeVisible();
+  await page.locator('#reservation-date-trigger').click();
+  await page.getByRole('button',{name:'Dias avulsos'}).click();
+  await expect(page.getByRole('button',{name:'Concluir'})).toBeVisible();
+  await expect(page.locator('.reservation-date-popover')).toBeVisible();
+  expect(await page.evaluate(()=>
+    document.documentElement.scrollWidth<=document.documentElement.clientWidth+1)).toBe(true);
 });
