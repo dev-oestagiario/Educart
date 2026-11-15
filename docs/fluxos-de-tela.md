@@ -102,7 +102,7 @@ flowchart TD
 6. Em confirmação bem-sucedida, salva a edição e as ocupações de forma indivisível, atualiza painel, consulta 3D e relatórios e registra data/hora, administrador e alterações no histórico.
 7. Os detalhes da reserva permitem consultar o histórico de alterações sem apagar dados anteriores.
 
-**Pendente:** definir se uma edição que altere período já iniciado ou posterior ao limite de cancelamento deve ser bloqueada ou tratada como exceção administrativa. A edição não deve servir de atalho implícito para contornar a regra de cancelamento.
+**Definido:** o botão **Editar reserva** permanece disponível aos administradores no próprio dia da utilização. O sistema registra quem editou, quando, e a comparação antes/depois, e revalida a disponibilidade para alterações de equipamentos ou turnos. **Cancelar a reserva inteira no próprio dia permanece bloqueado**; a edição não deve ser utilizada para simular esse cancelamento. O tratamento de alterações retroativas após a data da utilização ainda precisa ser definido.
 
 ## T05 — Cancelamento total ou parcial por data
 
@@ -170,6 +170,8 @@ A confirmação de cancelamento não apaga o histórico.
 | Administrador altera professor solicitante em reserva confirmada | Mantém ocupação, atualiza o responsável e registra autor, data e mudança no histórico |
 | Administrador troca notebook ou turno por outro livre | Revalida e atualiza os bloqueios e o 3D sem duplicidade |
 | Administrador tenta trocar notebook por outro ocupado no mesmo turno | Impede salvar, mostra conflito e mantém a reserva anterior intacta |
+| Administrador altera professor ou troca notebook no próprio dia da reserva | Permite a edição com revalidação de disponibilidade, atualiza dados e registra administrador, data/hora e antes/depois |
+| Administrador tenta cancelar integralmente a reserva no próprio dia por meio da edição | Não permite contornar a restrição de cancelamento e mantém a reserva original |
 | Cancelamento solicitado na própria data | Bloqueio conforme prazo acordado |
 | Exportação semanal com reservas completas, parciais e canceladas | Dados e situações consistentes com o painel e com a ocupação |
 | Cadastro em lote com geração de 10 códigos | A tela propõe 10 códigos distintos, permite editá-los e os valida antes de salvar |
@@ -182,6 +184,6 @@ A confirmação de cancelamento não apaga o histórico.
 1. No cadastro dos carrinhos, a capacidade deve ser derivada dos notebooks cadastrados ou pode divergir temporariamente?
 2. **Mouse (decidido):** somente marcação de necessidade sim/não, sem estoque ou quantidade por reserva.
 3. **Decidido:** oferecer intervalo contínuo e dias avulsos, inclusive uma data única, **apenas de segunda a sexta-feira**; sábados e domingos são excluídos/indisponíveis. **Decidido:** feriados e demais dias sem aula de segunda a sexta-feira não recebem tratamento especial; podem ser reservados e permanecem bloqueando os equipamentos durante os turnos escolhidos.
-4. **Decidido:** administradores podem editar reservas confirmadas, revalidando disponibilidade e registrando histórico. **Pendente:** limites de edição para períodos já iniciados e períodos cujo prazo de cancelamento passou.
+4. **Decidido:** administradores podem editar reservas confirmadas inclusive no próprio dia da utilização, revalidando disponibilidade e registrando histórico. O cancelamento integral no próprio dia continua proibido. **Pendente:** tratamento de alterações retroativas após a data de uso.
 
 Este documento **descreve os fluxos**, não indica que as telas já estejam implementadas.
