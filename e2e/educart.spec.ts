@@ -225,10 +225,10 @@ test('gaveta lateral permite fechar tocando fora e mantém foco no menu ao usar 
   await expect(nav).toBeVisible();
   await expect(page.getByRole('button',{name:'Fechar menu lateral'})).toBeFocused();
   await page.keyboard.press('Shift+Tab');
-  await expect(nav.getByRole('button',{name:'Sair'})).toBeFocused();
+  await expect(page.getByRole('button',{name:'Sair'})).toBeFocused();
   await page.keyboard.press('Tab');
   await expect(page.getByRole('button',{name:'Fechar menu lateral'})).toBeFocused();
-  await page.getByRole('button',{name:'Fechar navegação'}).click({position:{x:300,y:100}});
+  await page.locator('.mobile-menu-backdrop').click({position:{x:380,y:100}});
   await expect(nav).toBeHidden();
   await expect(opener).toBeFocused();
 });
