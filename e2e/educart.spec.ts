@@ -21,7 +21,7 @@ const token = [
 
 async function useFakeSupabase(page: Page, authorized = true) {
   const database: Record<string, Row[]> = {
-    carts: [], requesters: [], notebook_codes: [], reservations: [], reservation_periods: [], reservation_notebooks: [], reservation_events: [], teacher_account_links: [], reservation_requests: [], reservation_request_events: []
+    carts: [], requesters: [], notebook_codes: [], reservations: [], reservation_periods: [], reservation_notebooks: [], reservation_events: [], teacher_account_links: [], reservation_requests: [], reservation_request_events: [], user_notifications: []
   };
   await page.route('https://educart-e2e.supabase.co/**', async route => {
     const req = route.request();
@@ -145,6 +145,21 @@ async function useFakeSupabase(page: Page, authorized = true) {
       await respond(reservationId);return;
     }
 
+    if (url.pathname === '/rest/v1/rpc/mark_notification_read') {
+      const body=req.postDataJSON() as {p_notification_id:string};
+      const item=database.user_notifications.find(x=>x.id===body.p_notification_id&&x.recipient_user_id===ADMIN_ID);
+      if(item)item.read_at=item.read_at??new Date().toISOString();
+      await respond(!!item);return;
+    }
+    if (url.pathname === '/rest/v1/rpc/mark_all_notifications_read') {
+      let modified=0;
+      for(const item of database.user_notifications){
+        if(item.recipient_user_id===ADMIN_ID&&item.read_at===null){
+          item.read_at=new Date().toISOString();modified++;
+        }
+      }
+      await respond(modified);return;
+    }
     // Fase 6: simulação dos endpoints protegidos. Não acessa o Supabase real.
     if (url.pathname === '/rest/v1/rpc/list_teacher_accounts') {
       if(!authorized){await respond({message:'Sem permissão'},403);return;}
@@ -235,7 +250,9 @@ async function useFakeSupabase(page: Page, authorized = true) {
     const table = url.pathname.slice('/rest/v1/'.length);
     if (Object.prototype.hasOwnProperty.call(database, table)) {
       if (req.method() === 'GET') {
-        await respond(database[table]); return;
+        const rows=table==='user_notifications'?
+          database[table].filter(item=>item.recipient_user_id===ADMIN_ID):database[table];
+        await respond(rows); return;
       }
       if (req.method() === 'POST') {
         const body = req.postDataJSON() as Row | Row[];
@@ -711,4 +728,80 @@ test('Fase 6 — TI recusa aprovação se saldo mudou e preserva pendência',asy
   await expect(page.getByRole('alert')).toContainText('Sem disponibilidade');
   expect(db.reservation_requests[0].status).toBe('PENDENTE');
   expect(db.reservations).toHaveLength(0);
+});
+
+
+test('Fase 7 — admin recebe aviso, marca como lido e abre solicitações',async({page})=>{
+  const db=await useFakeSupabase(page);
+  db.user_notifications.push({
+    id:crypto.randomUUID(),recipient_user_id:ADMIN_ID,request_id:crypto.randomUUID(),
+    kind:'NOVO_PEDIDO',title:'Nova solicitação de reserva',
+    body:'Um professor enviou uma solicitação. Acesse a fila para analisar.',
+    read_at:null,created_at:new Date().toISOString()
+  });
+  await login(page);
+  await expect(page.getByRole('heading',{name:'Visão geral'})).toBeVisible();
+  const bell=page.getByRole('button',{name:/Notificações, 1 não lida/});
+  await expect(bell).toBeVisible();
+  await bell.click();
+  await expect(page.getByRole('heading',{name:'Notificações'})).toBeVisible();
+  await expect(page.getByText('Nova solicitação de reserva')).toBeVisible();
+  await page.getByRole('button',{name:'Marcar como lida',exact:true}).click();
+  await expect(page.getByText('0 notificação(ões) não lida(s)')).toBeVisible();
+  await expect(page.getByRole('button',{name:'Notificações',exact:true})).toBeVisible();
+  expect(db.user_notifications[0].read_at).not.toBeNull();
+  await page.getByRole('button',{name:'Abrir solicitações'}).click();
+  await expect(page.getByRole('heading',{name:'Solicitações de professores'})).toBeVisible();
+});
+
+test('Fase 7 — professor recebe decisão somente na própria caixa e volta ao portal',async({page})=>{
+  await page.setViewportSize({width:360,height:780});
+  const db=await useFakeSupabase(page,false);
+  const requesterId=crypto.randomUUID();
+  db.requesters.push({id:requesterId,name:'Professora das notificações',active:true});
+  db.teacher_account_links.push({user_id:ADMIN_ID,requester_id:requesterId,active:true});
+  for(const kind of ['PEDIDO_APROVADO','PEDIDO_REJEITADO']){
+    db.user_notifications.push({
+      id:crypto.randomUUID(),recipient_user_id:ADMIN_ID,request_id:crypto.randomUUID(),
+      kind,title:kind==='PEDIDO_APROVADO'?'Solicitação aprovada':'Solicitação rejeitada',
+      body:'Confira o status do pedido no portal.',
+      read_at:null,created_at:new Date().toISOString()
+    });
+  }
+  // Uma notificação de outra conta nunca deve ser exibida pelo backend RLS;
+  // o fake filtra manualmente os dados da identidade autenticada.
+  db.user_notifications.push({
+    id:crypto.randomUUID(),recipient_user_id:crypto.randomUUID(),request_id:crypto.randomUUID(),
+    kind:'PEDIDO_APROVADO',title:'Aviso de outra pessoa',body:'Mensagem privada',
+    read_at:null,created_at:new Date().toISOString()
+  });
+  await login(page);
+  await expect(page.getByRole('heading',{name:'Solicitar laboratório móvel'})).toBeVisible();
+  await page.getByRole('button',{name:/Notificações, 2 não lidas/}).click();
+  await expect(page.getByRole('heading',{name:'Notificações'})).toBeVisible();
+  await expect(page.getByText('Solicitação aprovada')).toBeVisible();
+  await expect(page.getByText('Solicitação rejeitada')).toBeVisible();
+  await expect(page.getByText('Aviso de outra pessoa')).toHaveCount(0);
+  await page.getByRole('button',{name:'Marcar todas como lidas'}).click();
+  await expect(page.getByText('0 notificação(ões) não lida(s)')).toBeVisible();
+  expect(db.user_notifications.filter(x=>x.recipient_user_id===ADMIN_ID).every(x=>x.read_at!==null)).toBe(true);
+  expect(db.user_notifications.find(x=>x.title==='Aviso de outra pessoa')?.read_at).toBeNull();
+  await page.getByRole('button',{name:'Voltar ao portal'}).click();
+  await expect(page.getByRole('heading',{name:'Solicitar laboratório móvel'})).toBeVisible();
+  const noOverflow=await page.evaluate(()=>
+    document.documentElement.scrollWidth<=document.documentElement.clientWidth+1);
+  expect(noOverflow).toBe(true);
+});
+
+test('Fase 7 — não é possível marcar notificação de outro usuário',async({page})=>{
+  const db=await useFakeSupabase(page);
+  db.user_notifications.push({
+    id:crypto.randomUUID(),recipient_user_id:crypto.randomUUID(),request_id:crypto.randomUUID(),
+    kind:'NOVO_PEDIDO',title:'Privada',body:'Apenas outro destinatário',read_at:null,
+    created_at:new Date().toISOString()
+  });
+  await login(page);
+  await page.getByRole('button',{name:'Notificações',exact:true}).click();
+  await expect(page.getByText('Não há notificações ainda. As atualizações aparecerão aqui quando houver solicitações ou decisões da TI.')).toBeVisible();
+  expect(db.user_notifications[0].read_at).toBeNull();
 });
