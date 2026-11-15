@@ -1,7 +1,7 @@
-import { useEffect, useState, type FormEvent, type ChangeEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent, type ChangeEvent } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { BookOpen, Boxes, ClipboardList, Laptop, LogOut, ShieldCheck, UserRound, UserRoundPlus } from 'lucide-react';
+import { BookOpen, Boxes, ClipboardList, Laptop, LogOut, Menu, ShieldCheck, UserRound, UserRoundPlus, X } from 'lucide-react';
 import { create } from 'zustand';
 import { supabase, isConfigured, type Cart, type Requester, type Notebook } from './lib/supabase';
 import { cartSchema, errorMessage, notebookSchema, requesterSchema, validateCodes } from './lib/validation';
@@ -200,14 +200,57 @@ function NotebooksPage() {
 export default function App() {
   const qc=useQueryClient();const [session,setSession]=useState<Session|null>(null),[loading,setLoading]=useState(true);
   const {page,setPage}=useUi();
+  const [menuOpen,setMenuOpen]=useState(false);
+  const menuButtonRef=useRef<HTMLButtonElement>(null);
+  const closeButtonRef=useRef<HTMLButtonElement>(null);
+  const sidebarRef=useRef<HTMLElement>(null);
   useEffect(()=>{
     let current=true;
     supabase.auth.getSession().then(({data})=>{if(current){setSession(data.session);setLoading(false)}});
     const {data:{subscription}}=supabase.auth.onAuthStateChange((_event,session)=>{setSession(session);if(!session)qc.clear();});
     return ()=>{current=false;subscription.unsubscribe()};
   },[qc]);
+  useEffect(()=>{
+    if(!menuOpen)return;
+    const previousOverflow=document.body.style.overflow;
+    document.body.style.overflow='hidden';
+    closeButtonRef.current?.focus();
+
+    function handleKeydown(event:KeyboardEvent){
+      if(event.key==='Escape'){
+        setMenuOpen(false);
+        menuButtonRef.current?.focus();
+        return;
+      }
+      if(event.key!=='Tab')return;
+      const controls=sidebarRef.current?.querySelectorAll<HTMLElement>('button:not(:disabled), a[href]');
+      if(!controls?.length)return;
+      const first=controls[0], last=controls[controls.length-1];
+      if(event.shiftKey&&document.activeElement===first){event.preventDefault();last.focus();}
+      else if(!event.shiftKey&&document.activeElement===last){event.preventDefault();first.focus();}
+    }
+    function handleResize(){if(window.innerWidth>690)setMenuOpen(false);}
+    document.addEventListener('keydown',handleKeydown);
+    window.addEventListener('resize',handleResize);
+    return ()=>{
+      document.body.style.overflow=previousOverflow;
+      document.removeEventListener('keydown',handleKeydown);
+      window.removeEventListener('resize',handleResize);
+    };
+  },[menuOpen]);
+  function closeMobileMenu(){
+    setMenuOpen(false);
+    menuButtonRef.current?.focus();
+  }
+  function navigateTo(target:Page){
+    setPage(target);
+    if(menuOpen){
+      setMenuOpen(false);
+      document.getElementById('main-content')?.focus();
+    }
+  }
   const check=useQuery({queryKey:['admin',session?.user.id],enabled:Boolean(session),queryFn:async()=>{
-    const {data,error}=await supabase.from('admin_users').select('user_id,display_name').eq('user_id',session!.user.id).maybeSingle();
+    const {data,error}=await supabase.from('admin_users').select('user_id,display_name').eq('user_id',session!.user.id).eq('active',true).maybeSingle();
     if(error)throw error;return data;
   }});
   if(!isConfigured)return <div className="setup"><h1>Educart ainda não está configurado</h1><p>Defina VITE_SUPABASE_URL e VITE_SUPABASE_PUBLISHABLE_KEY no arquivo .env antes de iniciar a aplicação. Nunca exponha uma chave secreta.</p></div>;
@@ -217,14 +260,36 @@ export default function App() {
   if(check.error)return <div className="setup"><h1>Não foi possível validar o acesso</h1><p>{errorMessage(check.error)}</p><button className="secondary" onClick={()=>qc.invalidateQueries({queryKey:['admin']})}>Tentar novamente</button></div>;
   if(!check.data)return <div className="setup"><ShieldCheck size={34}/><h1>Conta criada, aguardando autorização</h1><p>Seu login foi reconhecido, mas a TI ainda precisa habilitar esta conta como administradora. Os dados e cadastros continuam protegidos.</p><button className="secondary" onClick={()=>qc.invalidateQueries({queryKey:['admin']})}>Verificar autorização</button><button className="ghost" onClick={()=>supabase.auth.signOut()}>Sair desta conta</button></div>;
   const nav:[Page,string,typeof Boxes][]=[['overview','Visão geral',ClipboardList],['carts','Carrinhos',Boxes],['requesters','Professores',UserRoundPlus],['notebooks','Notebooks',Laptop]];
-  return <div className="app-shell"><aside className="sidebar">
-    <div className="brand"><span className="brand-mark"><Laptop size={22}/></span><span>educart</span></div>
-    <p className="sidebar-label">GERENCIAMENTO</p>
-    <nav aria-label="Menu principal" className="nav">{nav.map(([id,label,Icon])=><button key={id} aria-current={page===id?'page':undefined} className={'nav-item '+(page===id?'selected':'')} onClick={()=>setPage(id)}><Icon size={19}/>{label}</button>)}</nav>
-    <div className="side-bottom"><div className="account"><span className="avatar"><UserRound size={18}/></span><span><strong>{check.data.display_name}</strong><small>Administrador da TI</small></span></div><button className="nav-item" onClick={()=>supabase.auth.signOut()}><LogOut size={18}/> Sair</button></div>
-  </aside>
-    <main className="main"><header className="topbar"><span>Gestão dos laboratórios móveis</span><span className="phase-tag">Fase 1 • Cadastros</span></header><div className="content">
-      {page==='overview'?<Overview/>:page==='carts'?<CartsPage/>:page==='requesters'?<RequestersPage/>:<NotebooksPage/>}
-    </div></main>
+  return <div className="app-shell">
+    <a className="skip-link" href="#main-content">Pular para o conteúdo</a>
+    {menuOpen&&<button type="button" tabIndex={-1} className="mobile-menu-backdrop" aria-label="Fechar navegação" onClick={closeMobileMenu}/>}
+    <aside id="main-nav-panel" ref={sidebarRef} className={'sidebar '+(menuOpen?'sidebar-open':'')} aria-label="Navegação principal">
+      <div className="sidebar-top">
+        <div className="brand"><span className="brand-mark"><Laptop size={22} aria-hidden="true"/></span><span>educart</span></div>
+        <button type="button" ref={closeButtonRef} className="sidebar-close" aria-label="Fechar menu lateral" onClick={closeMobileMenu}><X size={22} aria-hidden="true"/></button>
+      </div>
+      <p className="sidebar-label">GERENCIAMENTO</p>
+      <nav aria-label="Menu principal" className="nav">{nav.map(([id,label,Icon])=>
+        <button key={id} type="button" aria-current={page===id?'page':undefined} className={'nav-item '+(page===id?'selected':'')} onClick={()=>navigateTo(id)}><Icon size={19} aria-hidden="true"/>{label}</button>
+      )}</nav>
+      <div className="side-bottom">
+        <div className="account"><span className="avatar"><UserRound size={18} aria-hidden="true"/></span><span><strong>{check.data.display_name}</strong><small>Administrador da TI</small></span></div>
+        <button type="button" className="nav-item" onClick={()=>supabase.auth.signOut()}><LogOut size={18} aria-hidden="true"/> Sair</button>
+      </div>
+    </aside>
+    <main id="main-content" tabIndex={-1} className="main">
+      <header className="topbar">
+        <div className="topbar-main">
+          <button type="button" ref={menuButtonRef} className="mobile-menu-toggle" aria-controls="main-nav-panel" aria-expanded={menuOpen} aria-label="Abrir menu lateral" onClick={()=>setMenuOpen(true)}>
+            <Menu size={22} aria-hidden="true"/>
+          </button>
+          <span>Gestão dos laboratórios móveis</span>
+        </div>
+        <span className="phase-tag">Fase 1 • Cadastros</span>
+      </header>
+      <div className="content">
+        {page==='overview'?<Overview/>:page==='carts'?<CartsPage/>:page==='requesters'?<RequestersPage/>:<NotebooksPage/>}
+      </div>
+    </main>
   </div>;
 }
