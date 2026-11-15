@@ -125,6 +125,25 @@ Uma única reserva administrativa pode agrupar vários dias, mantendo registros 
 - A legenda/indicação visual distingue disponibilidade e reserva e há informação acessível sem depender somente de cores.
 - Criar ou cancelar uma reserva atualiza o estado consultado no 3D.
 
+## RF-09 — Editar reservas confirmadas
+
+O administrador pode editar uma reserva já confirmada para corrigir ou alterar o **solicitante**, o laboratório móvel/notebooks selecionados, as **datas** e os **turnos**, sem precisar recriar a reserva. A interface também poderá atualizar a indicação de mouse e as observações. O registrante original permanece identificado, e o sistema registra quem realizou cada alteração.
+
+**Regras:**
+- Antes de salvar, verificar novamente a disponibilidade dos notebooks para todas as combinações de datas e turnos resultantes. Na validação, não considerar a própria reserva como conflito consigo mesma, mas manter os bloqueios de outras reservas.
+- Se houver conflito, informar o(s) notebook(s), data(s) e turno(s) afetado(s), preservar a reserva anterior e permitir que o administrador revise a edição.
+- Aplicar alterações de equipamentos/períodos e seus bloqueios de forma indivisível: em sucesso, liberar apenas as ocupações antigas que não permaneceram e criar as novas; em erro, manter a reserva original intacta.
+- Registrar no histórico **administrador que alterou**, momento da edição e diferenças entre valores anteriores e novos (solicitante, carrinho/notebooks, datas/turnos, mouse e observações conforme aplicável).
+- Atualizar detalhes, painel, relatórios e visualização 3D após a edição bem-sucedida.
+- A regra de cancelar até o dia anterior continua válida. **Pendente de esclarecimento:** se alterações de períodos que já começaram ou cujo prazo de cancelamento passou devem ser permitidas, limitadas ou impedidas, de modo a não contornar a regra de cancelamento.
+
+**Critérios de aceitação:**
+- Alterar o solicitante sem mudar equipamentos e períodos preserva a ocupação e registra a mudança no histórico.
+- Trocar notebook, data ou turno para opção disponível atualiza a disponibilidade e o 3D sem criar duplicidade.
+- Tentar trocar para notebook já reservado por outra pessoa no mesmo dia/turno bloqueia a edição e mantém a versão anterior.
+- Ao editar uma reserva agrupada, a verificação abrange todos os dias e turnos resultantes.
+- O histórico permite identificar quem alterou e quais informações foram modificadas.
+
 ## RF-07 — Solicitações diretas pelos professores (futuro, fora da primeira entrega)
 
 Um usuário poderá solicitar uma reserva, que ficará pendente de análise. O administrador poderá aprovar ou rejeitar. Ao aprovar, o pedido passará a uma reserva efetiva mediante validação de disponibilidade. Fluxos de notificações, prioridade e bloqueio de estoque enquanto pendente ainda não estão definidos.
@@ -135,7 +154,7 @@ Um usuário poderá solicitar uma reserva, que ficará pendente de análise. O a
 2. **Mouse (decidido):** somente sinalização sim/não para a equipe de TI; não existe controle de quantidade, identificação ou disponibilidade de mouses nesta versão.
 3. **Seleção de dias (decidido):** oferecer intervalo contínuo e datas avulsas, inclusive um único dia, **apenas de segunda a sexta-feira**. Sábados e domingos são excluídos dos intervalos e não podem ser selecionados individualmente. **Feriados e dias sem aula (decidido):** não precisam de cadastro ou tratamento especial; se ocorrerem de segunda a sexta, continuam incluídos normalmente na reserva e no controle de disponibilidade.
 4. **Cancelamentos excepcionais:** o prazo até o dia anterior está definido; eventuais exceções administrativas ainda não.
-5. **Situações de reserva:** nomes exatos dos estados, permissões de edição, regras de alterações e eventual manutenção de equipamento ainda não definidos.
+5. **Situações de reserva:** está decidido que administradores podem editar reservas confirmadas com revalidação e histórico. Ainda faltam nomes exatos dos estados, limites de edição após o início do uso ou após o prazo de cancelamento, e regras de manutenção dos equipamentos.
 6. **Acesso e autenticação:** mecanismo técnico e permissões detalhadas além da responsabilidade dos dois administradores da TI ainda não definidos.
 
 ## Decisões arquiteturais relacionadas
