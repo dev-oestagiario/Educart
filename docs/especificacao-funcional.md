@@ -43,7 +43,7 @@ O administrador informa:
 2. Tipo: laboratório móvel completo ou notebooks individuais (reserva parcial).
 3. Identificador do laboratório móvel.
 4. Em reserva parcial, quantidade e identificadores dos notebooks escolhidos.
-5. Uma ou mais datas da utilização.
+5. Uma ou mais datas da utilização, selecionadas por **intervalo contínuo** (por exemplo, semana inteira ou mês inteiro) ou por **datas específicas** (por exemplo, somente segunda, quarta e sexta-feira).
 6. Turnos: matutino, vespertino e/ou noturno (qualquer combinação, inclusive três).
 7. Necessidade de mouse (sim/não), sem seleção de quantidade.
 8. Observação opcional.
@@ -73,10 +73,12 @@ O registrante fica registrado automaticamente, separado do solicitante.
 
 ## RF-03 — Agrupar reservas de múltiplos dias
 
-Uma única reserva administrativa pode agrupar vários dias, mantendo registros de ocupação por data e turno.
+Uma única reserva administrativa pode agrupar vários dias, mantendo registros de ocupação por data e turno. O administrador dispõe de duas formas de seleção: **intervalo de datas** (início e fim, para uma semana ou mês inteiros) ou **datas avulsas** (um dia ou dias não consecutivos). Antes da confirmação, deve ser possível revisar a relação exata das datas selecionadas. A inclusão ou exclusão automática de fins de semana e feriados permanece pendente de definição e não pode ocorrer silenciosamente.
 
 **Critérios de aceitação:**
 - Um cadastro de segunda a quarta/matutino aparece como uma reserva agrupada, mas ocupa os notebooks em três datas distintas.
+- O administrador pode escolher um período contínuo de uma semana ou mês, uma data única ou vários dias avulsos, sem repetir todo o formulário.
+- O sistema apresenta explicitamente todas as datas que serão reservadas, e permite revisá-las antes de confirmar.
 - O sistema aponta conflitos específicos antes de confirmar todo o conjunto.
 - É possível cancelar uma data selecionada sem cancelar automaticamente as demais datas válidas.
 - Relatórios e disponibilidade consideram os períodos efetivos, não apenas o cabeçalho da reserva agrupada.
@@ -128,7 +130,7 @@ Um usuário poderá solicitar uma reserva, que ficará pendente de análise. O a
 
 1. **Cadastro versus capacidade:** como tratar divergência entre a capacidade informada do carrinho e a lista de notebooks cadastrados; não assumir um valor fixo.
 2. **Mouse (decidido):** somente sinalização sim/não para a equipe de TI; não existe controle de quantidade, identificação ou disponibilidade de mouses nesta versão.
-3. **Seleção de dias:** confirmar se será intervalo contínuo, datas avulsas ou ambos, inclusive dias sem aula.
+3. **Seleção de dias (decidido):** oferecer tanto intervalo contínuo (incluindo semanas ou meses inteiros) quanto dias específicos, inclusive um único dia. **Ainda falta decidir:** tratamento de fins de semana, feriados e dias sem aula; nenhuma exclusão automática deve ser presumida.
 4. **Cancelamentos excepcionais:** o prazo até o dia anterior está definido; eventuais exceções administrativas ainda não.
 5. **Situações de reserva:** nomes exatos dos estados, permissões de edição, regras de alterações e eventual manutenção de equipamento ainda não definidos.
 6. **Acesso e autenticação:** mecanismo técnico e permissões detalhadas além da responsabilidade dos dois administradores da TI ainda não definidos.
