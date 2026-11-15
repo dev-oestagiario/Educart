@@ -9,6 +9,9 @@ on:
       - 'index.html'
       - 'package.json'
       - 'vite.config.ts'
+      - 'playwright.config.ts'
+      - 'vitest.config.ts'
+      - 'e2e/**'
       - '.github/workflows/pages.yml'
   workflow_dispatch:
 
@@ -41,6 +44,12 @@ jobs:
 
       - name: Executar testes
         run: npm run test
+
+      - name: Preparar Chromium para testes de navegador
+        run: npx playwright install --with-deps chromium
+
+      - name: Validar fluxos e navegacao mobile antes do deploy
+        run: npm run test:e2e
 
       - name: Compilar versao web
         env:
