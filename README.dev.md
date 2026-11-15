@@ -24,3 +24,7 @@ A aplicação já contém base de autenticação e cadastros de carrinhos, solic
 ## Importação de planilhas
 
 Na tela Notebooks, selecione um carrinho e importe CSV ou XLSX (primeira aba). A coluna pode se chamar `codigo`, `código` ou `code`; sem esse cabeçalho, a primeira coluna é usada. Revise os códigos importados antes de salvar. O limite é de 2 MB e 1.000 códigos por arquivo; dados duplicados e acima da capacidade são rejeitados. Identificadores com zeros à esquerda devem ser armazenados como texto no Excel.
+
+## Testes E2E
+
+Execute `npm run test:e2e` após `npm install` e `npx playwright install chromium`. O Playwright usa um backend **simulado**, configurado em `playwright.config.ts`, sem alterar cadastros do Supabase real. Os testes cobrem login autorizado/não autorizado, carrinhos, professores, importação CSV, duplicados e menu lateral mobile. A CI instala o Chromium e executa estes cenários. A validação de RLS com sessões reais é uma etapa separada antes do encerramento da Fase 1.

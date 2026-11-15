@@ -43,3 +43,7 @@ O administrador de TI precisa cadastrar carrinhos, professores e notebooks com p
 4. Fazer revisão do PR #10, corrigir pendências e só integrar à `main` depois da validação final.
 
 **Observação:** compilação sem erros não substitui teste visual responsivo. Os critérios só podem ser marcados como cumpridos após verificação efetiva.
+
+## Evidências automatizadas
+
+O `e2e/educart.spec.ts` usa Playwright Chromium com Supabase simulado e verifica quatro jornadas: usuário não autorizado, cadastros, importação/revisão e gaveta mobile (360px, Escape e ausência de overflow). Ainda é necessária verificação com contas reais das políticas RLS e aprovação visual num dispositivo móvel real antes da entrega final.
