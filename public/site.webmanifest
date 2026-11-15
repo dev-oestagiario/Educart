@@ -1,0 +1,17 @@
+{
+  "name": "Educart — Gestão de laboratórios móveis",
+  "short_name": "Educart",
+  "start_url": ".",
+  "scope": ".",
+  "display": "standalone",
+  "background_color": "#17131E",
+  "theme_color": "#201932",
+  "icons": [
+    {
+      "src": "./favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
