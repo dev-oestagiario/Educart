@@ -1024,10 +1024,10 @@ test('Cadastros — todas as telas abrem primeiro na listagem e oferecem criar/e
   await page.getByRole('button',{name:'Editar'}).click();
   await expect(page.getByRole('heading',{name:'Editar carrinho'})).toBeVisible();
   await expect(page.getByLabel('Capacidade de notebooks')).toHaveValue('25');
-  await page.getByLabel('Nome do laboratório móvel').fill('Laboratório Atualizado');
+  await page.getByLabel('Nome do laboratório móvel').fill('Laboratório Móvel Atualizado');
   await page.getByRole('button',{name:'Salvar alterações'}).click();
   await expect(page.getByText('Carrinho atualizado.')).toBeVisible();
-  await expect(page.getByText('Laboratório Atualizado')).toBeVisible();
+  await expect(page.getByText('Laboratório Móvel Atualizado')).toBeVisible();
   await page.getByRole('button',{name:'Cadastrar carrinho'}).click();
   await expect(page.getByLabel('Código do carrinho')).toBeVisible();
   await page.getByRole('button',{name:'Voltar para carrinhos'}).click();
@@ -1040,9 +1040,9 @@ test('Cadastros — todas as telas abrem primeiro na listagem e oferecem criar/e
   await expect(page.getByText('Professora Alfa')).toBeVisible();
   await page.getByRole('button',{name:'Editar'}).click();
   await expect(page.getByRole('heading',{name:'Editar professor'})).toBeVisible();
-  await page.getByLabel('Nome completo').fill('Professora Beta');
+  await page.getByLabel('Nome completo').fill('Professora Alfa Atualizada');
   await page.getByRole('button',{name:'Salvar alterações'}).click();
-  await expect(page.getByText('Professora Beta')).toBeVisible();
+  await expect(page.getByText('Professora Alfa Atualizada')).toBeVisible();
   await page.getByRole('button',{name:'Cadastrar professor'}).click();
   await expect(page.getByLabel('Nome completo')).toHaveValue('');
   await page.getByRole('button',{name:'Voltar para professores'}).click();
