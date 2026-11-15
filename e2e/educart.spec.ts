@@ -21,7 +21,7 @@ const token = [
 
 async function useFakeSupabase(page: Page, authorized = true) {
   const database: Record<string, Row[]> = {
-    carts: [], requesters: [], notebook_codes: [], reservations: [], reservation_periods: [], reservation_notebooks: []
+    carts: [], requesters: [], notebook_codes: [], reservations: [], reservation_periods: [], reservation_notebooks: [], reservation_events: []
   };
   await page.route('https://educart-e2e.supabase.co/**', async route => {
     const req = route.request();
@@ -48,6 +48,60 @@ async function useFakeSupabase(page: Page, authorized = true) {
     if (url.pathname.startsWith('/auth/v1/logout')) { await respond({}); return; }
     if (url.pathname === '/rest/v1/admin_users') {
       await respond(authorized ? [{user_id:ADMIN_ID,display_name:'Administrador de teste'}] : []); return;
+    }
+    if (url.pathname === '/rest/v1/rpc/cancel_reservation_period' && req.method()==='POST') {
+      const body=req.postDataJSON() as {p_period_id:string};
+      const period=database.reservation_periods.find(p=>p.id===body.p_period_id&&p.active);
+      if(!period){await respond({message:'Período não encontrado'},404);return;}
+      period.active=false;
+      for(const a of database.reservation_notebooks.filter(a=>a.period_id===period.id))a.active=false;
+      const booking=database.reservations.find(b=>b.id===period.reservation_id);
+      if(!database.reservation_periods.some(p=>p.reservation_id===period.reservation_id&&p.active)&&booking)booking.status='CANCELADA';
+      database.reservation_events.push({id:crypto.randomUUID(),reservation_id:period.reservation_id,
+        event_type:'CANCELAMENTO',admin_id:ADMIN_ID,occurred_at:new Date().toISOString(),
+        before_data:{period_id:period.id,active:true},after_data:{period_id:period.id,active:false}});
+      await respond(period.reservation_id);return;
+    }
+    if (url.pathname === '/rest/v1/rpc/cancel_reservation' && req.method()==='POST') {
+      const body=req.postDataJSON() as {p_reservation_id:string};
+      const booking=database.reservations.find(b=>b.id===body.p_reservation_id);
+      if(!booking){await respond({message:'Reserva não encontrada'},404);return;}
+      booking.status='CANCELADA';
+      for(const period of database.reservation_periods.filter(p=>p.reservation_id===booking.id))period.active=false;
+      database.reservation_events.push({id:crypto.randomUUID(),reservation_id:booking.id,
+        event_type:'CANCELAMENTO',admin_id:ADMIN_ID,occurred_at:new Date().toISOString(),
+        before_data:{status:'CONFIRMADA'},after_data:{status:'CANCELADA'}});
+      await respond(booking.id);return;
+    }
+    if (url.pathname === '/rest/v1/rpc/update_reservation' && req.method()==='POST') {
+      const body=req.postDataJSON() as {
+        p_reservation_id:string;p_requester_id:string;p_cart_id:string;p_mode:'COMPLETA'|'PARCIAL';
+        p_quantity:number;p_dates:string[];p_shifts:string[];
+        p_needs_mouse:boolean;p_notes:string|null;p_notebook_ids:string[];
+      };
+      const booking=database.reservations.find(b=>b.id===body.p_reservation_id);
+      const cart=database.carts.find(c=>c.id===body.p_cart_id);
+      if(!booking||!cart){await respond({message:'Reserva ou carrinho não encontrado'},404);return;}
+      const quantity=body.p_mode==='COMPLETA'?Number(cart.capacity):body.p_quantity;
+      for(const date of body.p_dates)for(const shift of body.p_shifts) {
+        const other=database.reservation_periods.filter(p=>p.cart_id===cart.id&&p.usage_date===date&&p.shift===shift&&p.active&&p.reservation_id!==booking.id)
+          .reduce((sum,p)=>sum+Number(p.quantity),0);
+        if(other+quantity>Number(cart.capacity)) {
+          await respond({message:'Sem disponibilidade para alterar'},409);return;
+        }
+      }
+      const previous={...booking};
+      Object.assign(booking,{requester_id:body.p_requester_id,cart_id:body.p_cart_id,mode:body.p_mode,
+        quantity,needs_mouse:body.p_needs_mouse,notes:body.p_notes});
+      for(const p of database.reservation_periods.filter(p=>p.reservation_id===booking.id))p.active=false;
+      for(const date of body.p_dates)for(const shift of body.p_shifts)database.reservation_periods.push({
+        id:crypto.randomUUID(),reservation_id:booking.id,cart_id:cart.id,
+        usage_date:date,shift,quantity,active:true
+      });
+      database.reservation_events.push({id:crypto.randomUUID(),reservation_id:booking.id,
+        event_type:'EDICAO',admin_id:ADMIN_ID,occurred_at:new Date().toISOString(),
+        before_data:previous,after_data:{...booking}});
+      await respond(booking.id);return;
     }
     if (url.pathname === '/rest/v1/rpc/create_reservation' && req.method() === 'POST') {
       const body = req.postDataJSON() as {
@@ -328,4 +382,64 @@ test('Fase 2 — datas avulsas recusam sábado e domingo', async ({page})=>{
   await page.getByRole('button',{name:'Adicionar data'}).click();
   await expect(page.getByText('Só é possível selecionar datas de segunda a sexta.')).toBeVisible();
   await expect(page.getByRole('button',{name:'Confirmar reserva'})).toBeDisabled();
+});
+
+
+test('Fase 3 — cancelamento individual preserva outro período e edição registra histórico',async({page})=>{
+  const database=await useFakeSupabase(page);
+  const cartId=crypto.randomUUID(),teacherId=crypto.randomUUID();
+  database.carts.push({id:cartId,name:'Carrinho gestão',code:'C-GESTAO',capacity:30,active:true,created_at:new Date().toISOString()});
+  database.requesters.push({id:teacherId,name:'Professor Gestão',active:true,created_at:new Date().toISOString()});
+  await login(page);
+  await page.getByRole('button',{name:'Reservas',exact:true}).click();
+
+  const monday=new Date(Date.now()+14*24*60*60*1000);
+  while(monday.getUTCDay()!==1)monday.setUTCDate(monday.getUTCDate()+1);
+  const tuesday=new Date(monday.getTime()+24*60*60*1000);
+  const start=monday.toISOString().slice(0,10),end=tuesday.toISOString().slice(0,10);
+
+  await page.getByLabel('Professor solicitante').selectOption(teacherId);
+  await page.locator('#reservation-cart').selectOption(cartId);
+  await page.locator('#reservation-start').fill(start);
+  await page.locator('#reservation-end').fill(end);
+  await page.getByRole('radio',{name:'Notebooks avulsos'}).check();
+  await page.getByLabel('Quantidade de notebooks').fill('10');
+  await page.getByRole('button',{name:'Confirmar reserva'}).click();
+  await expect(page.getByText('Reserva confirmada para todos os períodos selecionados.')).toBeVisible();
+  await expect(page.getByRole('button',{name:'Cancelar período'})).toHaveCount(2);
+
+  await page.getByRole('button',{name:'Cancelar período'}).first().click();
+  await page.getByRole('button',{name:'Confirmar cancelamento'}).click();
+  await expect(page.getByRole('button',{name:'Cancelar período'})).toHaveCount(1);
+  expect(database.reservation_periods.filter(p=>p.active)).toHaveLength(1);
+  expect(database.reservation_events.filter(e=>e.event_type==='CANCELAMENTO')).toHaveLength(1);
+
+  await page.getByRole('button',{name:'Editar',exact:true}).click();
+  await expect(page.getByRole('heading',{name:'Editar reserva'})).toBeVisible();
+  await page.getByLabel('Quantidade de notebooks').fill('5');
+  await page.getByRole('button',{name:'Salvar alterações'}).click();
+  await expect(page.getByText('Reserva editada e alteração registrada no histórico.')).toBeVisible();
+  expect(database.reservations[0].quantity).toBe(5);
+  expect(database.reservation_events.filter(e=>e.event_type==='EDICAO')).toHaveLength(1);
+});
+
+test('Fase 3 — cancelamento total desativa os períodos e preserva evento',async({page})=>{
+  const database=await useFakeSupabase(page);
+  const cartId=crypto.randomUUID(),teacherId=crypto.randomUUID(),reservationId=crypto.randomUUID();
+  database.carts.push({id:cartId,name:'Carrinho cancelamento',code:'C-CANCEL',capacity:20,active:true,created_at:new Date().toISOString()});
+  database.requesters.push({id:teacherId,name:'Professora Cancelamento',active:true,created_at:new Date().toISOString()});
+  const monday=new Date(Date.now()+14*24*60*60*1000);
+  while(monday.getUTCDay()!==1)monday.setUTCDate(monday.getUTCDate()+1);
+  database.reservations.push({id:reservationId,requester_id:teacherId,cart_id:cartId,
+    mode:'COMPLETA',quantity:20,needs_mouse:false,notes:null,status:'CONFIRMADA',created_at:new Date().toISOString()});
+  database.reservation_periods.push({id:crypto.randomUUID(),reservation_id:reservationId,
+    cart_id:cartId,usage_date:monday.toISOString().slice(0,10),shift:'MATUTINO',quantity:20,active:true});
+  await login(page);
+  await page.getByRole('button',{name:'Reservas',exact:true}).click();
+  await page.getByRole('button',{name:'Cancelar reserva'}).click();
+  await page.getByRole('button',{name:'Confirmar cancelamento'}).click();
+  await expect(page.getByText(/Cancelamento registrado/)).toBeVisible();
+  expect(database.reservations[0].status).toBe('CANCELADA');
+  expect(database.reservation_periods[0].active).toBe(false);
+  expect(database.reservation_events.some(e=>e.event_type==='CANCELAMENTO')).toBe(true);
 });
