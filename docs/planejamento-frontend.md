@@ -38,7 +38,7 @@ O administrador de TI precisa cadastrar carrinhos, professores e notebooks com p
 ## Próximas etapas da Fase 1
 
 1. Validar a navegação e os formulários no celular; registrar regressão E2E com Playwright, incluindo viewport mobile.
-2. Concluir importação XLSX com leitura segura, visualização dos códigos e validação de duplicados/capacidade antes de salvar.
+2. Importação XLSX em implementação: leitura apenas da primeira aba, lista editável de códigos, limites de tamanho, detecção de duplicação e verificação da capacidade antes de salvar. Aguardar CI e teste no navegador.
 3. Completar testes E2E autenticados, verificações de RLS e mensagens de falha de rede.
 4. Fazer revisão do PR #10, corrigir pendências e só integrar à `main` depois da validação final.
 

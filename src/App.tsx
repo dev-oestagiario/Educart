@@ -6,7 +6,7 @@ import { create } from 'zustand';
 import { supabase, isConfigured, type Cart, type Requester, type Notebook } from './lib/supabase';
 import { cartSchema, errorMessage, notebookSchema, requesterSchema, validateCodes } from './lib/validation';
 import { configuredCapacity } from './lib/capacity';
-import { parseCsvCodes } from './lib/importCsv';
+import { parseImportFile } from './lib/importSpreadsheet';
 
 type Page = 'overview' | 'carts' | 'requesters' | 'notebooks';
 const useUi = create<{page:Page; setPage:(page:Page)=>void; cartId:string; setCartId:(id:string)=>void}>()(
@@ -139,6 +139,7 @@ function NotebooksPage() {
   const {cartId,setCartId}=useUi();const notebooks=useQuery({queryKey:['notebooks'],queryFn:()=>fetchRows<Notebook>('notebook_codes')});
   const [codes,setCodes]=useState(''),[notice,setNotice]=useState(''),[generateCount,setGenerateCount]=useState('5');
   const currentCart=carts.data?.find(c=>c.id===cartId);const existing=notebooks.data?.filter(n=>n.cart_id===cartId&&n.active)||[];
+  const previewCount=codes.split(/\r?\n/).filter(line=>line.trim()).length;
   const mutation=useMutation({mutationFn:async (values:string[])=>{
     const {error}=await supabase.from('notebook_codes').insert(values.map(code=>({code,cart_id:cartId})));
     if(error)throw error;
@@ -166,17 +167,16 @@ function NotebooksPage() {
   }
   async function upload(e:ChangeEvent<HTMLInputElement>){
     const file=e.target.files?.[0];if(!file)return;
-    if(!file.name.toLowerCase().endsWith('.csv')){setNotice('Escolha um arquivo CSV.');e.target.value='';return;}
-    if(file.size>1_000_000){setNotice('O arquivo CSV deve ter no máximo 1 MB.');e.target.value='';return;}
-    try{
-      const parsed=parseCsvCodes(await file.text());
-      setCodes(parsed.join('\n'));
-      const valid=validateCodes(parsed.join('\n'));
+    setNotice('');
+    try {
+      const values=await parseImportFile(file);
+      const valid=validateCodes(values.join('\n'));
       const registered=new Set((notebooks.data??[]).map(x=>x.code.toLocaleLowerCase('pt-BR')));
       const duplicate=valid.find(code=>registered.has(code.toLocaleLowerCase('pt-BR')));
-      if(duplicate)setNotice(`O código ${duplicate} já está cadastrado. Corrija antes de salvar.`);
+      setCodes(valid.join('\n'));
+      if(duplicate)setNotice('O código '+duplicate+' já está cadastrado. Corrija antes de salvar.');
       else if(existing.length+valid.length>(currentCart?.capacity??0))setNotice('A importação excede a capacidade do carrinho. Corrija antes de salvar.');
-      else setNotice('Revise os códigos importados antes de cadastrar.');
+      else setNotice('Importados '+valid.length+' código(s). Revise a lista antes de salvar.');
     }catch(err){setNotice(errorMessage(err));}
     e.target.value='';
   }
@@ -188,8 +188,10 @@ function NotebooksPage() {
       <form onSubmit={save} className="form-stack">
         <label className="field" htmlFor="codes"><span>Códigos (um por linha)</span><textarea id="codes" rows={7} value={codes} onChange={e=>setCodes(e.target.value)} placeholder="NT-001&#10;NT-002"/></label>
         <div className="actions"><label className="field compact" htmlFor="generate-count"><span>Gerar quantidade</span><input id="generate-count" type="number" min={1} max={200} value={generateCount} onChange={e=>setGenerateCount(e.target.value)}/></label><button className="secondary" type="button" onClick={generate}>Gerar códigos</button></div>
-        <label className="file-label" htmlFor="csv-import">Importar CSV com coluna <code>codigo</code> <input id="csv-import" accept=".csv,text/csv" type="file" onChange={upload}/></label>
-        {notice&&<Notice kind={notice==='Códigos cadastrados.'||notice.startsWith('Revise')?'success':'error'} message={notice}/>}
+        <label className="file-label" htmlFor="csv-import">Importar CSV ou XLSX (coluna <code>codigo</code>) <input id="csv-import" accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" type="file" onChange={upload}/></label>
+        <p className="form-hint">Planilhas: primeira aba, coluna “codigo”, “código” ou “code”. Para códigos com zeros à esquerda, formate a coluna como texto no Excel.</p>
+        {previewCount>0&&<p role="status" className="form-hint"><strong>Prévia: {previewCount} código(s).</strong> Você pode revisar e editar antes de cadastrar.</p>}
+        {notice&&<Notice kind={notice==='Códigos cadastrados.'||notice.startsWith('Importados')?'success':'error'} message={notice}/>}
         <button className="primary" disabled={mutation.isPending}>{mutation.isPending?'Salvando…':'Salvar códigos revisados'}</button>
       </form></section><section className="panel"><h2>Identificadores deste carrinho</h2>
         {notebooks.isLoading?<p>Carregando…</p>:notebooks.error?<Notice message={errorMessage(notebooks.error)}/>:existing.length===0?<p className="empty">Nenhum identificador registrado. A capacidade continua sendo {currentCart?.capacity??0}.</p>:

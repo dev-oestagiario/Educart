@@ -17,6 +17,10 @@ A migração cria a tabela `public.admin_users`, mas **não cria usuários**. O 
 
 ## Limites da fase
 
-A aplicação já contém base de autenticação e cadastros de carrinhos, solicitantes e notebooks, com geração e importação **CSV** com revisão, validação e suporte a colunas com cabeçalho `codigo`/`código`/`code`. A quantidade de códigos não altera a capacidade configurada. A função de reservas e a visualização 3D ainda pertencem a fases posteriores.
+A aplicação já contém base de autenticação e cadastros de carrinhos, solicitantes e notebooks, com geração e importação **CSV/XLSX** com revisão, validação e suporte a colunas com cabeçalho `codigo`/`código`/`code`. A quantidade de códigos não altera a capacidade configurada. A função de reservas e a visualização 3D ainda pertencem a fases posteriores.
 
-**Verificações:** o PR #10 já executou build e testes unitários com sucesso no GitHub Actions; novas alterações devem passar pela mesma CI. O registro npm permanece inacessível no ambiente local utilizado. Ainda faltam testes E2E, provisionamento dos administradores reais e validação de permissões com sessões reais. Não disponibilizar em produção antes disso.
+**Verificações:** o PR #10 já executou build e testes unitários com sucesso no GitHub Actions; novas alterações devem passar pela mesma CI. O registro npm permanece inacessível no ambiente local utilizado. O administrador inicial foi provisionado após confirmação do e-mail. Testes E2E usam respostas simuladas (sem credenciais reais); a validação de permissões com sessões reais e a aprovação visual em dispositivos continuam necessárias. Não disponibilizar em produção antes disso.
+
+## Importação de planilhas
+
+Na tela Notebooks, selecione um carrinho e importe CSV ou XLSX (primeira aba). A coluna pode se chamar `codigo`, `código` ou `code`; sem esse cabeçalho, a primeira coluna é usada. Revise os códigos importados antes de salvar. O limite é de 2 MB e 1.000 códigos por arquivo; dados duplicados e acima da capacidade são rejeitados. Identificadores com zeros à esquerda devem ser armazenados como texto no Excel.
