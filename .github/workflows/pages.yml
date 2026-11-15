@@ -1,9 +1,9 @@
-name: Publicar previa web do Educart — Redesign de reservas
+name: Publicar previa web do Educart — Redesign dos cadastros
 
 on:
   push:
     branches:
-      - feat/ux-reservas-calendario
+      - feat/ux-cadastros-listagem
     paths:
       - 'src/**'
       - 'index.html'
