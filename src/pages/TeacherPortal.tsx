@@ -13,7 +13,11 @@ function firstWeekday(){
   return day;
 }
 const firstDay=firstWeekday();
-const explain=(error:unknown)=>error instanceof Error?error.message:'Não foi possível concluir a operação.';
+const explain=(error:unknown)=>{
+  if(error instanceof Error)return error.message;
+  if(error && typeof error==='object' && 'message' in error && typeof error.message==='string')return error.message;
+  return 'Não foi possível concluir a operação.';
+};
 
 export default function TeacherPortal({requesterId,email,onLogout}:Props){
   const qc=useQueryClient();

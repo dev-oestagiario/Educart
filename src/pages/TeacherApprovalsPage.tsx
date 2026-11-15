@@ -6,7 +6,11 @@ import {shiftLabel,showDate,type Shift} from '../lib/reservations';
 import {requestStatusLabel,type TeacherRequest} from '../lib/teacherRequests';
 
 type TeacherLink={user_id:string;requester_id:string;requester_name:string;email:string;active:boolean};
-const explain=(err:unknown)=>err instanceof Error?err.message:'Operação não concluída.';
+const explain=(err:unknown)=>{
+  if(err instanceof Error)return err.message;
+  if(err && typeof err==='object' && 'message' in err && typeof err.message==='string')return err.message;
+  return 'Não foi possível concluir a operação.';
+};
 
 async function rows<T>(table:'requesters'|'carts'):Promise<T[]>{
   const {data,error}=await supabase.from(table).select('*').eq('active',true).order('name');
@@ -76,7 +80,7 @@ export default function TeacherApprovalsPage(){
       setMessage({kind:'success',text:approved?'Solicitação aprovada e reserva confirmada.':'Solicitação rejeitada; disponibilidade inalterada.'});
       refresh();
     },
-    onError:err=>setMessage({kind:'error',text:'Não foi possível concluir a decisão: '+explain(err)+'. O pedido permanece pendente.'})
+    onError:err=>setMessage({kind:'error',text:'Não foi possível concluir a decisão: '+explain(err)+' O pedido permanece pendente.'})
   });
   const pending=(requests.data??[]).filter(x=>x.status==='PENDENTE').length;
   const displayed=(requests.data??[]).filter(x=>filter==='TODAS'||x.status==='PENDENTE');
