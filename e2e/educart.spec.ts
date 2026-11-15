@@ -748,7 +748,7 @@ test('Fase 7 — admin recebe aviso, marca como lido e abre solicitações',asyn
   await expect(page.getByText('Nova solicitação de reserva')).toBeVisible();
   await page.getByRole('button',{name:'Marcar como lida',exact:true}).click();
   await expect(page.getByText('0 notificação(ões) não lida(s)')).toBeVisible();
-  await expect(page.getByRole('button',{name:'Notificações',exact:true})).toBeVisible();
+  await expect(page.locator('.notifications-trigger')).toBeVisible();
   expect(db.user_notifications[0].read_at).not.toBeNull();
   await page.getByRole('button',{name:'Abrir solicitações'}).click();
   await expect(page.getByRole('heading',{name:'Solicitações de professores'})).toBeVisible();
@@ -801,7 +801,7 @@ test('Fase 7 — não é possível marcar notificação de outro usuário',async
     created_at:new Date().toISOString()
   });
   await login(page);
-  await page.getByRole('button',{name:'Notificações',exact:true}).click();
+  await page.locator('.notifications-trigger').click();
   await expect(page.getByText('Não há notificações ainda. As atualizações aparecerão aqui quando houver solicitações ou decisões da TI.')).toBeVisible();
   expect(db.user_notifications[0].read_at).toBeNull();
 });
