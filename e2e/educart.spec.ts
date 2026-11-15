@@ -503,3 +503,48 @@ test('Fase 4 — calendário responsivo sem rolagem horizontal',async({page})=>{
   await page.locator('#calendar-mode').selectOption('mes');
   await expect(page.locator('.calendar-grid')).toBeVisible();
 });
+
+
+test('Fase 5 — ocupação 3D mantém capacidade e revela detalhes também via lista',async({page})=>{
+  const db=await useFakeSupabase(page);
+  const cartId=crypto.randomUUID(),teacherId=crypto.randomUUID();
+  const periodId=crypto.randomUUID(),bookingId=crypto.randomUUID(), notebookId=crypto.randomUUID();
+  const date=new Date(Date.now()+14*86400000);
+  while(date.getUTCDay()===0||date.getUTCDay()===6)date.setUTCDate(date.getUTCDate()+1);
+  const day=date.toISOString().slice(0,10);
+  db.carts.push({id:cartId,name:'Carrinho 3D',code:'TRINTA',capacity:30,active:true});
+  db.requesters.push({id:teacherId,name:'Professora 3D',active:true});
+  db.notebook_codes.push({id:notebookId,cart_id:cartId,code:'NT-CONHECIDO',active:true});
+  db.reservations.push({id:bookingId,requester_id:teacherId,cart_id:cartId,needs_mouse:true,notes:'Separar acessórios'});
+  db.reservation_periods.push({id:periodId,reservation_id:bookingId,cart_id:cartId,usage_date:day,shift:'MATUTINO',quantity:10,active:true});
+  db.reservation_notebooks.push({id:crypto.randomUUID(),period_id:periodId,notebook_id:notebookId,active:true});
+  await login(page);
+  await page.getByRole('button',{name:'Visualização 3D',exact:true}).click();
+  await expect(page.getByRole('heading',{name:'Laboratório móvel em 3D'})).toBeVisible();
+  await page.locator('#visual-cart').selectOption(cartId);
+  await page.locator('#visual-date').fill(day);
+  await page.locator('#visual-shift').selectOption('MATUTINO');
+  const stats=page.locator('.visual3d-stats');
+  await expect(stats.getByText('Capacidade configurada').locator('..').locator('strong')).toHaveText('30');
+  await expect(stats.getByText('Reservados').locator('..').locator('strong')).toHaveText('10');
+  await expect(stats.getByText('Disponíveis').locator('..').locator('strong')).toHaveText('20');
+  await expect(page.locator('.visual3d-slot')).toHaveCount(30);
+  await page.getByLabel('Exibir modelo 3D').uncheck();
+  await page.locator('.visual3d-slot').filter({hasText:'NT-CONHECIDO'}).click();
+  await expect(page.locator('.visual3d-details')).toContainText('Professora 3D');
+  await expect(page.locator('.visual3d-details')).toContainText('Confirmada');
+  await expect(page.locator('.visual3d-details')).toContainText('Separar acessórios');
+});
+
+test('Fase 5 — navegação mobile e alternativa textual sem WebGL',async({page})=>{
+  await page.setViewportSize({width:360,height:780});
+  const db=await useFakeSupabase(page);
+  db.carts.push({id:'cart-mobile',name:'Carrinho mobile',code:'C-M',capacity:4,active:true});
+  await login(page);
+  await page.getByRole('button',{name:'Abrir menu lateral'}).click();
+  await page.getByRole('navigation',{name:'Menu principal'}).getByRole('button',{name:'Visualização 3D'}).click();
+  await page.locator('#visual-cart').selectOption('cart-mobile');
+  await page.getByLabel('Exibir modelo 3D').uncheck();
+  await expect(page.locator('.visual3d-slot')).toHaveCount(4);
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=document.documentElement.clientWidth+1)).toBe(true);
+});
