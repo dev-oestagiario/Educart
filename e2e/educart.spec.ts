@@ -1,4 +1,5 @@
 import { XLSX_FIXTURE_BASE64 } from './fixtures/workbook';
+import { mkdir } from 'node:fs/promises';
 import { expect, test, type Page } from '@playwright/test';
 
 type Row = Record<string, unknown>;
@@ -186,6 +187,7 @@ test('layout responsivo, navegação e área de toque em seis larguras', async (
   await login(page);
   await expect(page.getByRole('heading', {name:'Visão geral'})).toBeVisible();
 
+  await mkdir('test-results/screenshots',{recursive:true});
   for(const width of [320,360,390,768,1024,1280]) {
     await page.setViewportSize({width, height:800});
     const opener=page.getByRole('button',{name:'Abrir menu lateral'});
@@ -210,7 +212,7 @@ test('layout responsivo, navegação e área de toque em seis larguras', async (
       document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1
     );
     expect(noOverflow, 'A tela não deve gerar rolagem horizontal em '+width+'px').toBe(true);
-    const screenshot=await page.screenshot({fullPage:true,animations:'disabled'});
+    const screenshot=await page.screenshot({path:`test-results/screenshots/educart-${width}px.png`,fullPage:true,animations:'disabled'});
     await testInfo.attach('educart-'+width+'px',{body:screenshot,contentType:'image/png'});
   }
 });
