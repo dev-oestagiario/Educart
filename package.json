@@ -19,7 +19,8 @@
     "react-dom": "19.2.0",
     "zod": "4.1.12",
     "zustand": "5.0.8",
-    "read-excel-file": "9.3.14"
+    "read-excel-file": "9.3.14",
+    "jspdf": "3.0.3"
   },
   "devDependencies": {
     "@tailwindcss/vite": "4.1.14",
