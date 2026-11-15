@@ -699,8 +699,9 @@ test('Fase 6 — professor vinculado envia e retira pedido, sem ocupar capacidad
   db.requesters.push({id:teacherId,name:'Professora Vinculada',active:true});
   db.teacher_account_links.push({user_id:ADMIN_ID,requester_id:teacherId,active:true});
   await login(page);
-  await expect(page.getByRole('heading',{name:'Solicitar laboratório móvel'})).toBeVisible();
+  await expect(page.getByRole('heading',{name:'Pedidos de reserva'})).toBeVisible();
   await expect(page.getByRole('button',{name:'Solicitações'})).toHaveCount(0);
+  await page.getByRole('button',{name:'Nova solicitação'}).click();
   await page.locator('#teacher-cart').selectOption(cartId);
   await page.locator('#teacher-quantity').fill('7');
   const d=new Date(Date.now()+14*86400000);
@@ -733,6 +734,8 @@ test('Fase 6 — TI vincula conta e aprova pedido gerando reserva',async({page})
   await login(page);
   await page.getByRole('button',{name:'Solicitações',exact:true}).click();
   await expect(page.getByRole('heading',{name:'Solicitações de professores'})).toBeVisible();
+  await page.getByRole('button',{name:'Vincular conta'}).click();
+  await expect(page.getByRole('heading',{name:'Vincular conta de professor'})).toBeVisible();
   await page.locator('#teacher-link-requester').selectOption(teacherId);
   await page.locator('#teacher-link-email').fill('professora@escola.example');
   await page.getByRole('button',{name:'Vincular professor'}).click();
@@ -813,7 +816,7 @@ test('Fase 7 — professor recebe decisão somente na própria caixa e volta ao 
     read_at:null,created_at:new Date().toISOString()
   });
   await login(page);
-  await expect(page.getByRole('heading',{name:'Solicitar laboratório móvel'})).toBeVisible();
+  await expect(page.getByRole('heading',{name:'Pedidos de reserva'})).toBeVisible();
   await page.getByRole('button',{name:/Notificações, 2 não lidas/}).click();
   await expect(page.getByRole('heading',{name:'Notificações'})).toBeVisible();
   await expect(page.getByText('Solicitação aprovada')).toBeVisible();
@@ -824,7 +827,7 @@ test('Fase 7 — professor recebe decisão somente na própria caixa e volta ao 
   expect(db.user_notifications.filter(x=>x.recipient_user_id===ADMIN_ID).every(x=>x.read_at!==null)).toBe(true);
   expect(db.user_notifications.find(x=>x.title==='Aviso de outra pessoa')?.read_at).toBeNull();
   await page.getByRole('button',{name:'Voltar ao portal'}).click();
-  await expect(page.getByRole('heading',{name:'Solicitar laboratório móvel'})).toBeVisible();
+  await expect(page.getByRole('heading',{name:'Pedidos de reserva'})).toBeVisible();
   const noOverflow=await page.evaluate(()=>
     document.documentElement.scrollWidth<=document.documentElement.clientWidth+1);
   expect(noOverflow).toBe(true);
@@ -865,7 +868,8 @@ test('Fase 8 — professor consulta saldo sem códigos físicos e sem contar pen
   });
   await page.setViewportSize({width:360,height:780});
   await login(page);
-  await expect(page.getByRole('heading',{name:'Solicitar laboratório móvel'})).toBeVisible();
+  await expect(page.getByRole('heading',{name:'Pedidos de reserva'})).toBeVisible();
+  await page.getByRole('button',{name:'Nova solicitação'}).click();
   await page.locator('#teacher-cart').selectOption(cartId);
   await page.locator('#teacher-start').fill(day);
   await page.locator('#teacher-end').fill(day);
@@ -901,6 +905,7 @@ test('Fase 8 — sem reservas confirmadas, capacidade permanece 30 e pedidos pen
     created_at:new Date().toISOString()
   });
   await login(page);
+  await page.getByRole('button',{name:'Nova solicitação'}).click();
   await page.locator('#teacher-cart').selectOption(cartId);
   await page.locator('#teacher-start').fill(day);
   await page.locator('#teacher-end').fill(day);
@@ -922,6 +927,7 @@ test('Fase 8 — indisponibilidade da consulta não inventa saldo nem bloqueia o
       'access-control-allow-origin':'*','content-type':'application/json'
     },json:{message:'Serviço temporariamente indisponível'}}));
   await login(page);
+  await page.getByRole('button',{name:'Nova solicitação'}).click();
   await page.locator('#teacher-cart').selectOption(cartId);
   await expect(page.getByRole('alert')).toContainText('Não foi possível consultar o saldo agora');
   await expect(page.getByRole('button',{name:'Enviar solicitação para aprovação'})).toBeEnabled();
@@ -1079,4 +1085,35 @@ test('Cadastros — formulário não invade a listagem em telas pequenas',async(
       expect(noOverflow,'Sem rolagem horizontal em '+section+' a '+width+'px').toBe(true);
     }
   }
+});
+
+
+test('Cadastro de vínculos — formulário separado e retorno à lista da TI',async({page})=>{
+  const db=await useFakeSupabase(page);
+  db.requesters.push({id:crypto.randomUUID(),name:'Professor de teste',active:true});
+  await login(page);
+  await page.getByRole('button',{name:'Solicitações',exact:true}).click();
+  await expect(page.getByRole('heading',{name:'Solicitações de professores'})).toBeVisible();
+  await expect(page.locator('#teacher-link-email')).toHaveCount(0);
+  await page.getByRole('button',{name:'Vincular conta'}).click();
+  await expect(page.locator('#teacher-link-email')).toBeVisible();
+  await expect(page.getByRole('heading',{name:'Solicitações de professores'})).toHaveCount(0);
+  await page.getByRole('button',{name:'Voltar para solicitações'}).click();
+  await expect(page.getByRole('heading',{name:'Solicitações de professores'})).toBeVisible();
+  await expect(page.locator('#teacher-link-email')).toHaveCount(0);
+});
+test('Portal do professor — listagem inicial, formulário só sob demanda',async({page})=>{
+  const db=await useFakeSupabase(page,false);
+  const requesterId=crypto.randomUUID();
+  db.requesters.push({id:requesterId,name:'Professor Listagem',active:true});
+  db.teacher_account_links.push({user_id:ADMIN_ID,requester_id:requesterId,active:true});
+  await login(page);
+  await expect(page.getByRole('heading',{name:'Pedidos de reserva'})).toBeVisible();
+  await expect(page.locator('#teacher-cart')).toHaveCount(0);
+  await page.getByRole('button',{name:'Nova solicitação'}).click();
+  await expect(page.getByRole('heading',{name:'Solicitar laboratório móvel'})).toBeVisible();
+  await expect(page.locator('#teacher-cart')).toBeVisible();
+  await page.getByRole('button',{name:'Voltar para solicitações'}).click();
+  await expect(page.getByRole('heading',{name:'Pedidos de reserva'})).toBeVisible();
+  await expect(page.locator('#teacher-cart')).toHaveCount(0);
 });
