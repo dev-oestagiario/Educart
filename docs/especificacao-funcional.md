@@ -135,7 +135,9 @@ O administrador pode editar uma reserva já confirmada para corrigir ou alterar 
 - Aplicar alterações de equipamentos/períodos e seus bloqueios de forma indivisível: em sucesso, liberar apenas as ocupações antigas que não permaneceram e criar as novas; em erro, manter a reserva original intacta.
 - Registrar no histórico **administrador que alterou**, momento da edição e diferenças entre valores anteriores e novos (solicitante, carrinho/notebooks, datas/turnos, mouse e observações conforme aplicável).
 - Atualizar detalhes, painel, relatórios e visualização 3D após a edição bem-sucedida.
-- A regra de cancelar até o dia anterior continua válida. **Pendente de esclarecimento:** se alterações de períodos que já começaram ou cujo prazo de cancelamento passou devem ser permitidas, limitadas ou impedidas, de modo a não contornar a regra de cancelamento.
+- **Edições administrativas são permitidas no próprio dia da utilização**, inclusive correções no solicitante, nos notebooks, no carrinho, nos turnos, no indicador de mouse e nas observações, desde que a disponibilidade seja revalidada e o histórico seja preservado. A edição não é bloqueada apenas por ocorrer na data reservada.
+- **Cancelamento total segue permitido somente até o dia anterior** à utilização. A ação de editar não pode ser usada para encerrar integralmente uma reserva do próprio dia como forma de contornar essa restrição; uma troca ou correção de equipamentos no próprio dia permanece permitida, com trilha de auditoria.
+- **Pendente:** tratamento de alterações retroativas de datas já transcorridas, que não foi definido na entrevista.
 
 **Critérios de aceitação:**
 - Alterar o solicitante sem mudar equipamentos e períodos preserva a ocupação e registra a mudança no histórico.
@@ -143,6 +145,8 @@ O administrador pode editar uma reserva já confirmada para corrigir ou alterar 
 - Tentar trocar para notebook já reservado por outra pessoa no mesmo dia/turno bloqueia a edição e mantém a versão anterior.
 - Ao editar uma reserva agrupada, a verificação abrange todos os dias e turnos resultantes.
 - O histórico permite identificar quem alterou e quais informações foram modificadas.
+- No próprio dia da reserva, o administrador consegue trocar o notebook por outro disponível e corrigir o professor responsável; o sistema registra o antes/depois e não permite conflito.
+- No próprio dia, cancelar a reserva inteira continua bloqueado pela regra específica de cancelamento.
 
 ## RF-07 — Solicitações diretas pelos professores (futuro, fora da primeira entrega)
 
@@ -154,7 +158,7 @@ Um usuário poderá solicitar uma reserva, que ficará pendente de análise. O a
 2. **Mouse (decidido):** somente sinalização sim/não para a equipe de TI; não existe controle de quantidade, identificação ou disponibilidade de mouses nesta versão.
 3. **Seleção de dias (decidido):** oferecer intervalo contínuo e datas avulsas, inclusive um único dia, **apenas de segunda a sexta-feira**. Sábados e domingos são excluídos dos intervalos e não podem ser selecionados individualmente. **Feriados e dias sem aula (decidido):** não precisam de cadastro ou tratamento especial; se ocorrerem de segunda a sexta, continuam incluídos normalmente na reserva e no controle de disponibilidade.
 4. **Cancelamentos excepcionais:** o prazo até o dia anterior está definido; eventuais exceções administrativas ainda não.
-5. **Situações de reserva:** está decidido que administradores podem editar reservas confirmadas com revalidação e histórico. Ainda faltam nomes exatos dos estados, limites de edição após o início do uso ou após o prazo de cancelamento, e regras de manutenção dos equipamentos.
+5. **Situações de reserva:** está decidido que administradores podem editar reservas confirmadas inclusive no próprio dia da utilização, sempre com revalidação e histórico. O cancelamento total do próprio dia permanece bloqueado. Ainda faltam nomes exatos dos estados, tratamento de edição retroativa após a data de uso e regras de manutenção dos equipamentos.
 6. **Acesso e autenticação:** mecanismo técnico e permissões detalhadas além da responsabilidade dos dois administradores da TI ainda não definidos.
 
 ## Decisões arquiteturais relacionadas
