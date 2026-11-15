@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useState, type FormEvent, type ChangeEvent } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { BookOpen, Boxes, ClipboardList, Laptop, LogOut, ShieldCheck, UserRound, UserRoundPlus } from 'lucide-react';
@@ -138,7 +138,7 @@ function NotebooksPage() {
       mutation.mutate(values,{onError:err=>setNotice(errorMessage(err))});
     }catch(err){setNotice(errorMessage(err));}
   }
-  async function upload(e:React.ChangeEvent<HTMLInputElement>){
+  async function upload(e:ChangeEvent<HTMLInputElement>){
     const file=e.target.files?.[0];if(!file)return;
     if(!file.name.toLowerCase().endsWith('.csv')){setNotice('Escolha um arquivo CSV.');e.target.value='';return;}
     try{const parsed=parseCsvCodes(await file.text());setCodes(parsed.join('\n'));setNotice('Revise os códigos importados antes de cadastrar.');}
