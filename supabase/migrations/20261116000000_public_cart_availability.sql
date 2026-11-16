@@ -17,7 +17,7 @@ set search_path = ''
 as $$
   with dates as (
     select d::date as day
-    from generate_series(p_start::timestamp, p_end::timestamp, interval '1 day') as d
+    from generate_series(p_start::timestamp, least(p_end, p_start + 34)::timestamp, interval '1 day') as d
     where (p_end - p_start) between 0 and 34
   ), shifts(shift_name) as (
     values ('MATUTINO'::text), ('VESPERTINO'::text), ('NOTURNO'::text)
