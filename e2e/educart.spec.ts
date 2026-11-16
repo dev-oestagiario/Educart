@@ -1448,3 +1448,30 @@ test('Consulta pública — acesso sem conta, disponibilidade e alternância de 
   await page.getByRole('link',{name:'Acesso ao sistema'}).click();
   await expect(page.getByLabel('E-mail')).toBeVisible();
 });
+
+test('Consulta pública — atualizar fica ao lado dos três filtros no desktop',async({page})=>{
+  await useFakeSupabase(page,false);
+  await page.setViewportSize({width:1440,height:900});
+  await page.goto('/#/consulta-publica');
+  const filter=page.locator('#public-cart');
+  const action=page.getByRole('button',{name:'Atualizar disponibilidade'});
+  await expect(filter).toBeVisible();
+  await expect(action).toBeVisible();
+  for(const width of [1440,1280,1024]){
+    await page.setViewportSize({width,height:900});
+    const filterBox=await filter.boundingBox();
+    const buttonBox=await action.boundingBox();
+    expect(filterBox).not.toBeNull();
+    expect(buttonBox).not.toBeNull();
+    expect(Math.abs((buttonBox?.y??0)+(buttonBox?.height??0)-(filterBox?.y??0)-(filterBox?.height??0)),
+      'O botão e o filtro devem compartilhar a mesma linha de base em '+width+'px').toBeLessThanOrEqual(4);
+    expect(buttonBox!.x,'O botão deve estar à direita dos filtros').toBeGreaterThan(filterBox!.x+filterBox!.width-2);
+  }
+  await page.setViewportSize({width:375,height:812});
+  const mobileFilter=await filter.boundingBox();
+  const mobileButton=await action.boundingBox();
+  expect(mobileFilter).not.toBeNull();
+  expect(mobileButton).not.toBeNull();
+  expect(mobileButton!.y).toBeGreaterThanOrEqual(mobileFilter!.y+mobileFilter!.height);
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=document.documentElement.clientWidth+1)).toBe(true);
+});
