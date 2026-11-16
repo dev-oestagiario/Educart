@@ -8,6 +8,7 @@ import {errorMessage} from './lib/validation';
 import { configuredCapacity } from './lib/capacity';
 import NotificationBell from './components/NotificationBell';
 import BrandLogo from './components/BrandLogo';
+import ThemeToggle from './components/ThemeToggle';
 
 const CartsPage = lazy(()=>import('./pages/CartsPage'));
 const RequestersPage = lazy(()=>import('./pages/RequestersPage'));
@@ -68,7 +69,7 @@ function Login({onLogin}:{onLogin:()=>void}) {
     } finally {setBusy(false)}
   }
   return <div className="auth-shell"><section className="auth-panel">
-    <BrandLogo tone="light"/>
+    <div className="auth-theme-bar"><BrandLogo tone="light"/><ThemeToggle/></div>
     <div className="auth-intro"><span className="eyebrow">PLATAFORMA EDUCACIONAL</span>
       <h1>{mode==='signup'?'Criar conta no Educart':'Acesso ao Educart'}</h1>
       <p>{mode==='signup'?'Cadastre seu e-mail. A TI autoriza o acesso de professor ou administrador depois da confirmação da conta.':'Entre com sua conta para acessar o painel da TI ou o portal do professor.'}</p></div>
@@ -238,7 +239,7 @@ export default function App() {
           </button>
           <span>Gestão dos laboratórios móveis</span>
         </div>
-        <div className="topbar-actions"><span className="phase-tag">Gestão de laboratórios</span>
+        <div className="topbar-actions"><span className="phase-tag">Gestão de laboratórios</span><ThemeToggle/>
           <NotificationBell userId={session.user.id} onOpen={()=>navigateTo('notifications')}/></div>
       </header>
       <div className="content">
