@@ -1,9 +1,9 @@
-name: Publicar Educart — agenda PDF de reservas
+name: Publicar Educart — consulta pública e temas
 
 on:
   push:
     branches:
-      - feat/relatorio-agenda-senai
+      - feat/consulta-publica-carrinhos
     paths:
       - 'src/**'
       - 'index.html'
