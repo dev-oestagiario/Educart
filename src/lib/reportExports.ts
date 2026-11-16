@@ -1,3 +1,5 @@
+import {showDate} from './reservations';
+
 export type ReportRow={
   date:string;shift:string;cart:string;requester:string;mode:string;
   quantity:number;needsMouse:boolean;status:string;createdBy:string;notes:string
@@ -25,7 +27,6 @@ export function downloadCsv(rows:ReportRow[],basename='educart-relatorio'):void{
   URL.revokeObjectURL(url);
 }
 
-import {showDate} from './reservations';
 
 export type AgendaEntry={
   shift:string;
@@ -68,7 +69,10 @@ export function buildAgendaReport(rows:readonly ReportRow[],dates:readonly strin
   const days:AgendaDay[]=dates.map(iso=>{
     const date=new Date(iso+'T12:00:00Z');
     const weekday=weekdayNames[date.getUTCDay()];
-    const records=indexed.get(showDate(iso))??[];
+    const shiftOrder=['Manhã','Tarde','Noite'];
+    const records=[...(indexed.get(showDate(iso))??[])].sort((a,b)=>
+      shiftOrder.indexOf(a.shift)-shiftOrder.indexOf(b.shift)
+    );
     const entries:AgendaEntry[]=records.flatMap(row=>{
       const suffix=row.mode==='Parcial'?' ('+row.quantity+' notebooks)':'';
       const cancelled=row.status.toLocaleLowerCase('pt-BR')==='cancelada';
@@ -199,14 +203,14 @@ export async function downloadPdf(
   for(const item of report.counts){
     pdf.setFont('helvetica','normal');pdf.setTextColor(...ink);
     pdf.text(item.weekday+':',summaryLeft,y);
-    pdf.text(item.value+' item(ns)',summaryValue,y);
+    pdf.text(item.value+' '+(item.value===1?'registro':'registros'),summaryValue,y);
     y+=18;
   }
   pdf.setDrawColor(...purple);
   pdf.line(summaryLeft-5,y-7,summaryValue+150,y-7);
   pdf.setFont('helvetica','bold');pdf.setFontSize(10);
   pdf.text('Total Geral:',summaryLeft,y+7);
-  pdf.text(report.total+' item(ns)',summaryValue,y+7);
+  pdf.text(report.total+' '+(report.total===1?'registro':'registros'),summaryValue,y+7);
   y+=34;
   pdf.setFont('helvetica','normal');pdf.setFontSize(8);
   pdf.setTextColor(...muted);
