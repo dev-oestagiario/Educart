@@ -1508,5 +1508,5 @@ test('Consulta pública — três indicadores ocupam toda a largura em diferente
     expect(await page.evaluate(()=>document.documentElement.scrollWidth<=document.documentElement.clientWidth+1)).toBe(true);
   }
   const period=cards.nth(2).locator('strong');
-  await expect(period).toContainText(/\\d{2}\\/\\d{2}\\/\\d{4} a \\d{2}\\/\\d{2}\\/\\d{4}/);
+  await expect(period).toContainText(/\d{2}\/\d{2}\/\d{4} a \d{2}\/\d{2}\/\d{4}/);
 });
