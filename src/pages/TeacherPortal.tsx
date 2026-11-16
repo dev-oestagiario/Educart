@@ -6,6 +6,7 @@ import {addCalendarDays,expandReservationDates,isWeekday,SHIFTS,shiftLabel,showD
 import {requestStatusLabel,validateTeacherRequest,type TeacherRequest} from '../lib/teacherRequests';
 import NotificationBell from '../components/NotificationBell';
 import BrandLogo from '../components/BrandLogo';
+import ThemeToggle from '../components/ThemeToggle';
 import RecordsHeader from '../components/RecordsHeader';
 import TeacherAvailabilityPreview from '../components/TeacherAvailabilityPreview';
 const NotificationsPage = lazy(()=>import('./NotificationsPage'));
@@ -125,7 +126,7 @@ export default function TeacherPortal({requesterId,userId,email,onLogout}:Props)
     <a href="#teacher-main" className="skip-link">Ir ao conteúdo</a>
     <header className="teacher-topbar">
       <BrandLogo tone="light"/>
-      <div className="teacher-account"><span title={email}>{teacher.data?.name??'Portal do professor'}</span>
+      <div className="teacher-account"><ThemeToggle/><span title={email}>{teacher.data?.name??'Portal do professor'}</span>
         <NotificationBell userId={userId} onOpen={()=>setShowNotifications(true)}/>
         <button type="button" className="ghost" onClick={onLogout}><LogOut size={17} aria-hidden="true"/> Sair</button>
       </div>
