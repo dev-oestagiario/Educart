@@ -1512,75 +1512,100 @@ test('Consulta pública — três indicadores ocupam toda a largura em diferente
 });
 
 
-test('Consulta pública — um dia, intervalo e dias avulsos exibem apenas datas escolhidas',async({page})=>{
+test('Consulta pública — datas escolhidas são reconhecidas automaticamente, sem seletor de modo',async({page})=>{
   await useFakeSupabase(page,false);
   const calls:{start:string;end:string}[]=[];
   await page.route('https://educart-e2e.supabase.co/rest/v1/rpc/public_cart_availability',async route=>{
     const body=route.request().postDataJSON() as {p_start:string;p_end:string};
     calls.push({start:body.p_start,end:body.p_end});
-    const data:{usage_date:string;cart_id:string;cart_name:string;capacity:number;shift:string;reserved:number;available:number}[]=[];
-    let date=body.p_start;
-    for(let i=0;i<35&&date<=body.p_end;i++){
-      const dow=new Date(date+'T12:00:00Z').getUTCDay();
-      if(dow>0&&dow<6)data.push({usage_date:date,cart_id:'37a27188-0ea8-4998-b530-6e1f5fa8f181',cart_name:'Carrinho demo',capacity:20,shift:'MATUTINO',reserved:0,available:20});
-      const dt=new Date(date+'T12:00:00Z');dt.setUTCDate(dt.getUTCDate()+1);date=dt.toISOString().slice(0,10);
+    const rows:{usage_date:string;cart_id:string;cart_name:string;capacity:number;shift:string;reserved:number;available:number}[]=[];
+    const d=new Date(body.p_start+'T12:00:00Z');
+    const last=new Date(body.p_end+'T12:00:00Z');
+    for(let index=0;index<35&&d<=last;index++){
+      const day=d.toISOString().slice(0,10);
+      if(d.getUTCDay()>=1&&d.getUTCDay()<=5)
+        rows.push({usage_date:day,cart_id:'37a27188-0ea8-4998-b530-6e1f5fa8f181',cart_name:'Carrinho demo',capacity:20,shift:'MATUTINO',reserved:0,available:20});
+      d.setUTCDate(d.getUTCDate()+1);
     }
-    await route.fulfill({status:200,headers:{'access-control-allow-origin':'*','content-type':'application/json'},json:data});
+    await route.fulfill({status:200,headers:{'access-control-allow-origin':'*','content-type':'application/json'},json:rows});
   });
   await page.goto('/#/consulta-publica');
-  await expect(page.getByRole('heading',{name:'Disponibilidade dos carrinhos'})).toBeVisible();
-  const type=page.locator('#public-mode');
-  await expect(type).toHaveValue('dia');
-  await page.getByLabel('Dia da consulta').fill('2026-11-18');
+  await expect(page.locator('#public-mode')).toHaveCount(0);
+  await expect(page.getByText('Consultar por')).toHaveCount(0);
+  const first=page.getByLabel('Dia da consulta'),last=page.getByLabel('Data final (opcional)');
+  await expect(last).toHaveValue('');
+  await first.fill('2026-11-18');
   await expect(page.locator('.calendar-day')).toHaveCount(1);
-  await expect(page.getByText('Datas consultadas')).toBeVisible();
-  await expect(page.locator('.calendar-stats .stat').last().locator('strong')).toHaveText('18/11/2026');
+  await expect(page.locator('.calendar-stats .stat').last().locator('strong')).toHaveText('1 dia · 18/11/2026');
   await expect.poll(()=>calls.some(c=>c.start==='2026-11-18'&&c.end==='2026-11-18')).toBe(true);
 
-  await type.selectOption('intervalo');
-  await page.getByLabel('Data inicial').fill('2026-11-16');
-  await page.getByLabel('Data final').fill('2026-11-20');
+  await first.fill('2026-11-16');
+  await last.fill('2026-11-20');
   await expect(page.locator('.calendar-day')).toHaveCount(5);
-  await expect(page.locator('.calendar-stats .stat').last().locator('strong')).toHaveText('16/11/2026 a 20/11/2026');
+  await expect(page.locator('.calendar-stats .stat').last().locator('strong')).toHaveText('1 semana · 16/11/2026 a 20/11/2026');
 
-  await type.selectOption('avulsas');
-  await page.locator('.public-day-chip').first().click();
-  await expect(page.getByText('Adicione ao menos um dia para consultar.')).toBeVisible();
-  await page.getByLabel('Novo dia').fill('2026-11-16');
-  await page.getByRole('button',{name:'Adicionar',exact:true}).click();
-  await page.getByLabel('Novo dia').fill('2026-11-18');
-  await page.getByRole('button',{name:'Adicionar',exact:true}).click();
-  await expect(page.locator('.calendar-day')).toHaveCount(2);
-  await expect(page.locator('.calendar-day').first()).toContainText('16/11/2026');
-  await expect(page.locator('.calendar-day').last()).toContainText('18/11/2026');
-  await expect(page.locator('.calendar-stats .stat').last().locator('strong')).toHaveText('2 dias escolhidos');
-  await page.getByRole('button',{name:'Remover 16/11/2026'}).click();
-  await expect(page.locator('.calendar-day')).toHaveCount(1);
-  await expect(page.locator('.calendar-day').first()).toContainText('18/11/2026');
+  await first.fill('2026-11-01');
+  await last.fill('2026-11-30');
+  await expect(page.locator('.calendar-stats .stat').last().locator('strong')).toHaveText('1 mês · 01/11/2026 a 30/11/2026');
+  await expect(page.locator('.calendar-day')).toHaveCount(21);
 
-  await type.selectOption('dia');
-  await page.getByLabel('Dia da consulta').fill('2026-11-21');
-  await expect(page.getByText('Não há agenda aos sábados e domingos. Escolha um dia útil.')).toBeVisible();
+  await page.getByRole('button',{name:'Limpar data final'}).click();
+  await expect(last).toHaveValue('');
+  await expect(page.getByRole('alert')).toContainText('O período não possui dias úteis');
   await expect(page.locator('.calendar-day')).toHaveCount(0);
+  await first.fill('2026-11-19');
+  await expect(page.locator('.calendar-day')).toHaveCount(1);
+  await expect(page.locator('.calendar-stats .stat').last().locator('strong')).toHaveText('1 dia · 19/11/2026');
+});
+
+test('Consulta pública — até um ano é consultado por blocos e navegado em páginas',async({page})=>{
+  await useFakeSupabase(page,false);
+  const calls:{start:string;end:string}[]=[];
+  await page.route('https://educart-e2e.supabase.co/rest/v1/rpc/public_cart_availability',async route=>{
+    const body=route.request().postDataJSON() as {p_start:string;p_end:string};
+    calls.push({start:body.p_start,end:body.p_end});
+    const rows:{usage_date:string;cart_id:string;cart_name:string;capacity:number;shift:string;reserved:number;available:number}[]=[];
+    const date=new Date(body.p_start+'T12:00:00Z');
+    const end=new Date(body.p_end+'T12:00:00Z');
+    for(let i=0;i<35&&date<=end;i++){
+      if(date.getUTCDay()>0&&date.getUTCDay()<6)rows.push({
+        usage_date:date.toISOString().slice(0,10),cart_id:'37a27188-0ea8-4998-b530-6e1f5fa8f181',
+        cart_name:'Carrinho demo',capacity:20,shift:'MATUTINO',reserved:1,available:19
+      });
+      date.setUTCDate(date.getUTCDate()+1);
+    }
+    await route.fulfill({status:200,headers:{'access-control-allow-origin':'*','content-type':'application/json'},json:rows});
+  });
+  await page.goto('/#/consulta-publica');
+  await page.getByLabel('Dia da consulta').fill('2026-01-01');
+  await page.getByLabel('Data final (opcional)').fill('2026-12-31');
+  await expect(page.locator('.calendar-stats .stat').last().locator('strong')).toHaveText('1 ano · 01/01/2026 a 31/12/2026');
+  await expect(page.getByText(/Exibindo 1–25 de \d+ dias úteis/)).toBeVisible();
+  await expect(page.locator('.calendar-day')).toHaveCount(25);
+  await expect.poll(()=>calls.some(c=>c.start==='2026-01-01'&&c.end==='2026-02-04')).toBe(true);
+  await expect.poll(()=>calls.some(c=>c.end==='2026-12-31')).toBe(true);
+  await page.getByRole('button',{name:'Próximos'}).click();
+  await expect(page.getByText(/Exibindo 26–50 de \d+ dias úteis/)).toBeVisible();
+  await expect(page.locator('.calendar-day')).toHaveCount(25);
+  await page.getByLabel('Data final (opcional)').fill('2027-02-10');
+  await expect(page.getByRole('alert')).toContainText('Selecione no máximo um ano');
   await expect(page.getByRole('button',{name:'Atualizar disponibilidade'})).toBeDisabled();
 });
 
-test('Consulta pública — seleção de datas mantém a grade dos filtros no desktop e celular',async({page})=>{
+test('Consulta pública — filtros sem modo mantêm alinhamento desktop e celular',async({page})=>{
   await useFakeSupabase(page,false);
   await page.goto('/#/consulta-publica');
-  const type=page.locator('#public-mode');
   const filter=page.locator('#public-cart');
   const refresh=page.getByRole('button',{name:'Atualizar disponibilidade'});
-  for(const mode of ['dia','intervalo','avulsas']){
-    await type.selectOption(mode);
-    for(const width of [1440,1280,1024]){
-      await page.setViewportSize({width,height:900});
-      const a=await filter.boundingBox(),b=await refresh.boundingBox();
-      expect(a).not.toBeNull();expect(b).not.toBeNull();
-      expect(b!.x).toBeGreaterThan(a!.x+a!.width-2);
-      expect(Math.abs((b!.y+b!.height)-(a!.y+a!.height))).toBeLessThanOrEqual(4);
-    }
-    await page.setViewportSize({width:375,height:812});
+  for(const width of [1440,1280,1024]){
+    await page.setViewportSize({width,height:900});
+    const a=await filter.boundingBox(),b=await refresh.boundingBox();
+    expect(a).not.toBeNull();expect(b).not.toBeNull();
+    expect(b!.x).toBeGreaterThan(a!.x+a!.width-2);
+    expect(Math.abs((b!.y+b!.height)-(a!.y+a!.height))).toBeLessThanOrEqual(4);
+  }
+  for(const width of [375,390,768]){
+    await page.setViewportSize({width,height:812});
     expect(await page.evaluate(()=>document.documentElement.scrollWidth<=document.documentElement.clientWidth+1)).toBe(true);
   }
 });
