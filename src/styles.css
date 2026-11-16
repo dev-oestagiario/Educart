@@ -663,3 +663,22 @@ html,body,#root{width:100%;height:100%;min-width:0;margin:0}
 @media(max-width:1100px){
   .calendar-grid>.calendar-day:first-child{grid-column:auto}
 }
+
+/* Agenda pública: consulta sem conta, compatível com celular e desktop. */
+.public-agenda{width:min(100%,1320px);margin:0 auto;padding:clamp(16px,3vw,36px);min-height:100dvh}
+.public-agenda-header{display:flex;justify-content:space-between;align-items:center;gap:18px;margin-bottom:24px;flex-wrap:wrap}
+.public-agenda-header h1{font-size:clamp(24px,3vw,36px);line-height:1.15;margin:8px 0}
+.public-agenda-header p{max-width:670px;color:var(--text-muted, #94a3b8)}
+.public-agenda .calendar-filters>.secondary{margin-top:16px}
+.public-agenda .calendar-grid{max-height:none;overflow:visible}
+.public-agenda-cart{display:grid;gap:8px;padding-bottom:12px;border-bottom:1px solid var(--border, #334155)}
+.public-agenda-cart:last-child{border-bottom:0;padding-bottom:0}
+.public-agenda-cart>.calendar-event{margin:0;min-width:0}
+.public-agenda-full{border-inline-start:3px solid #b45353}
+.public-agenda .calendar-header{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.public-agenda .stat strong{font-size:clamp(16px,2vw,23px)}
+@media(max-width:690px){
+  .public-agenda{padding:16px}
+  .public-agenda .calendar-grid{grid-template-columns:1fr}
+  .public-agenda-header{align-items:flex-start}
+}
