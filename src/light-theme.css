@@ -1,0 +1,189 @@
+/* Tema claro da identidade Educart: roxo/violeta sobre superfícies claras. */
+:root[data-theme="light"]{
+  color-scheme:light;
+  --educart-bg:#f7f5fb;
+  --educart-sidebar:#f0ecf8;
+  --educart-header:#ffffff;
+  --educart-surface:#ffffff;
+  --educart-elevated:#f4f0fa;
+  --educart-subtle:#ece5f6;
+  --educart-border:#d9d1e6;
+  --educart-text:#21182f;
+  --educart-muted:#5d536e;
+  --educart-dim:#6b617d;
+  --educart-purple:#653ca7;
+  --educart-action:#7144b8;
+  --educart-action-hover:#5d339f;
+  --educart-positive:#146444;
+  --educart-negative:#a83349;
+  --educart-link:#6233a3;
+  --educart-caption:#695c7d;
+  --educart-divider:#d9d1e6;
+  --educart-surface-hover:#f1eafb;
+  color:var(--educart-text);
+  background:var(--educart-bg);
+}
+:root[data-theme="light"] body,:root[data-theme="light"] #root{
+  background:var(--educart-bg);color:var(--educart-text);
+}
+[data-theme="light"] .sidebar,[data-theme="light"] .teacher-topbar{
+  background:var(--educart-sidebar);color:var(--educart-text);border-color:var(--educart-border)
+}
+[data-theme="light"] .sidebar .nav-item{color:#4e3b6a}
+[data-theme="light"] .sidebar .nav-item:hover{background:#e4d9f5}
+[data-theme="light"] .sidebar .nav-item.selected{background:#ddd0f2;color:#45256d}
+[data-theme="light"] .sidebar-label,[data-theme="light"] .sidebar .account small{color:#665976}
+[data-theme="light"] .sidebar .account strong,[data-theme="light"] .sidebar-close{color:var(--educart-text)}
+[data-theme="light"] .sidebar .avatar,[data-theme="light"] .stat-icon{background:#e5d7f7;color:#5b3295}
+[data-theme="light"] .sidebar-close:hover{background:#e2d6f3}
+[data-theme="light"] .main,[data-theme="light"] .content,
+[data-theme="light"] .teacher-shell,[data-theme="light"] .teacher-main,
+[data-theme="light"] .calendar-page,[data-theme="light"] .visual3d-page{
+  background:var(--educart-bg);color:var(--educart-text)
+}
+[data-theme="light"] .topbar{background:var(--educart-header);color:var(--educart-muted)}
+[data-theme="light"] .topbar-main>span{color:var(--educart-muted)}
+[data-theme="light"] .phase-tag{background:#ede4f9;color:#5a338f}
+[data-theme="light"] .page-header h1,[data-theme="light"] .panel h2,
+[data-theme="light"] .panel h3,[data-theme="light"] .teacher-main h1{
+  color:var(--educart-text)
+}
+[data-theme="light"] .eyebrow{color:#693aa4}
+[data-theme="light"] .stat,[data-theme="light"] .panel,
+[data-theme="light"] .auth-panel{
+  background:var(--educart-surface);color:var(--educart-text);
+  border-color:var(--educart-border);box-shadow:0 3px 15px #35224e0a
+}
+[data-theme="light"] .stat strong,[data-theme="light"] .records-item strong,
+[data-theme="light"] .booking-info strong,[data-theme="light"] .notification-item-heading strong{
+  color:var(--educart-text)
+}
+[data-theme="light"] .stat-label,[data-theme="light"] .form-hint,
+[data-theme="light"] .reservation-subtle,[data-theme="light"] .page-header p,
+[data-theme="light"] .welcome-panel p,[data-theme="light"] .teacher-footer,
+[data-theme="light"] .notification-text p,[data-theme="light"] .notification-text small,
+[data-theme="light"] .records-item span,[data-theme="light"] .records-count{
+  color:var(--educart-muted)
+}
+[data-theme="light"] .muted-panel,[data-theme="light"] .empty,
+[data-theme="light"] .records-form-tools,[data-theme="light"] .reservation-date-popover,
+[data-theme="light"] .teacher-availability,[data-theme="light"] .teacher-availability-details,
+[data-theme="light"] .calendar-panel{background:var(--educart-elevated);border-color:var(--educart-border);color:var(--educart-muted)}
+[data-theme="light"] .primary{background:var(--educart-action);color:#fff;border-color:var(--educart-action)}
+[data-theme="light"] .primary:hover{background:var(--educart-action-hover)}
+[data-theme="light"] .secondary{background:#eee7fa;color:#4f2b80;border-color:#d6c6ef}
+[data-theme="light"] .secondary:hover{background:#e5d8f7;border-color:#bca6dd}
+[data-theme="light"] .ghost,[data-theme="light"] .teacher-account .ghost{
+  color:#4b3567;border-color:var(--educart-border)
+}
+[data-theme="light"] .ghost:hover,[data-theme="light"] .teacher-account .ghost:hover{background:#eae1f5}
+[data-theme="light"] .field{color:#342647}
+[data-theme="light"] .field input,[data-theme="light"] .field select,[data-theme="light"] .field textarea,
+[data-theme="light"] .records-search input,[data-theme="light"] .records-filters select,
+[data-theme="light"] input[type="search"],[data-theme="light"] input[type="date"],
+[data-theme="light"] input[type="month"],[data-theme="light"] input[type="number"],
+[data-theme="light"] textarea,[data-theme="light"] select{
+  background:#fff;color:var(--educart-text);border-color:#cbbddc
+}
+[data-theme="light"] input::placeholder,[data-theme="light"] textarea::placeholder{color:#716480}
+[data-theme="light"] .item,[data-theme="light"] .booking-item,
+[data-theme="light"] .notification-item,[data-theme="light"] .teacher-request-list .booking-item{
+  background:#fff;border-color:var(--educart-border);color:var(--educart-text)
+}
+[data-theme="light"] .records-form-tools,[data-theme="light"] .records-count,
+[data-theme="light"] .code-pill{background:#eee6f8;color:#573781}
+[data-theme="light"] .records-tool-title,[data-theme="light"] .file-label{color:var(--educart-text)}
+[data-theme="light"] .notice.error{background:#fff0f2;color:#9b203b;border-color:#f1cbd3}
+[data-theme="light"] .notice.success{background:#ecfaf2;color:#136141;border-color:#c3e8d1}
+[data-theme="light"] .reservation-fieldset,[data-theme="light"] .reservation-type-options label,
+[data-theme="light"] .reservation-date-trigger,[data-theme="light"] .reservation-date-tabs,
+[data-theme="light"] .reservation-date-presets button,[data-theme="light"] .reservation-form-summary,
+[data-theme="light"] .reservation-form-availability{
+  background:var(--educart-elevated);color:var(--educart-text);border-color:var(--educart-border)
+}
+[data-theme="light"] .reservation-fieldset legend,
+[data-theme="light"] .reservation-options label,
+[data-theme="light"] .reservation-check,[data-theme="light"] .reservation-date-label,
+[data-theme="light"] .reservation-date-month-header strong,
+[data-theme="light"] .reservation-form-availability summary{color:var(--educart-text)}
+[data-theme="light"] .reservation-type-options label:has(input:checked),
+[data-theme="light"] .reservation-date-tabs button.is-active{background:#e1d2f5;color:#43246a;border-color:#9a79cc}
+[data-theme="light"] .reservation-date-day:not(:disabled){color:#59358b}
+[data-theme="light"] .reservation-date-day:hover:not(:disabled){background:#e7ddf4}
+[data-theme="light"] .reservation-date-day.is-selected,
+[data-theme="light"] .reservation-date-day.is-endpoint{background:#7245b8;color:#fff;border-color:#7245b8}
+[data-theme="light"] .reservation-date-month-header button,[data-theme="light"] .reservation-date-trigger-action,
+[data-theme="light"] .reservation-back{color:#613992}
+[data-theme="light"] .reservation-pill{background:#eee5f8;border-color:#d1bde8;color:#593580}
+[data-theme="light"] .reservation-pill:hover{background:#dfc9f2}
+[data-theme="light"] table,[data-theme="light"] td,[data-theme="light"] th{color:var(--educart-text);border-color:var(--educart-border)}
+[data-theme="light"] thead th,[data-theme="light"] .reservation-table th,
+[data-theme="light"] .teacher-availability-table-wrap thead th{
+  background:#eee6f8;color:#3f2b55
+}
+[data-theme="light"] tbody tr:hover{background:#f6f0fb}
+[data-theme="light"] .teacher-availability-heading h3,
+[data-theme="light"] .teacher-availability-details summary,
+[data-theme="light"] .teacher-availability-table-wrap th,
+[data-theme="light"] .teacher-subheading{color:#4c326a}
+[data-theme="light"] .teacher-availability-summary{background:#ecfaf3;color:#155a41}
+[data-theme="light"] .teacher-availability-warning{background:#fff7e9;color:#825313;border-color:#ead29c}
+[data-theme="light"] .teacher-status,[data-theme="light"] .teacher-status.aprovada{background:#e3f7ed;color:#11583c}
+[data-theme="light"] .teacher-status.rejeitada,[data-theme="light"] .teacher-status.desistencia{background:#fff0f2;color:#8c2b41}
+[data-theme="light"] .notifications-trigger,[data-theme="light"] .teacher-account .notifications-trigger{
+  background:#eee5fa;border-color:#cdbce7;color:#633d91
+}
+[data-theme="light"] .notifications-trigger:hover,[data-theme="light"] .teacher-account .notifications-trigger:hover{background:#dfd0f3}
+[data-theme="light"] .notifications-count{background:#7044aa;color:#fff;border-color:#fff}
+[data-theme="light"] .notification-item.unread{background:#f0e8fc;border-color:#ae90d4}
+[data-theme="light"] .notification-new{background:#e1d3f5;color:#563583}
+[data-theme="light"] .auth-shell{background:#eee9f5}
+[data-theme="light"] .auth-panel{background:#fff;box-shadow:0 18px 55px #39235417}
+[data-theme="light"] .auth-panel .brand{color:var(--educart-text)}
+[data-theme="light"] .auth-intro h1,[data-theme="light"] .auth-intro p,
+[data-theme="light"] .auth-footer{color:var(--educart-text)}
+[data-theme="light"] .auth-switch,[data-theme="light"] .text-button{color:#6538a0}
+[data-theme="light"] .auth-switch:hover,[data-theme="light"] .text-button:hover{color:#48236f}
+[data-theme="light"] .calendar-day,[data-theme="light"] .calendar-result,
+[data-theme="light"] .visual3d-slot,[data-theme="light"] .visual3d-card,
+[data-theme="light"] .visual3d-legend{background:#fff;border-color:var(--educart-border);color:var(--educart-text)}
+[data-theme="light"] .calendar-day header strong{color:var(--educart-text)}
+[data-theme="light"] .calendar-day header span,[data-theme="light"] .calendar-empty{color:var(--educart-muted)}
+[data-theme="light"] .calendar-event{background:#eee7f8;color:#4b2b73;border-color:#d2bce9;border-left-color:#8256bb}
+[data-theme="light"] .calendar-event.cancelled{background:#f2f0f4;color:#665c70;border-color:#ddd5e6}
+[data-theme="light"] .booking-history details,[data-theme="light"] .booking-history-data pre{background:#f7f3fb;color:#4e4160;border-color:var(--educart-border)}
+[data-theme="light"] .booking-confirm{background:#fff6e8;border-color:#eed2a7;color:#70440d}
+[data-theme="light"] .booking-confirm p{color:#70440d}
+[data-theme="light"] .reservation-status.available{background:#e5f8ee;color:#116243}
+[data-theme="light"] .reservation-status.unavailable{background:#fff0f3;color:#a3374c}
+[data-theme="light"] .visual3d-slot.reserved{background:#fff0db;border-color:#e3bc7c;color:#77531a}
+[data-theme="light"] .cart-scene-canvas{background:#efebf5}
+[data-theme="light"] .skip-link{background:#f0e3fb;color:#3f2365;border-color:#8f68bb}
+[data-theme="light"] .mobile-menu-backdrop{background:#21162b99}
+@media(max-width:690px){
+ [data-theme="light"] .mobile-menu-toggle,[data-theme="light"] .sidebar-close{
+    background:#e9def6;border-color:#c1acda;color:#4d3470
+ }
+ [data-theme="light"] .mobile-menu-toggle:hover,[data-theme="light"] .sidebar-close:hover{background:#decef0;color:#3c235b}
+}
+:root[data-theme="light"] button:focus-visible,:root[data-theme="light"] a:focus-visible,
+:root[data-theme="light"] input:focus-visible,:root[data-theme="light"] select:focus-visible{
+  outline:3px solid #7447b0;outline-offset:2px
+}
+/* O controle permanece visível em ambos os temas e possui tamanho de toque adequado. */
+.theme-toggle{
+  display:inline-flex;gap:8px;align-items:center;justify-content:center;
+  min-height:40px;padding:8px 12px;border-radius:10px;border:1px solid var(--educart-border);
+  background:var(--educart-elevated);color:var(--educart-text);
+  font-size:13px;font-weight:650;white-space:nowrap
+}
+.theme-toggle:hover{background:var(--educart-subtle)}
+[data-theme="light"] .theme-toggle{background:#f0e9f9;border-color:#d1c1e7;color:#50327d}
+[data-theme="light"] .theme-toggle:hover{background:#e5d6f7}
+.public-agenda-header-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.public-agenda-header h1{color:var(--educart-text)}
+.public-agenda-header p{color:var(--educart-muted)}
+@media(max-width:440px){
+  .theme-toggle span{display:none}
+  .theme-toggle{min-width:42px;min-height:42px;padding:8px}
+}
