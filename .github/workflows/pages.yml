@@ -1,9 +1,9 @@
-name: Publicar Educart — ajuste do menu móvel
+name: Publicar Educart — agenda PDF de reservas
 
 on:
   push:
     branches:
-      - fix/botao-menu-tema-escuro
+      - feat/relatorio-agenda-senai
     paths:
       - 'src/**'
       - 'index.html'
