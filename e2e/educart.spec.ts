@@ -1392,7 +1392,7 @@ test('Tema violeta — nenhum texto visível mantém a cor azul legada',async({p
   await login(page);
   await checkTextColors('Visão geral');
   for(const section of ['Carrinhos','Professores','Notebooks','Reservas','Calendário','Visualização 3D','Solicitações','Notificações']){
-    await page.getByRole('button',{name:section,exact:true}).click();
+    await page.getByRole('navigation',{name:'Menu principal'}).getByRole('button',{name:section,exact:true}).click();
     await page.locator('.content .page-header h1').waitFor({state:'visible'});
     await checkTextColors(section);
     if(section==='Carrinhos'){
