@@ -682,3 +682,17 @@ html,body,#root{width:100%;height:100%;min-width:0;margin:0}
   .public-agenda .calendar-grid{grid-template-columns:1fr}
   .public-agenda-header{align-items:flex-start}
 }
+
+/* Layout e espaçamento do seletor de tema no login e cabeçalhos. */
+.auth-theme-bar{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:30px}
+.auth-theme-bar .brand,.auth-panel .auth-theme-bar .brand{margin:0;flex:1 1 auto}
+.topbar-actions{display:flex;align-items:center;gap:10px}
+.public-agenda-header .brand{margin-bottom:16px}
+@media(max-width:690px){
+  .teacher-account .theme-toggle span,.topbar .theme-toggle span{display:none}
+  .topbar .theme-toggle,.teacher-account .theme-toggle{min-width:42px;min-height:42px;padding:8px}
+}
+@media(max-width:370px){
+  .auth-theme-bar{gap:8px}
+  .auth-theme-bar .brand-lockup{max-width:154px}
+}
