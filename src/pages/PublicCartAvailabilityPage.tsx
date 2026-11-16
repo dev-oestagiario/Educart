@@ -66,10 +66,10 @@ export default function PublicCartAvailabilityPage(){
             <option value="">Todos os carrinhos</option>
             {carts.map(cart=><option key={cart.id} value={cart.id}>{cart.name}</option>)}
           </select></label>
+        <button type="button" className="secondary public-agenda-refresh" onClick={()=>void query.refetch()} disabled={query.isFetching}>
+          <RefreshCw size={16} aria-hidden="true"/> Atualizar disponibilidade
+        </button>
       </div>
-      <button type="button" className="secondary" onClick={()=>void query.refetch()} disabled={query.isFetching}>
-        <RefreshCw size={16} aria-hidden="true"/> Atualizar disponibilidade
-      </button>
     </section>
     <div className="stats calendar-stats">
       <div className="stat"><span className="stat-label">Carrinhos ativos</span><strong>{query.isLoading?'—':carts.length}</strong></div>
