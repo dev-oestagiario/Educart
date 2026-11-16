@@ -750,3 +750,55 @@ html,body,#root{width:100%;height:100%;min-width:0;margin:0}
   .public-agenda .calendar-stats{grid-template-columns:minmax(0,1fr)}
   .public-agenda .calendar-stats>.stat:last-child{grid-column:auto}
 }
+
+/* Consulta pública: seleção direta de um dia, intervalo ou dias avulsos. */
+.public-agenda .public-date-field{min-width:0}
+.public-agenda .public-date-field>span{display:block}
+.public-agenda .public-date-range{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  align-items:end;
+  gap:8px;
+  min-width:0
+}
+.public-agenda .public-date-range label{display:flex;flex-direction:column;gap:4px;min-width:0}
+.public-agenda .public-date-range label>span{font-size:11px;color:var(--educart-muted)}
+.public-agenda .public-date-range input{
+  width:100%;min-width:0;min-height:42px;padding-inline:7px;font-size:13px
+}
+.public-agenda .public-date-add{
+  display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:end;min-width:0
+}
+.public-agenda .public-date-add input{min-width:0}
+.public-agenda .public-date-add>.secondary{
+  display:inline-flex;align-items:center;justify-content:center;gap:5px;
+  padding:8px 10px;min-height:42px;white-space:nowrap
+}
+.public-selected-days{display:grid;gap:8px;min-width:0}
+.public-day-chips{display:flex;gap:8px;flex-wrap:wrap}
+.public-day-chip{
+  display:inline-flex;align-items:center;justify-content:center;gap:6px;
+  padding:7px 10px;min-height:36px;border-radius:8px;
+  border:1px solid var(--educart-border);background:var(--educart-elevated);
+  color:var(--educart-text);font-size:12px;font-weight:650
+}
+.public-day-chip:hover{background:var(--educart-subtle)}
+.public-selection-hint{margin:0;color:var(--educart-muted);font-size:12px;line-height:1.5}
+.public-agenda .calendar-grid{grid-template-columns:repeat(auto-fit,minmax(min(100%,218px),1fr))}
+.public-agenda .calendar-grid.public-single-day{grid-template-columns:minmax(0,1fr)}
+.public-agenda .public-single-day .calendar-day{min-height:0}
+@media(min-width:1024px) and (max-width:1240px){
+  .public-agenda .public-date-range{grid-template-columns:minmax(0,1fr)}
+  .public-agenda .public-date-add{grid-template-columns:minmax(0,1fr)}
+}
+@media(min-width:691px) and (max-width:1023px){
+  .public-agenda .public-date-range{grid-template-columns:minmax(0,1fr)}
+}
+@media(max-width:690px){
+  .public-agenda .public-date-range{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .public-agenda .public-date-add{grid-template-columns:minmax(0,1fr) auto}
+}
+@media(max-width:430px){
+  .public-agenda .public-date-range{grid-template-columns:minmax(0,1fr)}
+  .public-agenda .public-date-add{grid-template-columns:minmax(0,1fr)}
+}
