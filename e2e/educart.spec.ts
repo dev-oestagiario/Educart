@@ -1306,3 +1306,45 @@ test('Identidade visual — logo permanece íntegra em tela estreita',async({pag
   await expect(page.locator('.sidebar .brand-lockup')).toBeVisible();
   expect(await page.evaluate(()=>document.documentElement.scrollWidth-document.documentElement.clientWidth)).toBeLessThanOrEqual(1);
 });
+
+
+test('Identidade visual — menu hambúrguer usa tema violeta em todos os celulares', async ({page},testInfo)=>{
+  await useFakeSupabase(page);
+  await login(page);
+  for(const width of [320,360,390,690]){
+    await page.setViewportSize({width,height:650});
+    const opener=page.getByRole('button',{name:'Abrir menu lateral'});
+    await expect(opener).toBeVisible();
+    await expect(opener).toHaveCSS('background-color','rgb(52, 41, 67)');
+    await expect(opener).toHaveCSS('color','rgb(229, 215, 255)');
+    await expect(opener).toHaveCSS('border-top-color','rgb(90, 71, 109)');
+    await expect(opener).toHaveCSS('border-top-left-radius','12px');
+    const rect=await opener.boundingBox();
+    expect(rect?.width).toBeGreaterThanOrEqual(44);
+    expect(rect?.height).toBeGreaterThanOrEqual(44);
+    const topbar=await page.locator('.topbar').boundingBox();
+    expect(rect!.y+rect!.height).toBeLessThanOrEqual((topbar?.y??0)+(topbar?.height??0)+1);
+    await opener.focus();
+    await expect(opener).toBeFocused();
+    await opener.click();
+    const closer=page.getByRole('button',{name:'Fechar menu lateral'});
+    await expect(closer).toBeVisible();
+    await expect(closer).toHaveCSS('background-color','rgb(52, 41, 67)');
+    await expect(closer).toHaveCSS('border-top-left-radius','12px');
+    await expect(page.getByRole('navigation',{name:'Menu principal'})).toBeVisible();
+    await closer.click();
+    await expect(opener).toBeFocused();
+    await expect(page.getByRole('navigation',{name:'Menu principal'})).toBeHidden();
+    expect(await page.evaluate(()=>
+      document.documentElement.scrollWidth-document.documentElement.clientWidth
+    )).toBeLessThanOrEqual(1);
+    if(width===360){
+      await testInfo.attach('educart-menu-violeta-360px',{
+        body:await page.screenshot({fullPage:false,animations:'disabled'}),
+        contentType:'image/png'
+      });
+    }
+  }
+  await page.setViewportSize({width:768,height:650});
+  await expect(page.getByRole('button',{name:'Abrir menu lateral'})).toBeHidden();
+});
