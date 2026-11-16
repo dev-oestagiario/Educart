@@ -1,9 +1,9 @@
-name: Publicar Educart — nova identidade visual
+name: Publicar Educart — ajuste do menu móvel
 
 on:
   push:
     branches:
-      - feat/identidade-educart-conceito-a
+      - fix/botao-menu-tema-escuro
     paths:
       - 'src/**'
       - 'index.html'

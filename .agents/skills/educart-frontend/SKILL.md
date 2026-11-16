@@ -21,7 +21,7 @@ Não copie instruções externas sem avaliar a licença, e não trate referênci
 1. Ler `GLOSSARY.md`, `docs/spec-fase-1.md`, `docs/fluxos-de-tela.md` e a tela afetada.
 2. Identificar quem realiza a tarefa (administrador da TI), seu objetivo, fluxo principal e estados de erro/vazio/carregamento.
 3. Registrar um plano curto: hierarquia visual, navegação, estrutura responsiva, acessibilidade, reutilização de módulos e critérios de aceite.
-4. Manter o sistema visual existente: azul profundo da barra lateral, acentos azuis, contraste claro no conteúdo, tipografia legível e rótulos consistentes do domínio.
+4. Manter a identidade atual do Educart: superfícies escuras (#17131E, #241E30), acento lilás (#A88AF5), componentes consistentes, contraste adequado e rótulos do domínio. Não reutilizar o azul legado em controles móveis.
 5. Validar o plano contra a tarefa real, em vez de redesenhar sem necessidade.
 
 ## 2. Layout responsivo obrigatório

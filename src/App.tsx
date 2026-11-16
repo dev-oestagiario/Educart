@@ -210,7 +210,7 @@ export default function App() {
     <aside id="main-nav-panel" ref={sidebarRef} className={'sidebar '+(menuOpen?'sidebar-open':'')} role={menuOpen?'dialog':undefined} aria-modal={menuOpen||undefined} aria-label="Navegação principal">
       <div className="sidebar-top">
         <BrandLogo tone="light"/>
-        <button type="button" ref={closeButtonRef} className="sidebar-close" aria-label="Fechar menu lateral" onClick={closeMobileMenu}><X size={22} aria-hidden="true"/></button>
+        <button type="button" ref={closeButtonRef} className="sidebar-close" aria-label="Fechar menu lateral" onClick={closeMobileMenu}><X size={21} strokeWidth={2} aria-hidden="true"/></button>
       </div>
       <p className="sidebar-label">GERENCIAMENTO</p>
       <nav aria-label="Menu principal" className="nav">{nav.map(([id,label,Icon])=>
@@ -225,7 +225,7 @@ export default function App() {
       <header className="topbar">
         <div className="topbar-main">
           <button type="button" ref={menuButtonRef} className="mobile-menu-toggle" aria-controls="main-nav-panel" aria-expanded={menuOpen} aria-label="Abrir menu lateral" onClick={()=>setMenuOpen(true)}>
-            <Menu size={22} aria-hidden="true"/>
+            <Menu size={21} strokeWidth={2} aria-hidden="true"/>
           </button>
           <span>Gestão dos laboratórios móveis</span>
         </div>
