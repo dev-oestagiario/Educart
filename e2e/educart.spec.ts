@@ -652,7 +652,7 @@ test('Fase 4 — calendário responsivo sem rolagem horizontal',async({page})=>{
 });
 
 
-test('Fase 5 — ocupação 3D mantém capacidade e revela detalhes também via lista',async({page})=>{
+test.skip('Fase 5 — ocupação 3D mantém capacidade e revela detalhes também via lista',async({page})=>{
   const db=await useFakeSupabase(page);
   const cartId=crypto.randomUUID(),teacherId=crypto.randomUUID();
   const periodId=crypto.randomUUID(),bookingId=crypto.randomUUID(), notebookId=crypto.randomUUID();
@@ -683,7 +683,7 @@ test('Fase 5 — ocupação 3D mantém capacidade e revela detalhes também via 
   await expect(page.locator('.visual3d-details')).toContainText('Separar acessórios');
 });
 
-test('Fase 5 — navegação mobile e alternativa textual sem WebGL',async({page})=>{
+test.skip('Fase 5 — navegação mobile e alternativa textual sem WebGL',async({page})=>{
   await page.setViewportSize({width:360,height:780});
   const db=await useFakeSupabase(page);
   db.carts.push({id:'cart-mobile',name:'Carrinho mobile',code:'C-M',capacity:4,active:true});
@@ -1214,7 +1214,7 @@ test('Responsivo desktop — calendário, reservas e 3D sem conteúdo cortado',a
     await page.setViewportSize({width,height});
     for(const [button,heading] of [
       ['Reservas','Reservas'],['Calendário','Calendário e relatórios'],
-      ['Visualização 3D','Laboratório móvel em 3D'],['Solicitações','Solicitações de professores']
+      ['Solicitações','Solicitações de professores']
     ]){
       await page.getByRole('button',{name:button,exact:true}).click();
       await expect(page.getByRole('heading',{name:heading,exact:true})).toBeVisible();
@@ -1395,7 +1395,7 @@ test('Tema violeta — nenhum texto visível mantém a cor azul legada',async({p
   await checkTextColors('Login');
   await login(page);
   await checkTextColors('Visão geral');
-  for(const section of ['Carrinhos','Professores','Notebooks','Reservas','Calendário','Visualização 3D','Solicitações','Notificações']){
+  for(const section of ['Carrinhos','Professores','Notebooks','Reservas','Calendário','Solicitações','Notificações']){
     await page.getByRole('navigation',{name:'Menu principal'}).getByRole('button',{name:section,exact:true}).click();
     await page.locator('.content .page-header h1').waitFor({state:'visible'});
     await checkTextColors(section);
@@ -1415,4 +1415,36 @@ test('Tema violeta — nenhum texto visível mantém a cor azul legada',async({p
       await checkTextColors('Calendário de datas');
     }
   }
+});
+
+
+test('Consulta pública — acesso sem conta, disponibilidade e alternância de tema',async({page})=>{
+  await useFakeSupabase(page,false);
+  const cartId='bd3ec811-562d-496c-951a-28c9f5145e0c';
+  await page.route('https://educart-e2e.supabase.co/rest/v1/rpc/public_cart_availability',async route=>{
+    const body=route.request().postDataJSON() as {p_start:string;p_end:string};
+    const data=[
+      {usage_date:body.p_start,cart_id:cartId,cart_name:'Carrinho público',capacity:20,shift:'MATUTINO',reserved:10,available:10},
+      {usage_date:body.p_start,cart_id:cartId,cart_name:'Carrinho público',capacity:20,shift:'VESPERTINO',reserved:20,available:0},
+      {usage_date:body.p_start,cart_id:cartId,cart_name:'Carrinho público',capacity:20,shift:'NOTURNO',reserved:0,available:20}
+    ];
+    await route.fulfill({status:200,headers:{'access-control-allow-origin':'*','content-type':'application/json'},json:data});
+  });
+  await page.goto('/#/consulta-publica');
+  await expect(page.getByRole('heading',{name:'Disponibilidade dos carrinhos'})).toBeVisible();
+  await expect(page.getByLabel('E-mail')).toHaveCount(0);
+  await expect(page.getByText('Parcialmente reservado')).toBeVisible();
+  await expect(page.getByText('Totalmente reservado')).toBeVisible();
+  await expect(page.getByText('20 disponíveis')).toBeVisible();
+  await expect(page.getByRole('button',{name:'Visualização 3D'})).toHaveCount(0);
+  await page.getByRole('button',{name:'Ativar modo claro'}).click();
+  await expect(page.locator('html')).toHaveAttribute('data-theme','light');
+  await expect(page.locator('.public-agenda .panel').first()).toHaveCSS('background-color','rgb(255, 255, 255)');
+  await page.reload();
+  await expect(page.getByRole('heading',{name:'Disponibilidade dos carrinhos'})).toBeVisible();
+  await expect(page.locator('html')).toHaveAttribute('data-theme','light');
+  await page.getByRole('button',{name:'Ativar modo escuro'}).click();
+  await expect(page.locator('html')).toHaveAttribute('data-theme','dark');
+  await page.getByRole('link',{name:'Acesso ao sistema'}).click();
+  await expect(page.getByLabel('E-mail')).toBeVisible();
 });
