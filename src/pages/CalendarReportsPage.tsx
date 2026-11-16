@@ -104,7 +104,11 @@ export default function CalendarReportsPage(){
       const data=rows.map(({dateIso,shiftCode,bookingId,active,...report})=>report);
       const name='educart-'+mode+'-'+first;
       if(format==='csv')downloadCsv(data,name);
-      else await downloadPdf(data,'Período: '+dateLabel,name);
+      else await downloadPdf(data,{
+        dates,mode,
+        period:mode==='semana'?'Semana de '+showDate(first)+' até '+showDate(last):dateLabel,
+        title:'Agenda de Reservas - '+(cartId?carts.data?.find(c=>c.id===cartId)?.name??'Laboratórios Móveis':'Laboratórios Móveis')
+      },name);
     }catch(error){
       setExportError(error instanceof Error?error.message:'Falha ao gerar relatório.');
     }finally{setExportBusy(false);}
@@ -182,6 +186,6 @@ export default function CalendarReportsPage(){
           </article>;
         })}</div>}
     </section>
-    <p className="form-hint">O indicador “Reservas agrupadas” conta registros distintos; “Períodos ocupados” conta cada data e turno. O PDF e o CSV incluem os mesmos filtros e os períodos cancelados apenas se essa opção estiver marcada.</p>
+    <p className="form-hint">O indicador “Reservas agrupadas” conta registros distintos; “Períodos ocupados” conta cada data e turno. O PDF e o CSV respeitam os filtros e incluem cancelamentos apenas se a opção estiver marcada. O PDF apresenta uma agenda por dia útil e um resumo geral; a linha complementar de mouses não corresponde a uma segunda reserva. Como a sala não está cadastrada no sistema, ela aparece como “Não informada”.</p>
   </div>;
 }
