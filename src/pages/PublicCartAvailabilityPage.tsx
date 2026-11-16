@@ -1,6 +1,8 @@
 import {useMemo,useState} from 'react';
 import {useQuery} from '@tanstack/react-query';
 import {CalendarDays,RefreshCw} from 'lucide-react';
+import ThemeToggle from '../components/ThemeToggle';
+import BrandLogo from '../components/BrandLogo';
 import {supabase} from '../lib/supabase';
 import {addCalendarDays,isWeekday,showDate,shiftLabel,todayInSaoPaulo,type Shift} from '../lib/reservations';
 
@@ -45,9 +47,9 @@ export default function PublicCartAvailabilityPage(){
   const occupied=visible.filter(row=>row.reserved>0).length;
   return <main id="main-content" className="public-agenda calendar-page">
     <header className="public-agenda-header">
-      <div><span className="eyebrow">EDUCART · CONSULTA PÚBLICA</span><h1>Disponibilidade dos carrinhos</h1>
+      <div><BrandLogo tone="light"/><span className="eyebrow">CONSULTA PÚBLICA · LABORATÓRIOS MÓVEIS</span><h1>Disponibilidade dos carrinhos</h1>
         <p>Veja as reservas dos laboratórios móveis por dia e turno. Não é necessário criar conta.</p></div>
-      <a className="secondary" href="#/login">Acesso ao sistema</a>
+      <div className="public-agenda-header-actions"><ThemeToggle/><a className="secondary" href="#/login">Acesso ao sistema</a></div>
     </header>
     <section className="panel calendar-filters" aria-label="Filtros da consulta pública">
       <div className="calendar-filter-grid">
