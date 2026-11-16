@@ -1348,3 +1348,67 @@ test('Identidade visual — menu hambúrguer usa tema violeta em todos os celula
   await page.setViewportSize({width:768,height:650});
   await expect(page.getByRole('button',{name:'Abrir menu lateral'})).toBeHidden();
 });
+
+
+test('Tema violeta — nenhum texto visível mantém a cor azul legada',async({page})=>{
+  test.setTimeout(80000);
+  await useFakeSupabase(page);
+  await page.goto('/');
+  async function checkTextColors(context:string){
+    const blueText=await page.evaluate(()=>{
+      const result:{selector:string,text:string,color:string,hue:number}[]=[];
+      for(const el of document.querySelectorAll<HTMLElement>('body *')){
+        if(el.closest('svg,script,style,noscript'))continue;
+        const hasOwnText=[...el.childNodes].some(node=>node.nodeType===Node.TEXT_NODE&&Boolean(node.textContent?.trim()));
+        if(!hasOwnText)continue;
+        const style=getComputedStyle(el);
+        if(style.display==='none'||style.visibility==='hidden'||Number(style.opacity)===0)continue;
+        const box=el.getBoundingClientRect();
+        if(box.width===0||box.height===0||box.bottom<0||box.top>innerHeight)continue;
+        const rgb=style.color.match(/^rgba?\((\d+),\s*(\d+),\s*(\d+)/);
+        if(!rgb)continue;
+        const values=rgb.slice(1,4).map(v=>Number(v)/255);
+        const max=Math.max(...values),min=Math.min(...values);
+        const delta=max-min;
+        const saturation=max===0?0:delta/max;
+        if(delta===0||saturation<0.13)continue;
+        let angle=max===values[0]?(values[1]-values[2])/delta:
+          max===values[1]?(values[2]-values[0])/delta+2:
+            (values[0]-values[1])/delta+4;
+        const hue=((angle*60)%360+360)%360;
+        if(hue>=190&&hue<=245){
+          result.push({
+            selector:el.tagName.toLowerCase()+(el.className&&typeof el.className==='string'?'.'+el.className.trim().replace(/\s+/g,'.'):''),
+            text:el.textContent?.trim().slice(0,62)??'',
+            color:style.color,hue:Math.round(hue)
+          });
+        }
+      }
+      return result.slice(0,25);
+    });
+    expect(blueText,context+' ainda contém texto com cor azul: '+JSON.stringify(blueText)).toEqual([]);
+  }
+  await checkTextColors('Login');
+  await login(page);
+  await checkTextColors('Visão geral');
+  for(const section of ['Carrinhos','Professores','Notebooks','Reservas','Calendário','Visualização 3D','Solicitações','Notificações']){
+    await page.getByRole('button',{name:section,exact:true}).click();
+    await page.locator('.content .page-header h1').waitFor({state:'visible'});
+    await checkTextColors(section);
+    if(section==='Carrinhos'){
+      await page.getByRole('button',{name:'Cadastrar carrinho'}).click();
+      await checkTextColors('Cadastro carrinhos');
+    }else if(section==='Professores'){
+      await page.getByRole('button',{name:'Cadastrar professor'}).click();
+      await checkTextColors('Cadastro professores');
+    }else if(section==='Notebooks'){
+      await page.getByRole('button',{name:'Cadastrar notebooks'}).click();
+      await checkTextColors('Cadastro notebooks');
+    }else if(section==='Reservas'){
+      await page.getByRole('button',{name:'Nova reserva'}).click();
+      await checkTextColors('Cadastro reservas');
+      await page.locator('#reservation-date-trigger').click();
+      await checkTextColors('Calendário de datas');
+    }
+  }
+});
