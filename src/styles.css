@@ -669,18 +669,7 @@ html,body,#root{width:100%;height:100%;min-width:0;margin:0}
 .public-agenda-header{display:flex;justify-content:space-between;align-items:center;gap:18px;margin-bottom:24px;flex-wrap:wrap}
 .public-agenda-header h1{font-size:clamp(24px,3vw,36px);line-height:1.15;margin:8px 0}
 .public-agenda-header p{max-width:670px;color:var(--text-muted, #94a3b8)}
-.public-agenda .calendar-filters>.secondary{
-  display:inline-flex;
-  align-items:center;
-  justify-content:center;
-  justify-self:center;
-  gap:8px;
-  width:max-content;
-  max-width:100%;
-  margin-top:4px;
-  text-align:center
-}
-.public-agenda .calendar-filters>.secondary svg{flex-shrink:0}
+
 .public-agenda .calendar-grid{max-height:none;overflow:visible}
 .public-agenda-cart{display:grid;gap:8px;padding-bottom:12px;border-bottom:1px solid var(--border, #334155)}
 .public-agenda-cart:last-child{border-bottom:0;padding-bottom:0}
@@ -708,21 +697,34 @@ html,body,#root{width:100%;height:100%;min-width:0;margin:0}
   .auth-theme-bar .brand-lockup{max-width:154px}
 }
 
-/* Consulta pública: filtros e atualização na mesma linha em telas amplas. */
-@media(min-width:1050px){
-  .public-agenda .calendar-filters{
-    grid-template-columns:minmax(0,1fr) auto;
-    align-items:end;
-    column-gap:16px
-  }
+
+/* Os três filtros e a ação compartilham o mesmo grid, sem quebra de linha no desktop. */
+.public-agenda .calendar-filters{grid-template-columns:minmax(0,1fr)}
+.public-agenda .calendar-filter-grid{gap:14px}
+.public-agenda .calendar-filter-grid>.public-agenda-refresh{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  align-self:end;
+  gap:8px;
+  min-height:42px;
+  max-width:100%;
+  margin:0;
+  text-align:center;
+  white-space:nowrap
+}
+.public-agenda .public-agenda-refresh svg{flex-shrink:0}
+@media(min-width:1024px){
   .public-agenda .calendar-filter-grid{
-    grid-template-columns:repeat(3,minmax(0,1fr));
+    grid-template-columns:repeat(3,minmax(0,1fr)) max-content;
     align-items:end
   }
-  .public-agenda .calendar-filters>.secondary{
-    align-self:end;
-    justify-self:end;
-    margin:0;
-    white-space:nowrap
-  }
+}
+@media(min-width:691px) and (max-width:1023px){
+  .public-agenda .calendar-filter-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .public-agenda .public-agenda-refresh{justify-self:stretch}
+}
+@media(max-width:690px){
+  .public-agenda .calendar-filter-grid{grid-template-columns:minmax(0,1fr)}
+  .public-agenda .public-agenda-refresh{justify-self:stretch}
 }
