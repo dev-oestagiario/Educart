@@ -1,7 +1,7 @@
 import { lazy, Suspense, useEffect, useRef, useState, type FormEvent } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { BarChart3, BookOpen, Boxes, CalendarDays, ClipboardList, Laptop, LogOut, Box, ClipboardCheck, Bell, Menu, ShieldCheck, UserRound, UserRoundPlus, X } from 'lucide-react';
+import { BarChart3, BookOpen, Boxes, CalendarDays, ClipboardList, Laptop, LogOut, ClipboardCheck, Bell, Menu, ShieldCheck, UserRound, UserRoundPlus, X } from 'lucide-react';
 import { create } from 'zustand';
 import { supabase, isConfigured, type Cart, type Requester, type Notebook } from './lib/supabase';
 import {errorMessage} from './lib/validation';
@@ -15,6 +15,7 @@ const NotebooksPage = lazy(()=>import('./pages/NotebooksPage'));
 const ReservationsPage = lazy(()=>import('./pages/ReservationsPage'));
 const CalendarReportsPage = lazy(()=>import('./pages/CalendarReportsPage'));
 const Visual3DPage = lazy(()=>import('./pages/Visual3DPage'));
+const PublicCartAvailabilityPage = lazy(()=>import('./pages/PublicCartAvailabilityPage'));
 const TeacherPortal = lazy(()=>import('./pages/TeacherPortal'));
 const TeacherApprovalsPage = lazy(()=>import('./pages/TeacherApprovalsPage'));
 const NotificationsPage = lazy(()=>import('./pages/NotificationsPage'));
@@ -82,6 +83,7 @@ function Login({onLogin}:{onLogin:()=>void}) {
     <button type="button" className="auth-switch" onClick={()=>{setMode(mode==='login'?'signup':'login');setError('');setMessage('');setPassword('')}}>
       {mode==='login'?'Ainda não tem conta? Criar conta':'Já tem conta? Fazer login'}
     </button>
+    <a className="auth-switch" href="#/consulta-publica">Consultar disponibilidade sem login</a>
     <p className="auth-footer"><ShieldCheck size={16}/> Criar conta não concede acesso automático ao sistema.</p>
   </section></div>;
 }
@@ -107,6 +109,12 @@ export default function App() {
   const qc=useQueryClient();const [session,setSession]=useState<Session|null>(null),[loading,setLoading]=useState(true);
   const {page,setPage}=useUi();
   const [menuOpen,setMenuOpen]=useState(false);
+  const [isPublicView,setIsPublicView]=useState(()=>window.location.hash==='#/consulta-publica');
+  useEffect(()=>{
+    const update=()=>setIsPublicView(window.location.hash==='#/consulta-publica');
+    window.addEventListener('hashchange',update);
+    return ()=>window.removeEventListener('hashchange',update);
+  },[]);
   const menuButtonRef=useRef<HTMLButtonElement>(null);
   const closeButtonRef=useRef<HTMLButtonElement>(null);
   const sidebarRef=useRef<HTMLElement>(null);
@@ -184,6 +192,7 @@ export default function App() {
     }
   });
   if(!isConfigured)return <div className="setup"><h1>Educart ainda não está configurado</h1><p>Defina VITE_SUPABASE_URL e VITE_SUPABASE_PUBLISHABLE_KEY no arquivo .env antes de iniciar a aplicação. Nunca exponha uma chave secreta.</p></div>;
+  if(isPublicView)return <Suspense fallback={<div role="status" className="center-status">Carregando agenda pública…</div>}><PublicCartAvailabilityPage/></Suspense>;
   if(loading)return <div className="center-status" role="status">Carregando Educart…</div>;
   if(!session)return <Login onLogin={()=>setPage('overview')}/>;
   if(check.isLoading)return <div className="center-status" role="status">Validando acesso administrativo…</div>;
@@ -203,7 +212,7 @@ export default function App() {
       <button className="secondary" onClick={()=>{void qc.invalidateQueries({queryKey:['admin']});void qc.invalidateQueries({queryKey:['teacher-account']})}}>Verificar autorização</button>
       <button className="ghost" onClick={()=>void supabase.auth.signOut()}>Sair desta conta</button></div>;
   }
-  const nav:[Page,string,typeof Boxes][]=[['overview','Visão geral',ClipboardList],['carts','Carrinhos',Boxes],['requesters','Professores',UserRoundPlus],['notebooks','Notebooks',Laptop],['reservations','Reservas',CalendarDays],['calendar','Calendário',BarChart3],['visual3d','Visualização 3D',Box],['approvals','Solicitações',ClipboardCheck],['notifications','Notificações',Bell]];
+  const nav:[Page,string,typeof Boxes][]=[['overview','Visão geral',ClipboardList],['carts','Carrinhos',Boxes],['requesters','Professores',UserRoundPlus],['notebooks','Notebooks',Laptop],['reservations','Reservas',CalendarDays],['calendar','Calendário',BarChart3],['approvals','Solicitações',ClipboardCheck],['notifications','Notificações',Bell]];
   return <div className="app-shell">
     <a className="skip-link" href="#main-content">Pular para o conteúdo</a>
     {menuOpen&&<button type="button" tabIndex={-1} className="mobile-menu-backdrop" aria-label="Fechar navegação" onClick={closeMobileMenu}/>}
