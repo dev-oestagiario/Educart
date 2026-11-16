@@ -632,6 +632,10 @@ test('Fase 4 — filtros semanais, contagem correta e exportação CSV/PDF',asyn
   expect(pdf.suggestedFilename()).toMatch(/educart.*\.pdf$/);
   const pdfContent=await readFile(await pdf.path()!);
   expect(pdfContent.subarray(0,4).toString('ascii')).toBe('%PDF');
+  const pdfSource=pdfContent.toString('latin1');
+  // A4 vertical como a agenda SENAI: 595 x 842 pt (não mais A4 paisagem).
+  expect(pdfSource).toMatch(/\/MediaBox\s*\[\s*0\s+0\s+595[\d.]*\s+841[\d.]*\s*\]/);
+  expect(pdfContent.byteLength).toBeGreaterThan(4000);
 });
 
 test('Fase 4 — calendário responsivo sem rolagem horizontal',async({page})=>{
