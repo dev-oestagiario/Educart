@@ -24,46 +24,204 @@ export function downloadCsv(rows:ReportRow[],basename='educart-relatorio'):void{
   document.body.append(link);link.click();link.remove();
   URL.revokeObjectURL(url);
 }
-export async function downloadPdf(rows:ReportRow[],period:string,basename='educart-relatorio'):Promise<void>{
-  const {jsPDF}=await import('jspdf');
-  const pdf=new jsPDF({orientation:'landscape',unit:'pt',format:'a4'});
-  const width=pdf.internal.pageSize.getWidth();
-  const height=pdf.internal.pageSize.getHeight();
-  const margin=38;
-  let y=56;
-  let page=1;
-  function header() {
-    pdf.setFont('helvetica','bold');pdf.setFontSize(17);
-    pdf.text('Educart - Relatório de reservas',margin,34);
-    pdf.setFont('helvetica','normal');pdf.setFontSize(9);
-    pdf.text(period,margin,48);
-    pdf.text('Página '+page,width-margin-54,height-22);
-    pdf.setDrawColor(210,220,233);pdf.line(margin,54,width-margin,54);
-  }
-  header();
-  pdf.setFont('helvetica','normal');pdf.setFontSize(9);
-  pdf.text('Períodos no recorte: '+rows.length,margin,y+14);
-  y+=30;
+
+import {showDate} from './reservations';
+
+export type AgendaEntry={
+  shift:string;
+  requester:string;
+  equipment:string;
+  room:string;
+  cancelled:boolean;
+};
+export type AgendaDay={
+  iso:string;dateLabel:string;weekday:string;
+  entries:AgendaEntry[];
+};
+export type AgendaReport={
+  days:AgendaDay[];
+  counts:{weekday:string;value:number}[];
+  total:number;
+  periodCount:number;
+  mouseExtras:number;
+};
+export type AgendaPdfOptions={
+  dates:string[];
+  period:string;
+  mode:'semana'|'mes';
+  title?:string;
+  issuedAt?:Date;
+};
+const weekdayNames=['DOMINGO','SEGUNDA','TERÇA','QUARTA','QUINTA','SEXTA','SÁBADO'];
+const weekdays=['Segunda','Terça','Quarta','Quinta','Sexta'];
+
+/** Cada período gera uma linha de equipamento e uma complementar de mouse,
+ * quando solicitado. O complemento não é uma segunda reserva no banco. */
+export function buildAgendaReport(rows:readonly ReportRow[],dates:readonly string[]):AgendaReport{
+  const indexed=new Map<string,ReportRow[]>();
   for(const row of rows){
-    const headline=[row.date,row.shift,row.cart,row.requester].join('  |  ');
-    const subtitle=[
-      row.quantity+' notebook(s)',row.mode,'Mouse: '+(row.needsMouse?'Sim':'Não'),row.status,'TI: '+row.createdBy
-    ].join('  -  ');
-    const details=row.notes?'Observações: '+row.notes:'';
-    const lines1=pdf.splitTextToSize(headline,width-2*margin) as string[];
-    const lines2=pdf.splitTextToSize(subtitle,width-2*margin) as string[];
-    const lines3=details?pdf.splitTextToSize(details,width-2*margin) as string[]:[];
-    const blockHeight=15+lines1.length*11+lines2.length*11+lines3.length*11;
-    if(y+blockHeight>height-39){pdf.addPage();page++;header();y=73;}
-    pdf.setFont('helvetica','bold');pdf.setFontSize(10);
-    pdf.text(lines1,margin,y);
-    y+=lines1.length*12+3;
+    const key=row.date;
+    const existing=indexed.get(key)??[];
+    existing.push(row);
+    indexed.set(key,existing);
+  }
+  const days:AgendaDay[]=dates.map(iso=>{
+    const date=new Date(iso+'T12:00:00Z');
+    const weekday=weekdayNames[date.getUTCDay()];
+    const records=indexed.get(showDate(iso))??[];
+    const entries:AgendaEntry[]=records.flatMap(row=>{
+      const suffix=row.mode==='Parcial'?' ('+row.quantity+' notebooks)':'';
+      const cancelled=row.status.toLocaleLowerCase('pt-BR')==='cancelada';
+      const equipment=row.cart+suffix+(row.notes?' - '+row.notes:'')+(cancelled?' [Cancelada]':'');
+      const base:AgendaEntry={
+        shift:row.shift,requester:row.requester,equipment,room:'Não informada',cancelled
+      };
+      return row.needsMouse?[base,{
+        shift:row.shift,requester:row.requester,
+        equipment:'Mouses - '+row.cart+(cancelled?' [Cancelada]':''),
+        room:'Não informada',cancelled
+      }]:[base];
+    });
+    return {iso,dateLabel:showDate(iso),weekday,entries};
+  });
+  const counts=weekdays.map((name,index)=>({
+    weekday:name,value:days.filter(day=>
+      new Date(day.iso+'T12:00:00Z').getUTCDay()===index+1
+    ).reduce((total,day)=>total+day.entries.length,0)
+  }));
+  return {
+    days,counts,total:days.reduce((total,day)=>total+day.entries.length,0),
+    periodCount:rows.length,mouseExtras:rows.filter(row=>row.needsMouse).length
+  };
+}
+
+/** Exporta em A4 vertical, seguindo o modelo de agenda semanal do SENAI.
+ * Os dados de sala inexistentes não são inventados. */
+export async function downloadPdf(
+  rows:ReportRow[],options:AgendaPdfOptions,basename='educart-agenda-reservas'
+):Promise<void>{
+  const {jsPDF}=await import('jspdf');
+  const pdf=new jsPDF({orientation:'portrait',unit:'pt',format:'a4'});
+  const report=buildAgendaReport(rows,options.dates);
+  const W=pdf.internal.pageSize.getWidth(),H=pdf.internal.pageSize.getHeight();
+  const m=38,right=W-m,available=W-2*m;
+  const purple:[number,number,number]=[54,38,79];
+  const lilac:[number,number,number]=[145,112,205];
+  const ink:[number,number,number]=[38,35,48];
+  const muted:[number,number,number]=[94,92,103];
+  const paper:[number,number,number]=[249,248,251];
+  const grid:[number,number,number]=[222,220,227];
+  const columns=[83,116,available-83-116-84,84];
+  const colX=[m,m+columns[0],m+columns[0]+columns[1],m+columns[0]+columns[1]+columns[2]];
+  const issued=(options.issuedAt??new Date()).toLocaleString('pt-BR',{
+    timeZone:'America/Sao_Paulo',day:'2-digit',month:'2-digit',year:'numeric',
+    hour:'2-digit',minute:'2-digit',hour12:false
+  });
+  const title=options.title?.trim()||'Agenda de Reservas - Laboratórios Móveis';
+  let y=40;
+  const drawPageHeader=(first:boolean)=>{
+    y=43;
+    pdf.setFillColor(...lilac);pdf.rect(m,y-15,5,16,'F');
+    pdf.setTextColor(...purple);pdf.setFont('helvetica','bold');
+    pdf.setFontSize(18);
+    const titleLines=pdf.splitTextToSize(title,available-20) as string[];
+    pdf.text(titleLines,m+16,y);
+    y+=Math.max(0,titleLines.length-1)*21+21;
     pdf.setFont('helvetica','normal');pdf.setFontSize(9);
-    pdf.text(lines2,margin,y);y+=lines2.length*12;
-    if(lines3.length){pdf.text(lines3,margin,y);y+=lines3.length*12;}
-    pdf.setDrawColor(233,238,246);pdf.line(margin,y+3,width-margin,y+3);
+    pdf.setTextColor(...muted);
+    pdf.text('Período: '+options.period+'  |  Emissão: '+issued,m,y);
+    y+=17;
+    pdf.setDrawColor(...grid);pdf.line(m,y,right,y);
+    y+=first?29:20;
+  };
+  drawPageHeader(true);
+  const nextPage=()=>{
+    pdf.addPage();drawPageHeader(false);
+  };
+  const reserve=(points:number)=>{
+    if(y+points>H-55)nextPage();
+  };
+  function textInCell(value:string,width:number){
+    pdf.setFont('helvetica','normal');pdf.setFontSize(8.4);
+    return pdf.splitTextToSize(value,width-14) as string[];
+  }
+  function drawTableHeader(){
+    const height=23;
+    pdf.setFillColor(...purple);pdf.rect(m,y,available,height,'F');
+    pdf.setFont('helvetica','bold');pdf.setFontSize(8.7);
+    pdf.setTextColor(255,255,255);
+    ['Horário','Solicitante','Equipamento / Objetivo','Sala'].forEach((label,i)=>
+      pdf.text(label,colX[i]+7,y+15)
+    );
+    y+=height;
+  }
+  function drawEntry(entry:AgendaEntry,index:number){
+    const cells=[
+      textInCell(entry.shift,columns[0]),textInCell(entry.requester,columns[1]),
+      textInCell(entry.equipment,columns[2]),textInCell(entry.room,columns[3])
+    ];
+    const rowHeight=Math.max(27,...cells.map(lines=>lines.length*11+11));
+    if(y+rowHeight>H-55){nextPage();drawTableHeader();}
+    pdf.setFillColor(...(index%2===0?paper:[255,255,255] as [number,number,number]));
+    pdf.rect(m,y,available,rowHeight,'F');
+    pdf.setDrawColor(...grid);
+    pdf.line(m,y+rowHeight,right,y+rowHeight);
+    for(let i=1;i<columns.length;i++)pdf.line(colX[i],y,colX[i],y+rowHeight);
+    pdf.setTextColor(...(entry.cancelled?muted:ink));pdf.setFont('helvetica','normal');pdf.setFontSize(8.4);
+    cells.forEach((lines,i)=>pdf.text(lines,colX[i]+7,y+12));
+    y+=rowHeight;
+  }
+  for(const day of report.days){
+    reserve(67+(day.entries.length?27:0));
+    pdf.setFillColor(...lilac);pdf.rect(m,y-9,6,9,'F');
+    pdf.setFont('helvetica','bold');pdf.setFontSize(12.4);
+    pdf.setTextColor(...purple);
+    pdf.text(day.weekday+' - '+day.dateLabel,m+12,y);
+    y+=16;
+    if(day.entries.length===0){
+      pdf.setFont('helvetica','italic');pdf.setFontSize(9);
+      pdf.setTextColor(...muted);
+      pdf.text('Nenhuma reserva registrada para este dia.',m,y+7);
+      y+=38;
+      continue;
+    }
+    drawTableHeader();
+    day.entries.forEach(drawEntry);
+    y+=27;
+  }
+  reserve(205);
+  pdf.setFont('helvetica','bold');pdf.setFontSize(12.4);
+  pdf.setTextColor(...purple);
+  pdf.text(options.mode==='semana'?'Resumo Geral da Semana':'Resumo Geral do Mês',m,y);
+  y+=16;
+  const summaryLeft=m+92,summaryValue=m+256;
+  pdf.setFontSize(9);
+  for(const item of report.counts){
+    pdf.setFont('helvetica','normal');pdf.setTextColor(...ink);
+    pdf.text(item.weekday+':',summaryLeft,y);
+    pdf.text(item.value+' item(ns)',summaryValue,y);
     y+=18;
   }
-  if(!rows.length){pdf.text('Nenhuma reserva encontrada para os filtros selecionados.',margin,y);}
+  pdf.setDrawColor(...purple);
+  pdf.line(summaryLeft-5,y-7,summaryValue+150,y-7);
+  pdf.setFont('helvetica','bold');pdf.setFontSize(10);
+  pdf.text('Total Geral:',summaryLeft,y+7);
+  pdf.text(report.total+' item(ns)',summaryValue,y+7);
+  y+=34;
+  pdf.setFont('helvetica','normal');pdf.setFontSize(8);
+  pdf.setTextColor(...muted);
+  const legend='Cada período gera uma linha de equipamento; quando solicitado, mouse aparece em linha adicional. Sala sem cadastro: Não informada.';
+  const legendLines=pdf.splitTextToSize(legend,available) as string[];
+  reserve(legendLines.length*11+13);
+  pdf.text(legendLines,m,y);
+  const pages=pdf.getNumberOfPages();
+  for(let i=1;i<=pages;i++){
+    pdf.setPage(i);
+    pdf.setDrawColor(...grid);pdf.line(m,H-39,right,H-39);
+    pdf.setFont('helvetica','normal');pdf.setFontSize(8);
+    pdf.setTextColor(...muted);
+    pdf.text('Educart | Agenda de reservas',m,H-25);
+    pdf.text('Página '+i+' de '+pages,right,H-25,{align:'right'});
+  }
   pdf.save(basename+'.pdf');
 }
