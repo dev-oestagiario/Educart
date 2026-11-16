@@ -33,10 +33,17 @@ A tela **Calendário e relatórios** mantém os filtros existentes e a exportaç
 - [x] Contagem distinta de períodos e linhas complementares de mouse.
 - [x] Quantidade de notebooks, objetivo e cancelamento preservados na linha de equipamento.
 - [x] Teste E2E do arquivo PDF verificando assinatura e página A4 retrato.
-- [ ] GitHub Actions (build, Vitest, Playwright) aprovados.
-- [ ] GitHub Pages atualizado para consulta.
+- [x] GitHub Actions aprovado — build, **60 testes Vitest** e **37 Playwright**.
+- [x] GitHub Pages atualizado — nova exportação disponível no menu Calendário e relatórios.
 - [ ] Revisão manual de PDF longo, conteúdo com acentos e quebras de linha em leitores de PDF.
 
 ## Escopo
 
 Sem alterações de esquema Supabase, autenticação, RLS ou lógica de reservas. O PR deve permanecer empilhado após o PR #29.
+
+## Evidências de execução
+
+- [CI: 60 testes Vitest e 37 Playwright](https://github.com/dev-oestagiario/Educart/actions/runs/43780698841).
+- [Publicação GitHub Pages](https://github.com/dev-oestagiario/Educart/actions/runs/43780564320).
+- [Abrir Educart](https://dev-oestagiario.github.io/Educart/) → Calendário e relatórios → selecionar semana/carrinho/professor → Exportar PDF.
+- Playwright valida o download e o formato A4 vertical. Revisão manual de uma amostra gerada em navegador real, conteúdo muito extenso e impressão física ainda recomendada.
