@@ -1475,3 +1475,38 @@ test('Consulta pública — atualizar fica ao lado dos três filtros no desktop'
   expect(mobileButton!.y).toBeGreaterThanOrEqual(mobileFilter!.y+mobileFilter!.height);
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=document.documentElement.clientWidth+1)).toBe(true);
 });
+
+
+test('Consulta pública — três indicadores ocupam toda a largura em diferentes telas',async({page})=>{
+  await useFakeSupabase(page,false);
+  await page.goto('/#/consulta-publica');
+  await expect(page.getByText('Período consultado')).toBeVisible();
+  const stats=page.locator('.public-agenda .calendar-stats');
+  const cards=stats.locator('.stat');
+  await expect(cards).toHaveCount(3);
+  for(const width of [1440,1280,1024,768,390]){
+    await page.setViewportSize({width,height:900});
+    const panel=await stats.boundingBox();
+    const bounds=await cards.evaluateAll(nodes=>nodes.map(node=>{
+      const r=node.getBoundingClientRect();
+      return {x:r.left,y:r.top,right:r.right,bottom:r.bottom,width:r.width};
+    }));
+    expect(panel,'Grade dos indicadores visível').not.toBeNull();
+    const right=Math.max(...bounds.map(b=>b.right));
+    expect(Math.abs(right-(panel!.x+panel!.width)),
+      'Os indicadores devem alcançar a borda direita em '+width+'px').toBeLessThanOrEqual(2);
+    const last=bounds[2];
+    if(width>=851){
+      expect(Math.abs(bounds[0].width-bounds[1].width)).toBeLessThanOrEqual(2);
+      expect(Math.abs(bounds[1].width-last.width)).toBeLessThanOrEqual(2);
+      expect(Math.abs(bounds[0].y-last.y)).toBeLessThanOrEqual(2);
+    }else if(width>550){
+      expect(last.width).toBeGreaterThan(bounds[0].width*1.9);
+    }else{
+      expect(Math.abs(bounds[0].width-last.width)).toBeLessThanOrEqual(2);
+    }
+    expect(await page.evaluate(()=>document.documentElement.scrollWidth<=document.documentElement.clientWidth+1)).toBe(true);
+  }
+  const period=cards.nth(2).locator('strong');
+  await expect(period).toContainText(/\\d{2}\\/\\d{2}\\/\\d{4} a \\d{2}\\/\\d{2}\\/\\d{4}/);
+});
