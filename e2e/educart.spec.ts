@@ -1609,3 +1609,85 @@ test('Consulta pública — filtros sem modo mantêm alinhamento desktop e celul
     expect(await page.evaluate(()=>document.documentElement.scrollWidth<=document.documentElement.clientWidth+1)).toBe(true);
   }
 });
+
+
+test('Recuperação de senha — resposta neutra para e-mails conhecidos e desconhecidos',async({page})=>{
+  await useFakeSupabase(page,false);
+  const requests:string[]=[];
+  const redirects:string[]=[];
+  await page.route('https://educart-e2e.supabase.co/auth/v1/recover**',async route=>{
+    const url=new URL(route.request().url());
+    if(route.request().method()==='OPTIONS'){await route.fulfill({status:204,headers:{'access-control-allow-origin':'*','access-control-allow-headers':'*','access-control-allow-methods':'POST, OPTIONS'}});return;}
+    const body=route.request().postDataJSON() as {email:string};
+    requests.push(body.email);redirects.push(url.searchParams.get('redirect_to')??'');
+    await route.fulfill({status:body.email.startsWith('unknown')?400:200,headers:{'access-control-allow-origin':'*'},json:body.email.startsWith('unknown')?{message:'User not found',code:'user_not_found'}:{}});
+  });
+  await page.setViewportSize({width:375,height:812});
+  await page.goto('/');
+  await page.getByRole('button',{name:'Esqueci minha senha'}).click();
+  await expect(page.getByRole('heading',{name:'Recuperar senha'})).toBeVisible();
+  await expect(page.getByLabel('Senha',{exact:true})).toHaveCount(0);
+  for(const address of ['test-admin@educart.example','unknown@educart.example']){
+    await page.getByLabel('E-mail').fill(address);
+    await page.getByRole('button',{name:'Enviar instruções'}).click();
+    await expect(page.getByRole('status')).toContainText('Se o e-mail estiver cadastrado');
+  }
+  expect(requests).toEqual(['test-admin@educart.example','unknown@educart.example']);
+  expect(redirects.every(value=>value==='http://127.0.0.1:4173/')).toBe(true);
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=document.documentElement.clientWidth+1)).toBe(true);
+  await page.getByRole('button',{name:'Voltar ao login'}).click();
+  await expect(page.getByRole('heading',{name:'Acesso ao Educart'})).toBeVisible();
+});
+
+test('Recuperação de senha — link válido, confirmação, mudança e retorno ao login',async({page})=>{
+  await useFakeSupabase(page,true);
+  let writes=0;
+  let logout=0;
+  await page.route('https://educart-e2e.supabase.co/auth/v1/user',async route=>{
+    const method=route.request().method();
+    const headers={'access-control-allow-origin':'*','access-control-allow-headers':'*','access-control-allow-methods':'GET, PUT, OPTIONS'};
+    if(method==='OPTIONS'){await route.fulfill({status:204,headers});return;}
+    if(method==='PUT'){
+      expect(route.request().postDataJSON()).toMatchObject({password:'new-test-password'});
+      writes++;
+    }
+    await route.fulfill({status:200,headers,json:user});
+  });
+  await page.route('https://educart-e2e.supabase.co/auth/v1/logout**',async route=>{
+    const headers={'access-control-allow-origin':'*','access-control-allow-headers':'*','access-control-allow-methods':'POST, OPTIONS'};
+    if(route.request().method()==='OPTIONS'){await route.fulfill({status:204,headers});return;}
+    logout++;
+    await route.fulfill({status:200,headers,json:{}});
+  });
+  await page.goto('/#access_token='+token+'&refresh_token=test-refresh-token&expires_in=3600&token_type=bearer&type=recovery');
+  await expect(page.getByRole('heading',{name:'Redefinir senha'})).toBeVisible();
+  await expect(page.getByLabel('Nova senha',{exact:true})).toBeVisible();
+  await expect(page.getByRole('heading',{name:'Visão geral'})).toHaveCount(0);
+  await page.getByLabel('Nova senha',{exact:true}).fill('short');
+  await page.getByLabel('Confirmar nova senha').fill('short');
+  await page.getByRole('button',{name:'Salvar nova senha'}).click();
+  await expect(page.getByRole('alert')).toContainText('pelo menos 8 caracteres');
+  await page.getByLabel('Nova senha',{exact:true}).fill('new-test-password');
+  await page.getByLabel('Confirmar nova senha').fill('different-password');
+  await page.getByRole('button',{name:'Salvar nova senha'}).click();
+  await expect(page.getByRole('alert')).toContainText('não coincidem');
+  expect(writes).toBe(0);
+  await page.getByLabel('Confirmar nova senha').fill('new-test-password');
+  await page.getByRole('button',{name:'Salvar nova senha'}).click();
+  await expect(page.getByRole('heading',{name:'Acesso ao Educart'})).toBeVisible();
+  await expect(page.getByRole('status')).toContainText('Senha alterada com sucesso');
+  expect(writes).toBe(1);expect(logout).toBe(1);
+  expect(page.url()).not.toContain('access_token');
+});
+
+test('Recuperação de senha — link expirado e rota direta não autorizam redefinição',async({page})=>{
+  await useFakeSupabase(page);
+  for(const path of ['/#error=access_denied&error_code=otp_expired','/#/redefinir-senha']){
+    await page.goto(path);
+    await expect(page.getByRole('heading',{name:'Redefinir senha'})).toBeVisible();
+    await expect(page.getByRole('alert')).toContainText('Link inválido, expirado ou já utilizado');
+    await expect(page.getByLabel('Nova senha',{exact:true})).toHaveCount(0);
+    await page.getByRole('button',{name:'Voltar ao login'}).click();
+    await expect(page.getByRole('heading',{name:'Acesso ao Educart'})).toBeVisible();
+  }
+});

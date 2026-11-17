@@ -1,14 +1,16 @@
-import { lazy, Suspense, useEffect, useRef, useState, type FormEvent } from 'react';
+import { lazy, Suspense, useEffect, useRef, useState, useSyncExternalStore, type FormEvent } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { BarChart3, BookOpen, Boxes, CalendarDays, ClipboardList, Laptop, LogOut, ClipboardCheck, Bell, Menu, ShieldCheck, UserRound, UserRoundPlus, X } from 'lucide-react';
 import { create } from 'zustand';
-import { supabase, isConfigured, type Cart, type Requester, type Notebook } from './lib/supabase';
+import { supabase, isConfigured, getRecoveryState, subscribeRecovery, rejectDirectRecovery, clearRecovery, type Cart, type Requester, type Notebook } from './lib/supabase';
 import {errorMessage} from './lib/validation';
 import { configuredCapacity } from './lib/capacity';
 import NotificationBell from './components/NotificationBell';
 import BrandLogo from './components/BrandLogo';
 import ThemeToggle from './components/ThemeToggle';
+import PasswordResetPage from './pages/PasswordResetPage';
+import {recoveryRedirect,recoveryMessage} from './lib/passwordRecovery';
 
 const CartsPage = lazy(()=>import('./pages/CartsPage'));
 const RequestersPage = lazy(()=>import('./pages/RequestersPage'));
@@ -42,14 +44,18 @@ function TextInput({label,id,value,onChange,required=false,type='text',min}:{lab
     <input id={id} value={value} onChange={e=>onChange(e.target.value)} required={required} type={type} min={min} />
   </label>;
 }
-function Login({onLogin}:{onLogin:()=>void}) {
+function Login({onLogin,resetSuccess=false}:{onLogin:()=>void;resetSuccess?:boolean}) {
   const [email,setEmail]=useState('');const [password,setPassword]=useState('');
-  const [mode,setMode]=useState<'login'|'signup'>('login');
-  const [error,setError]=useState('');const [message,setMessage]=useState('');const [busy,setBusy]=useState(false);
+  const [mode,setMode]=useState<'login'|'signup'|'recover'>('login');
+  const [error,setError]=useState('');const [message,setMessage]=useState(resetSuccess?'Senha alterada com sucesso. Entre com a nova senha.':'');const [busy,setBusy]=useState(false);
   async function submit(e:FormEvent) {
     e.preventDefault();setError('');setMessage('');setBusy(true);
     try {
-      if(mode==='signup') {
+      if(mode==='recover') {
+        // Keep the same response for registered and unknown addresses, including server rejection.
+        await supabase.auth.resetPasswordForEmail(email.trim(),{redirectTo:recoveryRedirect(window.location.href,import.meta.env.BASE_URL)});
+        setMessage(recoveryMessage);
+      } else if(mode==='signup') {
         const {error}=await supabase.auth.signUp({
           email:email.trim(), password,
           options:{emailRedirectTo:new URL(import.meta.env.BASE_URL,window.location.href).toString()}
@@ -63,6 +69,7 @@ function Login({onLogin}:{onLogin:()=>void}) {
         onLogin();
       }
     } catch {
+      if(mode==='recover'){setMessage(recoveryMessage);return;}
       setError(mode==='signup'
         ? 'Não foi possível criar a conta. Confira o e-mail e a senha ou tente novamente.'
         : 'Não foi possível entrar. Confira as credenciais e tente novamente.');
@@ -71,18 +78,19 @@ function Login({onLogin}:{onLogin:()=>void}) {
   return <div className="auth-shell"><section className="auth-panel">
     <div className="auth-theme-bar"><BrandLogo tone="light"/><ThemeToggle/></div>
     <div className="auth-intro"><span className="eyebrow">PLATAFORMA EDUCACIONAL</span>
-      <h1>{mode==='signup'?'Criar conta no Educart':'Acesso ao Educart'}</h1>
-      <p>{mode==='signup'?'Cadastre seu e-mail. A TI autoriza o acesso de professor ou administrador depois da confirmação da conta.':'Entre com sua conta para acessar o painel da TI ou o portal do professor.'}</p></div>
+      <h1>{mode==='recover'?'Recuperar senha':mode==='signup'?'Criar conta no Educart':'Acesso ao Educart'}</h1>
+      <p>{mode==='recover'?'Informe o e-mail da sua conta para receber as instruções de recuperação.':mode==='signup'?'Cadastre seu e-mail. A TI autoriza o acesso de professor ou administrador depois da confirmação da conta.':'Entre com sua conta para acessar o painel da TI ou o portal do professor.'}</p></div>
     <form onSubmit={submit} className="form-stack">
       <TextInput id="email" label="E-mail" type="email" value={email} onChange={setEmail} required/>
-      <TextInput id="password" label="Senha" type="password" value={password} onChange={setPassword} required/>
+      {mode!=='recover'&&<TextInput id="password" label="Senha" type="password" value={password} onChange={setPassword} required/>}
       {mode==='signup'&&<p className="form-hint">Use uma senha exclusiva. Depois do cadastro, confirme seu e-mail se receber uma mensagem do Supabase.</p>}
       {error&&<Notice message={error}/>}
       {message&&<Notice kind="success" message={message}/>}
-      <button className="primary" disabled={busy} type="submit">{busy?'Aguarde…':mode==='signup'?'Criar minha conta':'Entrar no Educart'}</button>
+      <button className="primary" disabled={busy} type="submit">{busy?'Aguarde…':mode==='recover'?'Enviar instruções':mode==='signup'?'Criar minha conta':'Entrar no Educart'}</button>
     </form>
-    <button type="button" className="auth-switch" onClick={()=>{setMode(mode==='login'?'signup':'login');setError('');setMessage('');setPassword('')}}>
-      {mode==='login'?'Ainda não tem conta? Criar conta':'Já tem conta? Fazer login'}
+    {mode==='login'&&<button type="button" className="auth-switch" disabled={busy} onClick={()=>{setMode('recover');setError('');setMessage('');setPassword('');}}>Esqueci minha senha</button>}
+    <button type="button" className="auth-switch" disabled={busy} onClick={()=>{setMode(mode==='login'?'signup':'login');setError('');setMessage('');setPassword('')}}>
+      {mode==='recover'?'Voltar ao login':mode==='login'?'Ainda não tem conta? Criar conta':'Já tem conta? Fazer login'}
     </button>
     <a className="auth-switch" href="#/consulta-publica">Consultar disponibilidade sem login</a>
     <p className="auth-footer"><ShieldCheck size={16}/> Criar conta não concede acesso automático ao sistema.</p>
@@ -109,10 +117,15 @@ function Overview() {
 export default function App() {
   const qc=useQueryClient();const [session,setSession]=useState<Session|null>(null),[loading,setLoading]=useState(true);
   const {page,setPage}=useUi();
+  const recoveryState=useSyncExternalStore(subscribeRecovery,getRecoveryState,getRecoveryState);
+  const [resetSuccess,setResetSuccess]=useState(false);
   const [menuOpen,setMenuOpen]=useState(false);
   const [isPublicView,setIsPublicView]=useState(()=>window.location.hash==='#/consulta-publica');
   useEffect(()=>{
-    const update=()=>setIsPublicView(window.location.hash==='#/consulta-publica');
+    const update=()=>{
+      setIsPublicView(window.location.hash==='#/consulta-publica');
+      if(window.location.hash==='#/redefinir-senha')rejectDirectRecovery();
+    };
     window.addEventListener('hashchange',update);
     return ()=>window.removeEventListener('hashchange',update);
   },[]);
@@ -178,13 +191,13 @@ export default function App() {
       document.getElementById('main-content')?.focus();
     }
   }
-  const check=useQuery({queryKey:['admin',session?.user.id],enabled:Boolean(session),queryFn:async()=>{
+  const check=useQuery({queryKey:['admin',session?.user.id],enabled:Boolean(session)&&recoveryState==='none',queryFn:async()=>{
     const {data,error}=await supabase.from('admin_users').select('user_id,display_name').eq('user_id',session!.user.id).eq('active',true).maybeSingle();
     if(error)throw error;return data;
   }});
   const teacherAccess=useQuery({
     queryKey:['teacher-account',session?.user.id],
-    enabled:Boolean(session)&&check.isSuccess&&!check.data,
+    enabled:Boolean(session)&&recoveryState==='none'&&check.isSuccess&&!check.data,
     queryFn:async()=>{
       const {data,error}=await supabase.from('teacher_account_links')
         .select('requester_id,active').eq('user_id',session!.user.id).eq('active',true).maybeSingle();
@@ -193,9 +206,15 @@ export default function App() {
     }
   });
   if(!isConfigured)return <div className="setup"><h1>Educart ainda não está configurado</h1><p>Defina VITE_SUPABASE_URL e VITE_SUPABASE_PUBLISHABLE_KEY no arquivo .env antes de iniciar a aplicação. Nunca exponha uma chave secreta.</p></div>;
+  if(recoveryState!=='none')return <PasswordResetPage state={recoveryState} onFinish={changed=>{
+    setSession(null);qc.clear();setMenuOpen(false);setPage('overview');setResetSuccess(changed);
+    const clean=new URL(window.location.href);clean.search='';clean.hash='/login';
+    window.history.replaceState(window.history.state,'',clean.toString());
+    setIsPublicView(false);clearRecovery();
+  }}/>;
   if(isPublicView)return <Suspense fallback={<div role="status" className="center-status">Carregando agenda pública…</div>}><PublicCartAvailabilityPage/></Suspense>;
   if(loading)return <div className="center-status" role="status">Carregando Educart…</div>;
-  if(!session)return <Login onLogin={()=>setPage('overview')}/>;
+  if(!session)return <Login resetSuccess={resetSuccess} onLogin={()=>{setResetSuccess(false);setPage('overview')}}/>;
   if(check.isLoading)return <div className="center-status" role="status">Validando acesso administrativo…</div>;
   if(check.error)return <div className="setup"><h1>Não foi possível validar o acesso</h1><p>{errorMessage(check.error)}</p><button className="secondary" onClick={()=>qc.invalidateQueries({queryKey:['admin']})}>Tentar novamente</button></div>;
   if(!check.data){
