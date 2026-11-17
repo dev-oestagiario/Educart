@@ -7,7 +7,7 @@ import {pathToFileURL} from 'node:url';
 const {PGlite}=await import(pathToFileURL(resolve('.local-sql-test/node_modules/@electric-sql/pglite/dist/index.js')).href);
 const pg=new PGlite();
 try{
- await pg.exec("create role anon; create role authenticated; create schema auth; create table auth.users(id uuid primary key,email text,email_confirmed_at timestamptz); create function auth.uid() returns uuid language sql stable as $$ select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid $$; grant usage on schema auth to authenticated,anon; grant execute on function auth.uid() to authenticated,anon;");
+ await pg.exec("create role anon; create role authenticated; create role service_role; create schema auth; create table auth.users(id uuid primary key,email text,email_confirmed_at timestamptz); create function auth.uid() returns uuid language sql stable as $$ select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid $$; grant usage on schema auth to authenticated,anon; grant execute on function auth.uid() to authenticated,anon;");
  for(const name of readdirSync('supabase/migrations').filter(x=>x.endsWith('.sql')).sort()){
   try{await pg.exec(readFileSync('supabase/migrations/'+name,'utf8'));console.log('PASS migration '+name);}
   catch(e){throw Error(name+': '+e.message);}
@@ -119,5 +119,70 @@ try{
  assert.equal((await one("select count(*)::int as n from public.reservation_periods where reservation_id=$1 and active",[series])).n,0);
  assert.equal((await one("select count(*)::int as n from public.reservation_periods where reservation_id=$1 and active",[conflict])).n,2);
  console.log('PASS F3.5: conflito em uma ocorrência reverte o agrupamento inteiro, exceção, edição e cancelamento preservam reserva independente.');
+
+ await who('authenticated',teacher);
+ assert.deepEqual((await one("select public.get_email_preference() as pref")).pref,{enabled:false,channel_enabled:false});
+ await one("select public.set_email_preference(true)");
+ await who('authenticated',admin);
+ await one("select public.set_email_preference(true)");
+ await denied("select * from public.email_outbox");
+ await denied("select public.claim_email_batch(10)");
+ await who('anon');
+ await denied("select public.get_email_preference()");
+ await who('authenticated',teacher);
+ const emailReq=()=>one("select public.submit_teacher_request($1,'PARCIAL',1,array[$2::date],array['NOTURNO'],false,null) as id",[recurringCart,mondays[0]]);
+ await emailReq();
+ await pg.exec('reset role');
+ assert.equal((await one("select count(*)::int as n from public.email_outbox")).n,0);
+ await pg.exec("insert into public.email_delivery_settings(singleton,enabled) values(true,true)");
+ await who('authenticated',teacher);
+ const req2=(await emailReq()).id;
+ await who('authenticated',admin);
+ await one("select public.review_teacher_request($1,true,null)",[req2]);
+ await pg.exec('reset role');
+ assert.equal((await one("select count(*)::int as n from public.email_outbox")).n,2);
+ await one("select app_private.enqueue_email(recipient_user_id,event_key,kind,requester_id) from public.email_outbox limit 1");
+ assert.equal((await one("select count(*)::int as n from public.email_outbox")).n,2);
+ await who('service_role');
+ const jobs=(await pg.query("select * from public.claim_email_batch(10)")).rows;
+ assert.equal(jobs.length,2);
+ assert.equal((await pg.query("select * from public.claim_email_batch(10)")).rows.length,0);
+ const first=jobs.find(j=>j.kind==='NOVO_PEDIDO'),second=jobs.find(j=>j.kind==='PEDIDO_APROVADO');
+ assert.equal((await one("select public.authorize_email_send($1,$2) as address",[first.id,first.lease_token])).address,'admin@example.test');
+ assert.equal((await one("select public.finish_email_delivery($1,$2,'RETRY') as ok",[first.id,first.lease_token])).ok,true);
+ assert.equal((await one("select public.finish_email_delivery($1,$2,'SENT') as ok",[first.id,first.lease_token])).ok,false);
+ await who('authenticated',teacher);
+ await one("select public.set_email_preference(false)");
+ await who('service_role');
+ assert.equal((await one("select public.authorize_email_send($1,$2) as address",[second.id,second.lease_token])).address,null);
+ await pg.exec('reset role');
+ assert.equal((await one("select state from public.email_outbox where id=$1",[second.id])).state,'CANCELLED');
+ await one("update public.email_outbox set available_at=now()-interval '1 second' where id=$1",[first.id]);
+ await who('service_role');
+ const retry=(await one("select * from public.claim_email_batch(1)"));
+ assert.equal(retry.id,first.id);assert.equal(retry.attempts,2);assert.notEqual(retry.lease_token,first.lease_token);
+ await pg.exec('reset role');
+ await one("update public.email_outbox set lease_until=now()-interval '1 second' where id=$1",[first.id]);
+ await who('service_role');
+ assert.equal((await pg.query("select * from public.claim_email_batch(10)")).rows.length,0);
+ await pg.exec('reset role');
+ assert.equal((await one("select state from public.email_outbox where id=$1",[first.id])).state,'REVIEW');
+ assert.ok((await one("select count(*)::int as n from public.user_notifications")).n>0);
+ if(weekday<=5){
+  await who('authenticated',teacher);
+  await one("select public.set_email_preference(true)");
+  await who('authenticated',admin);
+  const b=(await one("select public.create_reservation($1,$2,'PARCIAL',2,array[$3::date],array['MATUTINO'],false,null,'{}'::uuid[]) as id",[requester,recurringCart,today])).id;
+  const period=(await one("select id from public.reservation_periods where reservation_id=$1",[b])).id;
+  const args=[period,k(),2,[],'Responsável sintético','BOA',null];
+  const m=(await one(pickup,args)).id;
+  await one(pickup,args);
+  const ret=[m,k(),'Responsável retorno','BOA',null];
+  await one(returned,ret);await one(returned,ret);
+  await pg.exec('reset role');
+  assert.equal((await one("select count(*)::int as n from public.email_outbox where recipient_user_id=$1 and kind in ('EQUIPAMENTO_RETIRADO','EQUIPAMENTO_DEVOLVIDO')",[teacher])).n,2);
+  console.log('PASS F3.6: eventos de retirada e devolução únicas após repetição idempotente.');
+ }
+ console.log('PASS F3.6: opt-in, canal desativado, fila transacional, deduplicação, isolamento, claim, retry, opt-out e lease incerto.');
 
 }finally{await pg.close();}
