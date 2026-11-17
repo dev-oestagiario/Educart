@@ -3,7 +3,7 @@ import type { Session } from '@supabase/supabase-js';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { BarChart3, BookOpen, Boxes, CalendarDays, ClipboardList, Laptop, LogOut, ClipboardCheck, Bell, Menu, ShieldCheck, UserRound, UserRoundPlus, X } from 'lucide-react';
 import { create } from 'zustand';
-import { supabase, isConfigured, getRecoveryState, subscribeRecovery, clearRecovery, type Cart, type Requester, type Notebook } from './lib/supabase';
+import { supabase, isConfigured, getRecoveryState, subscribeRecovery, rejectDirectRecovery, clearRecovery, type Cart, type Requester, type Notebook } from './lib/supabase';
 import {errorMessage} from './lib/validation';
 import { configuredCapacity } from './lib/capacity';
 import NotificationBell from './components/NotificationBell';
@@ -122,7 +122,10 @@ export default function App() {
   const [menuOpen,setMenuOpen]=useState(false);
   const [isPublicView,setIsPublicView]=useState(()=>window.location.hash==='#/consulta-publica');
   useEffect(()=>{
-    const update=()=>setIsPublicView(window.location.hash==='#/consulta-publica');
+    const update=()=>{
+      setIsPublicView(window.location.hash==='#/consulta-publica');
+      if(window.location.hash==='#/redefinir-senha')rejectDirectRecovery();
+    };
     window.addEventListener('hashchange',update);
     return ()=>window.removeEventListener('hashchange',update);
   },[]);
