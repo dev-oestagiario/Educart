@@ -1,17 +1,17 @@
 import { lazy, Suspense, useEffect, useRef, useState, useSyncExternalStore, type FormEvent } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { BarChart3, BookOpen, Boxes, CalendarDays, ClipboardList, Laptop, LogOut, ClipboardCheck, Bell, Menu, ShieldCheck, UserRound, UserRoundPlus, MapPin, Wrench, ArrowLeftRight, X } from 'lucide-react';
+import { BarChart3, Boxes, CalendarDays, ClipboardList, Laptop, LogOut, ClipboardCheck, Bell, Menu, ShieldCheck, UserRound, UserRoundPlus, MapPin, Wrench, ArrowLeftRight, X } from 'lucide-react';
 import { create } from 'zustand';
-import { supabase, isConfigured, getRecoveryState, subscribeRecovery, rejectDirectRecovery, clearRecovery, type Cart, type Requester, type Notebook } from './lib/supabase';
+import { supabase, isConfigured, getRecoveryState, subscribeRecovery, rejectDirectRecovery, clearRecovery } from './lib/supabase';
 import {errorMessage} from './lib/validation';
-import { configuredCapacity } from './lib/capacity';
 import NotificationBell from './components/NotificationBell';
 import BrandLogo from './components/BrandLogo';
 import ThemeToggle from './components/ThemeToggle';
 import PasswordResetPage from './pages/PasswordResetPage';
 import {recoveryRedirect,recoveryMessage,newPasswordError} from './lib/passwordRecovery';
 
+const DashboardPage=lazy(()=>import('./pages/DashboardPage'));
 const MovementsPage=lazy(()=>import('./pages/MovementsPage'));
 const MaintenancePage=lazy(()=>import('./pages/MaintenancePage'));
 const LocationsPage=lazy(()=>import('./pages/LocationsPage'));
@@ -31,16 +31,8 @@ const useUi = create<{page:Page; setPage:(page:Page)=>void}>()(
   set => ({page:'overview',setPage:page=>set({page})})
 );
 
-async function fetchRows<T>(table: 'carts'|'requesters'|'notebook_codes'): Promise<T[]> {
-  const {data,error} = await supabase.from(table).select('*').order('created_at',{ascending:false});
-  if (error) throw error;
-  return (data ?? []) as T[];
-}
 function Notice({message,kind='error'}:{message:string;kind?:'error'|'success'}) {
   return <p role={kind==='error'?'alert':'status'} className={'notice '+kind}>{message}</p>;
-}
-function PageHeader({title,description}:{title:string;description:string}) {
-  return <div className="page-header"><h1>{title}</h1><p>{description}</p></div>;
 }
 function TextInput({label,id,value,onChange,required=false,type='text',min,autoComplete,disabled=false}:{label:string;id:string;value:string;onChange:(v:string)=>void;required?:boolean;type?:string;min?:number;autoComplete?:string;disabled?:boolean}) {
   return <label className="field" htmlFor={id}><span>{label}</span>
@@ -105,24 +97,6 @@ function Login({onLogin,resetSuccess=false}:{onLogin:()=>void;resetSuccess?:bool
     <a className="auth-switch" href="#/consulta-publica">Consultar disponibilidade sem login</a>
     <p className="auth-footer"><ShieldCheck size={16}/> Criar conta não concede acesso automático ao sistema.</p>
   </section></div>;
-}
-function Overview() {
-  const carts=useQuery({queryKey:['carts'],queryFn:()=>fetchRows<Cart>('carts')});
-  const requesters=useQuery({queryKey:['requesters'],queryFn:()=>fetchRows<Requester>('requesters')});
-  const notebooks=useQuery({queryKey:['notebooks'],queryFn:()=>fetchRows<Notebook>('notebook_codes')});
-  const totalCapacity=(carts.data??[]).filter(x=>x.active).reduce((n,c)=>n+configuredCapacity(c.capacity,0),0);
-  const {setPage}=useUi();
-  return <><PageHeader title="Visão geral" description="Uma visão rápida dos laboratórios e cadastros da instituição."/>
-    <div className="stats">
-      <div className="stat"><span className="stat-icon"><Boxes/></span><span className="stat-label">Carrinhos cadastrados</span><strong>{carts.data?.length??'—'}</strong></div>
-      <div className="stat"><span className="stat-icon"><Laptop/></span><span className="stat-label">Capacidade cadastrada</span><strong>{carts.isLoading?'—':totalCapacity}</strong></div>
-      <div className="stat"><span className="stat-icon"><UserRound/></span><span className="stat-label">Professores</span><strong>{requesters.data?.length??'—'}</strong></div>
-      <div className="stat"><span className="stat-icon"><ClipboardList/></span><span className="stat-label">Notebooks identificados</span><strong>{notebooks.data?.length??'—'}</strong></div>
-    </div>
-    {(carts.error||requesters.error||notebooks.error)&&<Notice message="Não foi possível carregar alguns indicadores. Confira a conexão."/>}
-    <div className="panel welcome-panel"><div><span className="eyebrow">GESTÃO DE EQUIPAMENTOS</span><h2>Organize os equipamentos</h2><p>Cadastre os carrinhos, professores e códigos de notebooks. A contagem de códigos não altera a capacidade configurada do carrinho.</p></div><button className="secondary" onClick={()=>setPage('carts')}>Gerenciar carrinhos</button></div>
-    <div className="panel muted-panel"><BookOpen size={19}/><p>Agora você já pode reservar carrinhos completos ou quantidades parciais por turno na área Reservas.</p></div>
-  </>;
 }
 export default function App() {
   const qc=useQueryClient();const [session,setSession]=useState<Session|null>(null),[loading,setLoading]=useState(true);
@@ -281,7 +255,7 @@ export default function App() {
           <NotificationBell userId={session.user.id} onOpen={()=>navigateTo('notifications')}/></div>
       </header>
       <div className="content">
-        {page==='overview'?<Overview/>:page==='movements'?<Suspense fallback={<p role="status">Carregando movimentações…</p>}><MovementsPage/></Suspense>:page==='maintenance'?<Suspense fallback={<p role="status">Carregando manutenção…</p>}><MaintenancePage/></Suspense>:page==='locations'?<Suspense fallback={<p role="status">Carregando localizações…</p>}><LocationsPage/></Suspense>:page==='carts'?<Suspense fallback={<p role="status">Carregando carrinhos…</p>}><CartsPage/></Suspense>:page==='requesters'?<Suspense fallback={<p role="status">Carregando professores…</p>}><RequestersPage/></Suspense>:page==='notebooks'?<Suspense fallback={<p role="status">Carregando notebooks…</p>}><NotebooksPage/></Suspense>:page==='reservations'?<Suspense fallback={<p role="status">Carregando reservas…</p>}><ReservationsPage/></Suspense>:page==='calendar'?<Suspense fallback={<p role="status">Carregando calendário…</p>}><CalendarReportsPage/></Suspense>:page==='visual3d'?<Suspense fallback={<p role="status">Carregando visualização 3D…</p>}><Visual3DPage/></Suspense>:page==='approvals'?<Suspense fallback={<p role="status">Carregando solicitações…</p>}><TeacherApprovalsPage/></Suspense>:<Suspense fallback={<p role="status">Carregando notificações…</p>}><NotificationsPage userId={session.user.id} audience="admin" onReturn={()=>navigateTo('overview')} onViewRequests={()=>navigateTo('approvals')}/></Suspense>}
+        {page==='overview'?<Suspense fallback={<p role="status">Carregando painel operacional…</p>}><DashboardPage onNavigate={navigateTo}/></Suspense>:page==='movements'?<Suspense fallback={<p role="status">Carregando movimentações…</p>}><MovementsPage/></Suspense>:page==='maintenance'?<Suspense fallback={<p role="status">Carregando manutenção…</p>}><MaintenancePage/></Suspense>:page==='locations'?<Suspense fallback={<p role="status">Carregando localizações…</p>}><LocationsPage/></Suspense>:page==='carts'?<Suspense fallback={<p role="status">Carregando carrinhos…</p>}><CartsPage/></Suspense>:page==='requesters'?<Suspense fallback={<p role="status">Carregando professores…</p>}><RequestersPage/></Suspense>:page==='notebooks'?<Suspense fallback={<p role="status">Carregando notebooks…</p>}><NotebooksPage/></Suspense>:page==='reservations'?<Suspense fallback={<p role="status">Carregando reservas…</p>}><ReservationsPage/></Suspense>:page==='calendar'?<Suspense fallback={<p role="status">Carregando calendário…</p>}><CalendarReportsPage/></Suspense>:page==='visual3d'?<Suspense fallback={<p role="status">Carregando visualização 3D…</p>}><Visual3DPage/></Suspense>:page==='approvals'?<Suspense fallback={<p role="status">Carregando solicitações…</p>}><TeacherApprovalsPage/></Suspense>:<Suspense fallback={<p role="status">Carregando notificações…</p>}><NotificationsPage userId={session.user.id} audience="admin" onReturn={()=>navigateTo('overview')} onViewRequests={()=>navigateTo('approvals')}/></Suspense>}
       </div>
     </main>
   </div>;
