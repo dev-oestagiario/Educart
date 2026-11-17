@@ -172,6 +172,7 @@ export default function ReservationManager({carts,requesters,onEdit,onChanged}:P
           return <article className="booking-item" key={booking.id}>
             <div className="booking-info"><strong>{requester}</strong>
               <span>{cart} · {booking.quantity} notebooks · {booking.mode==='COMPLETA'?'Completa':'Parcial'}</span>
+              {booking.destination_label&&<span>Sala de utilização: {booking.destination_label}</span>}
               <span>{booking.needs_mouse?'Precisa de mouse · ':''}{booking.status}</span>
             </div>
             {active.length>0&&<div className="booking-periods">{active.map(p=><div key={p.id} className="booking-period">
