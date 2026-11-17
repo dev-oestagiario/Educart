@@ -42,6 +42,8 @@ jobs:
         run: node scripts/homologacao-auth.mjs
       - name: Homologar cadastros e ciclo das reservas
         run: node scripts/homologacao-cadastros-reservas.mjs
+      - name: Validar concorrência com sessões independentes
+        run: node scripts/homologacao-concorrencia.mjs
       - name: Encerrar ambiente isolado
         if: always()
         run: |
