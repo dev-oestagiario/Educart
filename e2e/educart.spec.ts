@@ -1,5 +1,6 @@
 import { XLSX_FIXTURE_BASE64 } from './fixtures/workbook';
 import { mkdir, readFile } from 'node:fs/promises';
+import { existsSync } from 'node:fs';
 import { expect, test, type Page } from '@playwright/test';
 
 type Row = Record<string, unknown>;
@@ -2072,4 +2073,122 @@ test('F4.2 — localizações com busca, detalhe, formulário separado e víncul
  await expect(page.locator('.record-detail')).toContainText('Campus sintético / Bloco A / Sala teste');
  for(const width of [320,390,768,1440]){await page.setViewportSize({width,height:800});expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);}
  expect(db.cart_storage_locations).toHaveLength(1);
+});
+
+
+test('F4.3 — auditoria axe de telas e temas',async({page})=>{
+ test.setTimeout(120000);
+ test.skip(!existsSync('.local-sql-test/node_modules/axe-core/axe.min.js'),'Instale axe-core isolado conforme docs/f4-3-acessibilidade.md');
+ const db=await useFakeSupabase(page);
+ db.carts.push({id:crypto.randomUUID(),code:'A11Y',name:'Carrinho acessível',capacity:10,active:true});
+ const scan=async(label:string)=>{
+  await page.addScriptTag({path:'.local-sql-test/node_modules/axe-core/axe.min.js'});
+  const results=await page.evaluate(async()=> (await (window as any).axe.run(document,{runOnly:{type:'tag',values:['wcag2a','wcag2aa','wcag21a','wcag21aa']}})).violations);
+  console.log('AXE '+label+' '+JSON.stringify(results.map((r:any)=>({id:r.id,nodes:r.nodes.map((n:any)=>({target:n.target,summary:n.failureSummary?.slice(0,400)}))}))));
+  return results.length;
+ };
+ await page.goto('/');
+ let failures=await scan('login dark');
+ await login(page);
+ for(const theme of ['dark','light']){
+  if(theme==='light')await page.getByRole('button',{name:'Ativar modo claro'}).click();
+  for(const name of ['Visão geral','Localizações','Manutenção','Retirada e devolução','Carrinhos','Professores','Notebooks','Reservas','Calendário','Solicitações','Notificações']){
+   await page.getByRole('navigation',{name:'Menu principal'}).getByRole('button',{name,exact:true}).click();
+   await page.locator('main h1').waitFor();await page.waitForTimeout(150);
+   failures+=await scan(theme+' '+name);
+  }
+  for(const [module,action] of [['Localizações','Cadastrar campus'],['Manutenção','Nova manutenção'],['Reservas','Nova reserva']]){
+   await page.getByRole('navigation',{name:'Menu principal'}).getByRole('button',{name:module,exact:true}).click();
+   await page.getByRole('button',{name:action,exact:true}).click();
+   await page.locator('main h1').waitFor();
+   failures+=await scan(theme+' formulário '+module);
+   if(module==='Reservas'){await page.locator('#reservation-date-trigger').click();failures+=await scan(theme+' calendário aberto');await page.keyboard.press('Escape');}
+  }
+ }
+ await page.goto('/#/consulta-publica');await page.getByRole('heading',{name:'Disponibilidade dos carrinhos'}).waitFor();
+ failures+=await scan('public light');
+ expect(failures).toBe(0);
+});
+
+
+test('F4.3 — teclado e foco no menu, calendário e formulários',async({page})=>{
+ await useFakeSupabase(page);
+ await page.setViewportSize({width:390,height:500});
+ await login(page);
+ const skip=page.getByRole('link',{name:'Pular para o conteúdo'});
+ await skip.focus();await page.keyboard.press('Enter');
+ await expect(page.locator('#main-content')).toBeFocused();
+ const opener=page.getByRole('button',{name:'Abrir menu lateral'});
+ await opener.focus();await page.keyboard.press('Enter');
+ await expect(page.getByRole('button',{name:'Fechar menu lateral'})).toBeFocused();
+ await expect(page.locator('#main-content')).toHaveAttribute('inert','');
+ await page.keyboard.press('Shift+Tab');
+ await expect(page.getByRole('button',{name:'Sair',exact:true})).toBeFocused();
+ await page.keyboard.press('Tab');
+ await expect(page.getByRole('button',{name:'Fechar menu lateral'})).toBeFocused();
+ await page.keyboard.press('Escape');await expect(opener).toBeFocused();
+ await expect(page.locator('#main-content')).not.toHaveAttribute('inert','');
+ await opener.press('Enter');await page.getByRole('button',{name:'Reservas',exact:true}).click();
+ await expect(page.locator('#main-content')).toBeFocused();
+ await page.getByRole('button',{name:'Nova reserva'}).click();
+ const trigger=page.locator('#reservation-date-trigger');
+ await trigger.focus();await trigger.press('Enter');
+ await page.getByRole('button',{name:'1 semana',exact:true}).focus();await page.keyboard.press('Enter');
+ await expect(trigger).toBeFocused();await expect(trigger).toHaveAttribute('aria-expanded','false');
+ await trigger.press('Enter');await page.getByRole('button',{name:'Concluir',exact:true}).focus();await page.keyboard.press('Enter');
+ await expect(trigger).toBeFocused();
+ await trigger.press('Enter');await page.keyboard.press('Escape');await expect(trigger).toBeFocused();
+});
+
+test('F4.3 — reflow e ampliação de 200% simulada, temas persistidos',async({page})=>{
+ await useFakeSupabase(page);
+ await login(page);
+ for(const width of [320,390,768,1024,1440]){
+  await page.setViewportSize({width,height:450});
+  await expect(page.getByRole('heading',{name:'Visão geral',exact:true})).toBeVisible();
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),'viewport '+width).toBe(true);
+ }
+ await page.getByRole('button',{name:'Ativar modo claro'}).click();
+ await page.reload();await expect(page.locator('html')).toHaveAttribute('data-theme','light');
+ await page.setViewportSize({width:1440,height:900});
+ await page.evaluate(()=>document.documentElement.style.zoom='2');
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth<=document.documentElement.clientWidth+1),'zoom CSS 200%').toBe(true);
+ await page.evaluate(()=>document.documentElement.style.zoom='');
+ // Reduced CSS viewport equivalent to 1440x900 at 200% browser zoom.
+ await page.setViewportSize({width:720,height:450});
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),'zoom reflow').toBe(true);
+});
+
+
+test('F4.3 — auditoria do professor e consulta pública em telas pequenas',async({page})=>{
+ test.setTimeout(90000);
+ test.skip(!existsSync('.local-sql-test/node_modules/axe-core/axe.min.js'),'Instale axe-core isolado conforme docs/f4-3-acessibilidade.md');
+ const db=await useFakeSupabase(page,false),teacher=crypto.randomUUID(),cart=crypto.randomUUID();
+ db.requesters.push({id:teacher,name:'Professor de teste',active:true});
+ db.teacher_account_links.push({user_id:ADMIN_ID,requester_id:teacher,active:true});
+ db.carts.push({id:cart,name:'Carrinho sintético',code:'A11Y-P',capacity:10,active:true});
+ await page.setViewportSize({width:320,height:450});await login(page);
+ const scan=async(label:string)=>{
+  await page.addScriptTag({path:'.local-sql-test/node_modules/axe-core/axe.min.js'});
+  const result=await page.evaluate(async()=> (await (window as any).axe.run(document,{runOnly:{type:'tag',values:['wcag2a','wcag2aa','wcag21a','wcag21aa']}})).violations);
+  console.log('AXE '+label+' '+JSON.stringify(result.map((r:any)=>({id:r.id,nodes:r.nodes.map((n:any)=>({target:n.target,summary:n.failureSummary?.slice(0,400)}))}))));
+  expect(result,label).toHaveLength(0);
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),label+' reflow').toBe(true);
+ };
+ for(const theme of ['dark','light']){
+  if(theme==='light')await page.getByRole('button',{name:'Ativar modo claro'}).click();
+  await expect(page.getByRole('heading',{name:'Pedidos de reserva'})).toBeVisible();
+  await scan(theme+' professor lista');
+  const skip=page.getByRole('link',{name:'Ir ao conteúdo'});
+  await skip.focus();await page.keyboard.press('Enter');await expect(page.locator('#teacher-main')).toBeFocused();
+  await page.getByRole('button',{name:'Nova solicitação'}).click();
+  await page.locator('#teacher-cart').selectOption(cart);
+  await page.locator('#teacher-date-mode').selectOption('weekly');
+  await scan(theme+' professor recorrência');
+  await page.getByRole('button',{name:'Voltar para solicitações'}).click();
+ }
+ await page.goto('/#/consulta-publica');
+ await page.getByRole('heading',{name:'Disponibilidade dos carrinhos'}).waitFor();
+ await scan('light consulta pública 320');
+ await page.getByRole('button',{name:'Ativar modo escuro'}).click();await scan('dark consulta pública 320');
 });
