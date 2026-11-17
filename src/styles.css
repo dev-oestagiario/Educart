@@ -834,3 +834,8 @@ html,body,#root{width:100%;height:100%;min-width:0;margin:0}
   .auth-theme-bar .brand-lockup{width:154px;max-width:100%}
   .reservation-date-day{min-height:44px}
 }
+
+@media(max-width:1024px) and (pointer:coarse){
+  .public-agenda .public-clear-end,.public-agenda .public-agenda-refresh,
+  .public-pagination-actions button{min-height:44px;min-width:44px}
+}
