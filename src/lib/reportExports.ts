@@ -101,9 +101,9 @@ export function buildAgendaReport(rows:readonly ReportRow[],dates:readonly strin
 
 /** Exporta em A4 vertical, seguindo o modelo de agenda semanal do SENAI.
  * Os dados de sala inexistentes não são inventados. */
-export async function downloadPdf(
-  rows:ReportRow[],options:AgendaPdfOptions,basename='educart-agenda-reservas'
-):Promise<void>{
+export async function createAgendaPdf(
+  rows:ReportRow[],options:AgendaPdfOptions
+){
   const {jsPDF}=await import('jspdf');
   const pdf=new jsPDF({orientation:'portrait',unit:'pt',format:'a4'});
   const report=buildAgendaReport(rows,options.dates);
@@ -159,29 +159,43 @@ export async function downloadPdf(
     );
     y+=height;
   }
-  function drawEntry(entry:AgendaEntry,index:number){
+  function drawDayHeading(day:AgendaDay,continued=false){
+    pdf.setFillColor(...lilac);pdf.rect(m,y-9,6,9,'F');
+    pdf.setFont('helvetica','bold');pdf.setFontSize(12.4);
+    pdf.setTextColor(...purple);
+    pdf.text(day.weekday+' - '+day.dateLabel+(continued?' (continuação)':''),m+12,y);
+    y+=16;
+  }
+  function continueDay(day:AgendaDay){
+    nextPage();drawDayHeading(day,true);drawTableHeader();
+  }
+  function drawEntry(day:AgendaDay,entry:AgendaEntry,index:number){
     const cells=[
       textInCell(entry.shift,columns[0]),textInCell(entry.requester,columns[1]),
       textInCell(entry.equipment,columns[2]),textInCell(entry.room,columns[3])
     ];
-    const rowHeight=Math.max(27,...cells.map(lines=>lines.length*11+11));
-    if(y+rowHeight>H-55){nextPage();drawTableHeader();}
-    pdf.setFillColor(...(index%2===0?paper:[255,255,255] as [number,number,number]));
-    pdf.rect(m,y,available,rowHeight,'F');
-    pdf.setDrawColor(...grid);
-    pdf.line(m,y+rowHeight,right,y+rowHeight);
-    for(let i=1;i<columns.length;i++)pdf.line(colX[i],y,colX[i],y+rowHeight);
-    pdf.setTextColor(...(entry.cancelled?muted:ink));pdf.setFont('helvetica','normal');pdf.setFontSize(8.4);
-    cells.forEach((lines,i)=>pdf.text(lines,colX[i]+7,y+12));
-    y+=rowHeight;
+    const maxLines=Math.max(...cells.map(lines=>lines.length));
+    let offset=0;
+    while(offset<maxLines){
+      // Use the same explicit 11 pt line grid for measuring and rendering.
+      let fit=Math.floor((H-55-y-11)/11);
+      if(fit<1||y+27>H-55){continueDay(day);fit=Math.floor((H-55-y-11)/11);}
+      const take=Math.min(maxLines-offset,Math.max(1,fit));
+      const rowHeight=Math.max(27,take*11+11);
+      pdf.setFillColor(...(index%2===0?paper:[255,255,255] as [number,number,number]));
+      pdf.rect(m,y,available,rowHeight,'F');
+      pdf.setDrawColor(...grid);
+      pdf.line(m,y+rowHeight,right,y+rowHeight);
+      for(let i=1;i<columns.length;i++)pdf.line(colX[i],y,colX[i],y+rowHeight);
+      pdf.setTextColor(...(entry.cancelled?muted:ink));pdf.setFont('helvetica','normal');pdf.setFontSize(8.4);
+      cells.forEach((lines,i)=>lines.slice(offset,offset+take).forEach((line,j)=>pdf.text(line,colX[i]+7,y+12+j*11)));
+      y+=rowHeight;offset+=take;
+      if(offset<maxLines)continueDay(day);
+    }
   }
   for(const day of report.days){
     reserve(67+(day.entries.length?27:0));
-    pdf.setFillColor(...lilac);pdf.rect(m,y-9,6,9,'F');
-    pdf.setFont('helvetica','bold');pdf.setFontSize(12.4);
-    pdf.setTextColor(...purple);
-    pdf.text(day.weekday+' - '+day.dateLabel,m+12,y);
-    y+=16;
+    drawDayHeading(day);
     if(day.entries.length===0){
       pdf.setFont('helvetica','italic');pdf.setFontSize(9);
       pdf.setTextColor(...muted);
@@ -190,7 +204,7 @@ export async function downloadPdf(
       continue;
     }
     drawTableHeader();
-    day.entries.forEach(drawEntry);
+    day.entries.forEach((entry,index)=>drawEntry(day,entry,index));
     y+=27;
   }
   reserve(205);
@@ -227,5 +241,10 @@ export async function downloadPdf(
     pdf.text('Educart | Agenda de reservas',m,H-25);
     pdf.text('Página '+i+' de '+pages,right,H-25,{align:'right'});
   }
+  return pdf;
+}
+
+export async function downloadPdf(rows:ReportRow[],options:AgendaPdfOptions,basename='educart-agenda-reservas'):Promise<void>{
+  const pdf=await createAgendaPdf(rows,options);
   pdf.save(basename+'.pdf');
 }
