@@ -4,6 +4,7 @@ import { ArrowLeft, CalendarDays, Info, Laptop2, Plus } from 'lucide-react';
 import ReservationDatePicker from '../components/ReservationDatePicker';
 import type {ReservationDateSelection,ReservationDateMode} from '../lib/reservationDatePicker';
 import {useLocations,roomOptions} from '../lib/locations';
+import {useMaintenanceWindows,applyMaintenance} from '../lib/maintenance';
 import ReservationManager, {type ReservationEdit} from './ReservationManager';
 import { supabase, type Cart, type Notebook, type Requester } from '../lib/supabase';
 import {
@@ -58,6 +59,7 @@ export default function ReservationsPage() {
     }
   },[dateMode,startDate,endDate,specificDates]);
   const dates=dateResult.dates;
+  const maintenance=useMaintenanceWindows(cartId,dates[0]??'',dates[dates.length-1]??'');
 
   const periods=useQuery({
     queryKey:['reservation-periods',cartId,dates.join(',')],
@@ -71,9 +73,9 @@ export default function ReservationsPage() {
       return (data??[]) as UsagePeriod[];
     }
   });
-  const slots=useMemo(()=>calculateAvailability(
+  const slots=useMemo(()=>applyMaintenance(calculateAvailability(
     selectedCart?.capacity??0,(periods.data??[]).filter(p=>!editingId||p.reservation_id!==editingId),dates,selectedShifts
-  ),[selectedCart?.capacity,periods.data,dates,selectedShifts,editingId]);
+  ),maintenance.data??[],cartId),[selectedCart?.capacity,periods.data,dates,selectedShifts,editingId,maintenance.data,cartId]);
   const blocked=!!selectedCart && slots.some(s=>s.remaining<requestedQuantity);
   const knownNotebooks=(notebooks.data??[]).filter(n=>n.cart_id===cartId);
   const periodsCount=dates.length*selectedShifts.length;
@@ -81,8 +83,8 @@ export default function ReservationsPage() {
   const save=useMutation({
     mutationFn:async()=>{
       if(!selectedCart)throw new Error('Selecione um carrinho.');
-      if(periods.isLoading||periods.isFetching)throw new Error('Aguarde a consulta de disponibilidade.');
-      if(periods.error)throw new Error('Não foi possível verificar a disponibilidade. Tente novamente.');
+      if(periods.isLoading||periods.isFetching||maintenance.isLoading||maintenance.isFetching)throw new Error('Aguarde a consulta de disponibilidade.');
+      if(periods.error||maintenance.error)throw new Error('Não foi possível verificar a disponibilidade. Tente novamente.');
       const data=reservationInputSchema.parse({
         requester_id:requesterId,cart_id:cartId,mode:reservationMode,
         quantity:requestedQuantity,dates,shifts:selectedShifts,needs_mouse:needsMouse,
@@ -266,14 +268,14 @@ export default function ReservationsPage() {
           <details className="reservation-form-availability" open>
             <summary><Laptop2 size={18} aria-hidden="true"/> Ver disponibilidade por turno</summary>
             {!showPreview?<p className="form-hint">Selecione carrinho, datas e turnos para verificar o saldo.</p>:
-              periods.isLoading||periods.isFetching?<p role="status">Consultando disponibilidade…</p>:
-              periods.error?<p role="alert" className="notice error">Falha ao consultar os períodos. Não confirme antes de atualizar.</p>:
+              periods.isLoading||periods.isFetching||maintenance.isLoading||maintenance.isFetching?<p role="status">Consultando disponibilidade…</p>:
+              (periods.error||maintenance.error)?<p role="alert" className="notice error">Falha ao consultar os períodos. Não confirme antes de atualizar.</p>:
               <div className="reservation-table-wrap"><table className="reservation-table">
                 <thead><tr><th>Data</th><th>Turno</th><th>Livres</th><th>Situação</th></tr></thead>
                 <tbody>{slots.map(slot=><tr key={slot.date+'-'+slot.shift}>
                   <td>{showDate(slot.date)}</td><td>{shiftLabel[slot.shift]}</td><td>{slot.remaining}/{slot.capacity}</td>
                   <td><span className={slot.remaining<requestedQuantity?'reservation-status unavailable':'reservation-status available'}>
-                    {slot.remaining<requestedQuantity?'Conflito':'Disponível'}
+                    {slot.capacity===0?'Em manutenção':slot.remaining<requestedQuantity?'Conflito':'Disponível'}
                   </span></td>
                 </tr>)}</tbody>
               </table></div>}
@@ -282,7 +284,7 @@ export default function ReservationsPage() {
           {feedback&&<p className={'notice '+feedback.kind} role={feedback.kind==='error'?'alert':'status'}>{feedback.text}</p>}
           <div className="reservation-form-actions">
             <button className="primary" type="submit"
-              disabled={!requesterId||!cartId||!requestedValid||!dates.length||!selectedShifts.length||blocked||periods.isFetching||save.isPending}>
+              disabled={!requesterId||!cartId||!requestedValid||!dates.length||!selectedShifts.length||blocked||periods.isFetching||maintenance.isFetching||!!maintenance.error||save.isPending}>
               {save.isPending?'Salvando…':editingId?'Salvar alterações':'Confirmar reserva'}
             </button>
             <button type="button" className="ghost" onClick={returnToList}>Cancelar e voltar</button>
