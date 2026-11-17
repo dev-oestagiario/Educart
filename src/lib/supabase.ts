@@ -14,6 +14,9 @@ export function subscribeRecovery(listener:()=>void){
   recoveryListeners.add(listener);
   return ()=>{recoveryListeners.delete(listener)};
 }
+export function rejectDirectRecovery(){
+  if(recovery==='none')publishRecovery('invalid');
+}
 export function clearRecovery(){
   recoveredUserId=null;
   publishRecovery('none');
