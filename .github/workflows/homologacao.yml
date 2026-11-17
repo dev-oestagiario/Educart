@@ -50,6 +50,18 @@ jobs:
         run: sudo apt-get update -qq && sudo apt-get install -y --no-install-recommends poppler-utils
       - name: Homologar relatórios reais e PDF A4
         run: node scripts/homologacao-relatorios.mjs
+      - name: Preparar WebKit para homologação móvel
+        run: npx playwright install --with-deps webkit
+      - name: Homologar fluxos touch Chromium e WebKit
+        run: node scripts/homologacao-mobile.mjs
+      - name: Guardar evidências visuais sintéticas
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: educart-homologacao-mobile
+          path: test-results/mobile-local/*.png
+          if-no-files-found: ignore
+          retention-days: 7
       - name: Encerrar ambiente isolado
         if: always()
         run: |
