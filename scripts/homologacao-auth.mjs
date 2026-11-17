@@ -44,6 +44,8 @@ assert.deepEqual(ok(await a.client.from('requesters').select('id').in('id',teach
 assert.deepEqual(ok(await b.client.from('requesters').select('id').in('id',teachers.map(x=>x.id)),'Isolamento cadastros B').map(x=>x.id),[teachers[1].id]);
 denied(await a.client.rpc('list_teacher_accounts'),'Professor não lista contas');
 denied(await anon.from('carts').select('id'),'Anon não lê tabelas');
+denied(await anon.from('carts').insert({code:'NEG-'+suffix,name:'Cadastro indevido',capacity:8}),'Anon não grava tabelas');
+denied(await a.client.from('carts').insert({code:'NEG-A-'+suffix,name:'Cadastro indevido',capacity:8}),'Professor não cadastra carrinho');
 assert.deepEqual(ok(await unlinked.client.from('carts').select('id').eq('id',cart.id),'Sem vínculo não lê carrinho'),[]);
 let args={p_cart_id:cart.id,p_mode:'PARCIAL',p_quantity:2,p_dates:[day],p_shifts:['MATUTINO'],p_needs_mouse:false,p_notes:null};
 denied(await unlinked.client.rpc('submit_teacher_request',args),'Sem vínculo não solicita');
