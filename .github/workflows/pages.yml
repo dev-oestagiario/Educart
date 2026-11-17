@@ -1,19 +1,8 @@
-name: Publicar Educart — consulta pública e temas
+name: Publicar Educart — produção
 
 on:
   push:
-    branches:
-      - feat/consulta-publica-carrinhos
-    paths:
-      - 'src/**'
-      - 'index.html'
-      - 'public/**'
-      - 'package.json'
-      - 'vite.config.ts'
-      - 'playwright.config.ts'
-      - 'vitest.config.ts'
-      - 'e2e/**'
-      - '.github/workflows/pages.yml'
+    branches: [main]
   workflow_dispatch:
 
 permissions:
@@ -27,9 +16,10 @@ concurrency:
 
 jobs:
   build-and-deploy:
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     environment:
-      name: educart-preview
+      name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - name: Baixar codigo
@@ -41,7 +31,7 @@ jobs:
           node-version: '22'
 
       - name: Instalar dependencias
-        run: npm install --no-audit --no-fund
+        run: npm ci --no-audit --no-fund
 
       - name: Executar testes
         run: npm run test
@@ -59,6 +49,9 @@ jobs:
           VITE_SUPABASE_PUBLISHABLE_KEY: sb_publishable_k5cR7QLJf5MTpHQvOYQgmg_LoX7EgBZ
         run: npm run build
 
+      - name: Registrar versão publicada
+        run: |
+          node -e "require('fs').writeFileSync('dist/version.json',JSON.stringify({commit:process.env.GITHUB_SHA,ref:process.env.GITHUB_REF_NAME,build:new Date().toISOString()},null,2))"
       - name: Configurar GitHub Pages
         uses: actions/configure-pages@v5
 
