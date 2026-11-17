@@ -10,7 +10,7 @@ import NotificationBell from './components/NotificationBell';
 import BrandLogo from './components/BrandLogo';
 import ThemeToggle from './components/ThemeToggle';
 import PasswordResetPage from './pages/PasswordResetPage';
-import {recoveryRedirect,recoveryMessage} from './lib/passwordRecovery';
+import {recoveryRedirect,recoveryMessage,newPasswordError} from './lib/passwordRecovery';
 
 const CartsPage = lazy(()=>import('./pages/CartsPage'));
 const RequestersPage = lazy(()=>import('./pages/RequestersPage'));
@@ -39,17 +39,24 @@ function Notice({message,kind='error'}:{message:string;kind?:'error'|'success'})
 function PageHeader({title,description}:{title:string;description:string}) {
   return <div className="page-header"><h1>{title}</h1><p>{description}</p></div>;
 }
-function TextInput({label,id,value,onChange,required=false,type='text',min}:{label:string;id:string;value:string;onChange:(v:string)=>void;required?:boolean;type?:string;min?:number}) {
+function TextInput({label,id,value,onChange,required=false,type='text',min,autoComplete,disabled=false}:{label:string;id:string;value:string;onChange:(v:string)=>void;required?:boolean;type?:string;min?:number;autoComplete?:string;disabled?:boolean}) {
   return <label className="field" htmlFor={id}><span>{label}</span>
-    <input id={id} value={value} onChange={e=>onChange(e.target.value)} required={required} type={type} min={min} />
+    <input id={id} value={value} onChange={e=>onChange(e.target.value)} required={required} type={type} min={min} autoComplete={autoComplete} disabled={disabled} />
   </label>;
 }
 function Login({onLogin,resetSuccess=false}:{onLogin:()=>void;resetSuccess?:boolean}) {
   const [email,setEmail]=useState('');const [password,setPassword]=useState('');
   const [mode,setMode]=useState<'login'|'signup'|'recover'>('login');
   const [error,setError]=useState('');const [message,setMessage]=useState(resetSuccess?'Senha alterada com sucesso. Entre com a nova senha.':'');const [busy,setBusy]=useState(false);
+  const submitting=useRef(false);
   async function submit(e:FormEvent) {
-    e.preventDefault();setError('');setMessage('');setBusy(true);
+    e.preventDefault();if(submitting.current)return;
+    setError('');setMessage('');
+    if(mode==='signup'){
+      const validation=newPasswordError(password,password);
+      if(validation){setError(validation);return;}
+    }
+    submitting.current=true;setBusy(true);
     try {
       if(mode==='recover') {
         // Keep the same response for registered and unknown addresses, including server rejection.
@@ -73,7 +80,7 @@ function Login({onLogin,resetSuccess=false}:{onLogin:()=>void;resetSuccess?:bool
       setError(mode==='signup'
         ? 'Não foi possível criar a conta. Confira o e-mail e a senha ou tente novamente.'
         : 'Não foi possível entrar. Confira as credenciais e tente novamente.');
-    } finally {setBusy(false)}
+    } finally {submitting.current=false;setBusy(false)}
   }
   return <div className="auth-shell"><section className="auth-panel">
     <div className="auth-theme-bar"><BrandLogo tone="light"/><ThemeToggle/></div>
@@ -81,9 +88,9 @@ function Login({onLogin,resetSuccess=false}:{onLogin:()=>void;resetSuccess?:bool
       <h1>{mode==='recover'?'Recuperar senha':mode==='signup'?'Criar conta no Educart':'Acesso ao Educart'}</h1>
       <p>{mode==='recover'?'Informe o e-mail da sua conta para receber as instruções de recuperação.':mode==='signup'?'Cadastre seu e-mail. A TI autoriza o acesso de professor ou administrador depois da confirmação da conta.':'Entre com sua conta para acessar o painel da TI ou o portal do professor.'}</p></div>
     <form onSubmit={submit} className="form-stack">
-      <TextInput id="email" label="E-mail" type="email" value={email} onChange={setEmail} required/>
-      {mode!=='recover'&&<TextInput id="password" label="Senha" type="password" value={password} onChange={setPassword} required/>}
-      {mode==='signup'&&<p className="form-hint">Use uma senha exclusiva. Depois do cadastro, confirme seu e-mail se receber uma mensagem do Supabase.</p>}
+      <TextInput id="email" label="E-mail" type="email" value={email} onChange={setEmail} autoComplete="email" disabled={busy} required/>
+      {mode!=='recover'&&<TextInput id="password" label="Senha" type="password" value={password} onChange={setPassword} autoComplete={mode==='signup'?'new-password':'current-password'} disabled={busy} required/>}
+      {mode==='signup'&&<p className="form-hint">Use uma senha exclusiva com pelo menos 8 caracteres. Depois do cadastro, confirme seu e-mail se receber uma mensagem do Supabase.</p>}
       {error&&<Notice message={error}/>}
       {message&&<Notice kind="success" message={message}/>}
       <button className="primary" disabled={busy} type="submit">{busy?'Aguarde…':mode==='recover'?'Enviar instruções':mode==='signup'?'Criar minha conta':'Entrar no Educart'}</button>
@@ -134,10 +141,18 @@ export default function App() {
   const sidebarRef=useRef<HTMLElement>(null);
   useEffect(()=>{
     let current=true;
-    supabase.auth.getSession().then(({data})=>{if(current){setSession(data.session);setLoading(false)}});
-    const {data:{subscription}}=supabase.auth.onAuthStateChange((_event,session)=>{setSession(session);if(!session){qc.clear();setMenuOpen(false)};});
+    let observed=false;
+    let previousUser:string|null=null;
+    function acceptSession(next:Session|null){
+      if(!current)return;
+      const id=next?.user.id??null;
+      if(previousUser!==id||!next){qc.clear();setMenuOpen(false);setPage('overview');}
+      previousUser=id;setSession(next);setLoading(false);
+    }
+    const {data:{subscription}}=supabase.auth.onAuthStateChange((_event,next)=>{observed=true;acceptSession(next);});
+    void supabase.auth.getSession().then(({data,error})=>{if(!observed)acceptSession(error?null:data.session);},()=>{if(!observed)acceptSession(null);});
     return ()=>{current=false;subscription.unsubscribe()};
-  },[qc]);
+  },[qc,setPage]);
   useEffect(()=>{
     if(!menuOpen)return;
     const previousOverflow=document.body.style.overflow;
@@ -191,13 +206,14 @@ export default function App() {
       document.getElementById('main-content')?.focus();
     }
   }
-  const check=useQuery({queryKey:['admin',session?.user.id],enabled:Boolean(session)&&recoveryState==='none',queryFn:async()=>{
+  const check=useQuery({queryKey:['admin',session?.user.id],enabled:Boolean(session)&&recoveryState==='none',refetchOnWindowFocus:'always',refetchInterval:60_000,queryFn:async()=>{
     const {data,error}=await supabase.from('admin_users').select('user_id,display_name').eq('user_id',session!.user.id).eq('active',true).maybeSingle();
     if(error)throw error;return data;
   }});
   const teacherAccess=useQuery({
     queryKey:['teacher-account',session?.user.id],
     enabled:Boolean(session)&&recoveryState==='none'&&check.isSuccess&&!check.data,
+    refetchOnWindowFocus:'always',refetchInterval:60_000,
     queryFn:async()=>{
       const {data,error}=await supabase.from('teacher_account_links')
         .select('requester_id,active').eq('user_id',session!.user.id).eq('active',true).maybeSingle();
