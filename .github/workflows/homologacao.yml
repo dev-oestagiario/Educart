@@ -1,0 +1,43 @@
+name: Homologação Educart — Supabase isolado
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: educart-homologacao-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  homologacao:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Instalar dependências
+        run: npm ci --no-audit --no-fund
+      - name: Preparar CLI
+        run: |
+          npx --yes supabase@2.79.0 --version
+          npx --yes supabase@2.79.0 start --help
+          npx --yes supabase@2.79.0 status --help
+      - name: Iniciar ambiente local e aplicar migrations
+        run: |
+          # Não usar link, db push, credenciais cloud ou dados de produção.
+          npx --yes supabase@2.79.0 start > /tmp/educart-local-start.log 2>&1 || { echo "Falha ao iniciar Supabase local; confira a configuração e disponibilidade Docker."; exit 1; }
+          umask 077
+          npx --yes supabase@2.79.0 status -o json > .env.homologacao.status.local
+      - name: Testar autenticação e acesso real com dados sintéticos
+        run: node scripts/homologacao-auth.mjs
+      - name: Encerrar ambiente isolado
+        if: always()
+        run: |
+          rm -f .env.homologacao.status.local /tmp/educart-local-start.log
+          npx --yes supabase@2.79.0 stop --no-backup
