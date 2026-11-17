@@ -4,6 +4,7 @@ import {supabase,type Cart} from '../lib/supabase';
 import {useLocations,roomOptions,type Campus,type Block,type Room} from '../lib/locations';
 import {fetchCatalogRows} from '../lib/catalog';
 import {errorMessage} from '../lib/validation';
+import {Feedback,LoadingState} from '../components/Feedback';
 import RecordsHeader from '../components/RecordsHeader';
 type Kind='campuses'|'campus_blocks'|'campus_rooms';
 const labels:Record<Kind,string>={campuses:'Campus',campus_blocks:'Bloco',campus_rooms:'Sala'};
@@ -40,12 +41,12 @@ export default function LocationsPage(){
  const parents=tab==='campus_blocks'?query.data?.campuses??[]:query.data?.blocks??[];
  return <div className="records-page">
   <RecordsHeader title="Localizações" description="Organize campus, blocos e salas. O local de guarda do carrinho é independente do destino de cada reserva."
-   actionLabel={tab==='storage'?'Atualizar listagem':'Cadastrar '+labels[tab].toLocaleLowerCase('pt-BR')} onAction={()=>tab==='storage'?void storage.refetch():open(null)}/>
-  <div className="panel" style={{display:'flex',gap:8,flexWrap:'wrap'}} aria-label="Tipo de localização">
+   actionKind={tab==='storage'?'refresh':'add'} busy={save.isPending} actionLabel={tab==='storage'?'Atualizar listagem':'Cadastrar '+labels[tab].toLocaleLowerCase('pt-BR')} onAction={()=>tab==='storage'?void storage.refetch():open(null)}/>
+  <div className="panel ds-choice-group" role="group" aria-label="Tipo de localização">
    {([['campuses','Campus'],['campus_blocks','Blocos'],['campus_rooms','Salas'],['storage','Local de guarda']] as const).map(([id,label])=><button key={id} type="button" className={tab===id?'primary':'secondary'} aria-pressed={tab===id} disabled={save.isPending} onClick={()=>{setTab(id);setForm(false);setNotice(null);}}>{label}</button>)}
   </div>
-  {notice&&<p className={'notice '+(notice.error?'error':'success')} role={notice.error?'alert':'status'}>{notice.text}</p>}
-  {query.error?<p role="alert" className="notice error">Não foi possível carregar as localizações. {errorMessage(query.error)}</p>:query.isLoading?<p role="status">Carregando localizações…</p>:tab==='storage'?<section className="panel records-form-panel">
+  {notice&&<Feedback kind={notice.error?'error':'success'}>{notice.text}</Feedback>}
+  {query.error?<p role="alert" className="notice error">Não foi possível carregar as localizações. {errorMessage(query.error)}</p>:query.isLoading?<LoadingState>Carregando localizações…</LoadingState>:tab==='storage'?<section className="panel records-form-panel">
    <h2>Local de guarda do carrinho</h2>
    <p className="form-hint">Cadastro administrativo. Não informa posição em tempo real e não aparece na consulta pública.</p>
    {storage.error||carts.error?<p role="alert">Não foi possível carregar os carrinhos ou locais.</p>:<form className="form-stack" onSubmit={submit}>

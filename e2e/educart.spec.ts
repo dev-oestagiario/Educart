@@ -1980,3 +1980,51 @@ test('F3.6 — preferências de e-mail opcionais, canal desativado e avisos inte
  await expect(page.getByRole('heading',{name:'Seus avisos'})).toBeVisible();
  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=document.documentElement.clientWidth+1)).toBe(true);
 });
+
+
+test('F4.1 — controles e feedback compartilham tokens nos dois temas',async({page})=>{
+ const db=await useFakeSupabase(page);
+ db.carts.push({id:crypto.randomUUID(),code:'DS-01',name:'Carrinho design system',capacity:10,active:true});
+ await page.setViewportSize({width:1440,height:900});await login(page);
+ const menu=page.getByRole('navigation',{name:'Menu principal'});
+ async function checkContrast(selector:string,min:number){
+  const ratio=await page.locator(selector).first().evaluate(el=>{
+   const luminance=(color:string)=>{const values=color.match(/\d+(\.\d+)?/g)!.slice(0,3).map(Number).map(x=>{const n=x/255;return n<=.04045?n/12.92:((n+.055)/1.055)**2.4;});return .2126*values[0]+.7152*values[1]+.0722*values[2];};
+   const style=getComputedStyle(el),a=luminance(style.color),b=luminance(style.backgroundColor);
+   return (Math.max(a,b)+.05)/(Math.min(a,b)+.05);
+  });
+  expect(ratio,selector+' contrast').toBeGreaterThanOrEqual(min);
+ }
+ for(const theme of ['dark','light']){
+  if(theme==='light')await page.getByRole('button',{name:'Ativar modo claro'}).click();
+  await expect(page.locator('html')).toHaveAttribute('data-theme',theme);
+  await menu.getByRole('button',{name:'Manutenção',exact:true}).click();
+  await page.getByRole('button',{name:'Nova manutenção'}).click();
+  await expect(page.getByRole('button',{name:'Voltar para manutenção'})).toHaveClass(/ghost records-back/);
+  await expect(page.locator('.ds-fieldset')).toBeVisible();
+  await expect(page.locator('.field textarea')).toHaveCSS('border-top-left-radius','10px');
+  await expect(page.locator('.field select')).toHaveCSS('min-height','44px');
+  await checkContrast('.records-form-panel .field select',4.5);
+  await checkContrast('.records-form-panel .primary',4.5);
+  await page.getByRole('button',{name:'Voltar para manutenção'}).click();
+  await expect(page.locator('.records-panel .empty')).toBeVisible();
+  await menu.getByRole('button',{name:'Localizações',exact:true}).click();
+  await expect(page.getByRole('group',{name:'Tipo de localização'})).toBeVisible();
+  await page.getByRole('button',{name:'Local de guarda',exact:true}).click();
+  await expect(page.getByRole('button',{name:'Atualizar listagem'})).toHaveClass(/secondary/);
+  await menu.getByRole('button',{name:'Retirada e devolução',exact:true}).click();
+  await expect(page.getByRole('group',{name:'Recorte das movimentações'})).toBeVisible();
+  await expect(page.getByRole('button',{name:'Atualizar listagem'})).toHaveClass(/secondary/);
+  await menu.getByRole('button',{name:'Reservas',exact:true}).click();
+  await page.getByRole('button',{name:'Nova reserva'}).click();
+  await page.getByRole('button',{name:'Repetir semanalmente'}).click();
+  const date=page.locator('#reservation-weekly-start');
+  await expect(date).toHaveCSS('min-height','44px');
+  expect(await date.evaluate(el=>el.getBoundingClientRect().width)).toBeGreaterThan(100);
+  await date.focus();await expect(date).toHaveCSS('outline-width','3px');
+  for(const width of [320,390,768,1440]){
+   await page.setViewportSize({width,height:800});
+   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),theme+' '+width).toBe(true);
+  }
+ }
+});

@@ -5,6 +5,7 @@ import App from './App';
 import './styles.css';
 import './brand-theme.css';
 import './light-theme.css';
+import './design-system.css';
 import {initializeTheme} from './lib/theme';
 initializeTheme();
 

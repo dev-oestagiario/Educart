@@ -1,5 +1,6 @@
 import {useState,type FormEvent} from 'react';
 import {useMutation,useQuery,useQueryClient} from '@tanstack/react-query';
+import {Feedback,LoadingState,EmptyState} from '../components/Feedback';
 import RecordsHeader from '../components/RecordsHeader';
 import {supabase,type Cart,type Requester,type Notebook} from '../lib/supabase';
 import {fetchCatalogRows} from '../lib/catalog';
@@ -60,15 +61,15 @@ export default function MovementsPage(){
   </div>{!m.return_at&&<button className="secondary" type="button" onClick={()=>open({kind:'return',movement:m})}>Registrar devolução</button>}
  </article>}
  return <div className="records-page">
-  <RecordsHeader title="Retirada e devolução" description="Registre a entrega e o retorno efetivamente conferidos. A reserva continua sendo o planejamento, não o local físico atual." actionLabel={selection?'Voltar à listagem':'Atualizar listagem'} onAction={()=>{if(selection){if(!saved.isPending)setSelection(null);}else{void qc.invalidateQueries({queryKey:['movements']});void qc.invalidateQueries({queryKey:['movement-periods']});void qc.invalidateQueries({queryKey:['carts']});void qc.invalidateQueries({queryKey:['requesters']});}}}/>
-  {notice&&<p className={'notice '+(notice.error?'error':'success')} role={notice.error?'alert':'status'}>{notice.text}</p>}
+  <RecordsHeader title="Retirada e devolução" description="Registre a entrega e o retorno efetivamente conferidos. A reserva continua sendo o planejamento, não o local físico atual." actionLabel={selection?'Voltar à listagem':'Atualizar listagem'} actionKind={selection?'back':'refresh'} busy={saved.isPending} onAction={()=>{if(selection){if(!saved.isPending)setSelection(null);}else{void qc.invalidateQueries({queryKey:['movements']});void qc.invalidateQueries({queryKey:['movement-periods']});void qc.invalidateQueries({queryKey:['carts']});void qc.invalidateQueries({queryKey:['requesters']});}}}/>
+  {notice&&<Feedback kind={notice.error?'error':'success'}>{notice.text}</Feedback>}
   {selection?<section className="panel records-form-panel"><h2>{selection.kind==='pickup'?'Registrar retirada':'Registrar devolução'}</h2>
    <p>{selection.kind==='pickup'?cartName(selection.period.cart_id):cartName(selection.movement.cart_id)} · {quantity} notebook(s)</p>
    <form className="form-stack" onSubmit={submit}>
     {selection.kind==='pickup'?<>
      <label className="field" htmlFor="movement-quantity"><span>Quantidade entregue</span><input id="movement-quantity" type="number" min={1} max={selection.period.quantity} required value={quantity} onChange={e=>setQuantity(Number(e.target.value))}/></label>
-     <fieldset><legend>Códigos conferidos (opcional)</legend>
-     {notebooks.isLoading?<p>Carregando códigos…</p>:notebooks.error?<p role="alert">Não foi possível consultar os códigos. Atualize e tente novamente.</p>:notebooks.data?.length?<div style={{maxHeight:'240px',overflowY:'auto'}}>{notebooks.data.map(n=><label key={n.id} style={{display:'block',padding:'6px'}}><input type="checkbox" checked={codes.includes(n.id)} disabled={!codes.includes(n.id)&&codes.length>=quantity} onChange={e=>setCodes(old=>e.target.checked?[...old,n.id]:old.filter(x=>x!==n.id))}/> {n.code}</label>)}</div>:<p>Nenhum código cadastrado.</p>}
+     <fieldset className="ds-fieldset"><legend>Códigos conferidos (opcional)</legend>
+     {notebooks.isLoading?<p>Carregando códigos…</p>:notebooks.error?<p role="alert">Não foi possível consultar os códigos. Atualize e tente novamente.</p>:notebooks.data?.length?<div className="ds-check-list is-scrollable">{notebooks.data.map(n=><label key={n.id}><input type="checkbox" checked={codes.includes(n.id)} disabled={!codes.includes(n.id)&&codes.length>=quantity} onChange={e=>setCodes(old=>e.target.checked?[...old,n.id]:old.filter(x=>x!==n.id))}/> {n.code}</label>)}</div>:<p>Nenhum código cadastrado.</p>}
      <p className="form-hint">{codes.length} de {quantity} identificado(s). Não informe códigos que não foram conferidos.</p></fieldset>
     </>:<p className="form-hint">Confirme somente após o retorno de todos os {selection.movement.quantity} notebooks retirados. Retorno parcial não é registrado nesta versão.</p>}
     <label className="field" htmlFor="movement-responsible"><span>{selection.kind==='pickup'?'Responsável que recebeu':'Responsável que devolveu'}</span><input id="movement-responsible" required minLength={2} maxLength={160} value={responsible} onChange={e=>setResponsible(e.target.value)}/></label>
@@ -76,13 +77,13 @@ export default function MovementsPage(){
     <label className="field"><span>Observação {condition==='RESSALVA'?'(obrigatória)':'(opcional)'}</span><textarea maxLength={1000} required={condition==='RESSALVA'} value={notes} onChange={e=>setNotes(e.target.value)}/></label>
     <div className="records-form-actions"><button className="primary" disabled={!valid||saved.isPending}>{saved.isPending?'Registrando…':selection.kind==='pickup'?'Confirmar retirada':'Confirmar devolução'}</button><button type="button" className="ghost" disabled={saved.isPending} onClick={()=>setSelection(null)}>Cancelar</button></div>
    </form></section>:<>
-   <div className="panel" style={{display:'flex',gap:8,flexWrap:'wrap'}}>{([['today','Hoje'],['pending','Pendentes de devolução'],['history','Histórico']] as const).map(([id,label])=><button key={id} className={tab===id?'primary':'secondary'} aria-pressed={tab===id} onClick={()=>{setTab(id);setNotice(null);}}>{label}</button>)}</div>
+   <div className="panel ds-choice-group" role="group" aria-label="Recorte das movimentações">{([['today','Hoje'],['pending','Pendentes de devolução'],['history','Histórico']] as const).map(([id,label])=><button key={id} className={tab===id?'primary':'secondary'} aria-pressed={tab===id} onClick={()=>{setTab(id);setNotice(null);}}>{label}</button>)}</div>
    {tab==='history'&&<label className="field"><span>Data da reserva</span><input type="date" value={date} onChange={e=>{if(e.target.value)setDate(e.target.value)}}/></label>}
    <section className="panel records-panel"><h2>{tab==='today'?'Períodos de hoje':tab==='pending'?'Equipamentos pendentes':'Histórico de movimentações'}</h2>
-   {movements.error||(tab==='today'&&periods.error)||carts.error||requesters.error?<p role="alert" className="notice error">Não foi possível carregar os registros.</p>:movements.isLoading||(tab==='today'&&periods.isLoading)?<p role="status">Carregando movimentações…</p>:
+   {movements.error||(tab==='today'&&periods.error)||carts.error||requesters.error?<p role="alert" className="notice error">Não foi possível carregar os registros.</p>:movements.isLoading||(tab==='today'&&periods.isLoading)?<LoadingState>Carregando movimentações…</LoadingState>:
     <div className="item-list">{(movements.data??[]).map(movementCard)}
     {tab==='today'&&(periods.data??[]).filter(p=>p.reservations?.status==='CONFIRMADA'&&!movements.data?.some(m=>m.period_id===p.id)).map(p=><article className="item records-item" key={p.id}><div><strong>{cartName(p.cart_id)} · Aguardando retirada</strong><span>{teacherName(p.reservations!.requester_id)} · {shiftLabel[p.shift]} · {p.quantity} notebook(s) reservados</span></div><button className="secondary" onClick={()=>open({kind:'pickup',period:p})}>Registrar retirada</button></article>)}
-    {!movements.data?.length&&(tab!=='today'||!periods.data?.length)&&<p className="empty">Nenhum registro neste recorte.</p>}</div>}
+    {!movements.data?.length&&(tab!=='today'||!periods.data?.length)&&<EmptyState>Nenhum registro neste recorte.</EmptyState>}</div>}
    </section></>}
  </div>;
 }
