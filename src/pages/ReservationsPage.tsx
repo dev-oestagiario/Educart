@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ArrowLeft, CalendarDays, Info, Laptop2, Plus } from 'lucide-react';
 import ReservationDatePicker from '../components/ReservationDatePicker';
 import type {ReservationDateSelection,ReservationDateMode} from '../lib/reservationDatePicker';
+import {useLocations,roomOptions} from '../lib/locations';
 import ReservationManager, {type ReservationEdit} from './ReservationManager';
 import { supabase, type Cart, type Notebook, type Requester } from '../lib/supabase';
 import {
@@ -25,6 +26,9 @@ function explainError(error:unknown):string {
 }
 export default function ReservationsPage() {
   const qc=useQueryClient();
+  const locations=useLocations();
+  const roomList=roomOptions(locations.data);
+  const [roomId,setRoomId]=useState(''),[oldRoom,setOldRoom]=useState('');
   const carts=useQuery({queryKey:['carts','active'],queryFn:()=>fetchActive<Cart>('carts')});
   const teachers=useQuery({queryKey:['requesters','active'],queryFn:()=>fetchActive<Requester>('requesters')});
   const notebooks=useQuery({queryKey:['notebooks','active'],queryFn:()=>fetchActive<Notebook>('notebook_codes')});
@@ -90,9 +94,10 @@ export default function ReservationsPage() {
         p_mode:data.mode,p_quantity:data.quantity,p_dates:data.dates,p_shifts:data.shifts,
         p_needs_mouse:data.needs_mouse,p_notes:data.notes||null,p_notebook_ids:data.notebook_ids
       };
+      const withRoom=!!roomId||!!oldRoom;
       const {data:reservationId,error}=editingId
-        ?await supabase.rpc('update_reservation',{p_reservation_id:editingId,...args})
-        :await supabase.rpc('create_reservation',args);
+        ?withRoom?await supabase.rpc('update_reservation_with_room',{p_reservation_id:editingId,...args,p_room_id:roomId||null}):await supabase.rpc('update_reservation',{p_reservation_id:editingId,...args})
+        :withRoom?await supabase.rpc('create_reservation_with_room',{...args,p_room_id:roomId||null}):await supabase.rpc('create_reservation',args);
       if(error)throw error;
       return reservationId as string;
     },
@@ -112,7 +117,7 @@ export default function ReservationsPage() {
   }
   function loadForEdit(info:ReservationEdit){
     const {booking,dates:bookedDates,shifts,notebookIds}=info;
-    setEditingId(booking.id);
+    setEditingId(booking.id);setRoomId(booking.destination_room_id??'');setOldRoom(booking.destination_room_id??'');
     setRequesterId(booking.requester_id);
     setCartId(booking.cart_id);
     setReservationMode(booking.mode);
@@ -135,7 +140,7 @@ export default function ReservationsPage() {
     setFeedback(null);
   }
   function openNew(){
-    setEditingId(null);setCartId('');setRequesterId('');
+    setEditingId(null);setCartId('');setRequesterId('');setRoomId('');setOldRoom('');
     setReservationMode('COMPLETA');setQuantity('1');
     setDateMode('single');setStartDate(firstBookableDay);setEndDate(firstBookableDay);setSpecificDates([]);
     setSelectedShifts(['MATUTINO']);setSelectedNotebookIds([]);
@@ -243,6 +248,12 @@ export default function ReservationsPage() {
           <label className="reservation-check"><input type="checkbox" checked={needsMouse} onChange={e=>setNeedsMouse(e.target.checked)}/>
             Precisa de mouse (avisar a TI)
           </label>
+          <label className="field" htmlFor="reservation-room"><span>Sala de utilização (opcional)</span>
+            <select id="reservation-room" value={roomId} onChange={e=>setRoomId(e.target.value)} disabled={locations.isLoading||!!locations.error}>
+              <option value="">Não informada</option>{roomList.map(r=><option key={r.id} value={r.id}>{r.label}</option>)}
+              {roomId&&!roomList.some(r=>r.id===roomId)&&<option value={roomId}>Local anterior (inativo)</option>}
+            </select></label>
+          {locations.error&&<p className="form-hint">Cadastro de salas indisponível. A reserva sem sala continua disponível.</p>}
           <label className="field" htmlFor="reservation-notes"><span>Observações (opcional)</span>
             <textarea id="reservation-notes" rows={3} maxLength={1000} value={notes}
               onChange={e=>setNotes(e.target.value)} placeholder="Informações para preparar os equipamentos"/>
