@@ -38,7 +38,7 @@ function pg(sql){
 }
 assert.equal(run('docker',['inspect','--format','{{.State.Running}}',container]).toString().trim(),'true');
 assert.equal(pg('select current_database()'),'postgres');
-const tables=['admin_users','carts','notebook_codes','requesters','reservation_events','reservation_notebooks','reservation_periods','reservation_request_events','reservation_requests','reservations','teacher_account_links','user_notifications','campuses','campus_blocks','campus_rooms','cart_storage_locations','maintenance_windows'];
+const tables=['admin_users','carts','notebook_codes','requesters','reservation_events','reservation_notebooks','reservation_periods','reservation_request_events','reservation_requests','reservations','teacher_account_links','user_notifications','campuses','campus_blocks','campus_rooms','cart_storage_locations','maintenance_windows','equipment_movements'];
 const authTables=['auth.users','auth.identities'];
 const allTables=[...tables.map(t=>'public.'+t),...authTables];
 const expectedVersions=readdirSync('supabase/migrations').filter(f=>/^\d{14}_.*\.sql$/.test(f)).sort().map(f=>f.slice(0,14));

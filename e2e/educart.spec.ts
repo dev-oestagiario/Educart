@@ -21,7 +21,7 @@ const token = [
 
 async function useFakeSupabase(page: Page, authorized = true) {
   const database: Record<string, Row[]> = {
-    carts: [], campuses: [], campus_blocks: [], campus_rooms: [], cart_storage_locations: [], maintenance_windows: [], requesters: [], notebook_codes: [], reservations: [], reservation_periods: [], reservation_notebooks: [], reservation_events: [], teacher_account_links: [], reservation_requests: [], reservation_request_events: [], user_notifications: []
+    carts: [], campuses: [], campus_blocks: [], campus_rooms: [], cart_storage_locations: [], maintenance_windows: [], equipment_movements: [], requesters: [], notebook_codes: [], reservations: [], reservation_periods: [], reservation_notebooks: [], reservation_events: [], teacher_account_links: [], reservation_requests: [], reservation_request_events: [], user_notifications: []
   };
   await page.route('https://educart-e2e.supabase.co/**', async route => {
     const req = route.request();
@@ -1752,4 +1752,52 @@ test('Manutenção — TI programa janela e encerra com justificativa',async({pa
   await expect(page.getByRole('status')).toContainText('Manutenção encerrada');
   await expect(page.getByText('Encerramento: Revisão concluída')).toBeVisible();
   await expect(page.getByRole('button',{name:'Encerrar',exact:true})).toHaveCount(0);
+});
+
+
+test('Movimentações — retirada com códigos e devolução integral com ressalva',async({page})=>{
+ const db=await useFakeSupabase(page);
+ const id='c2000000-0000-4000-8000-000000000001',rid='c2000000-0000-4000-8000-000000000002',pid='c2000000-0000-4000-8000-000000000003';
+ const teacher='c2000000-0000-4000-8000-000000000004',code='c2000000-0000-4000-8000-000000000005',mid='c2000000-0000-4000-8000-000000000006';
+ const parts=new Intl.DateTimeFormat('en-CA',{timeZone:'America/Sao_Paulo',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
+ db.carts.push({id,code:'MOV-1',name:'Carrinho movimentação',capacity:10,active:true});
+ db.requesters.push({id:teacher,name:'Professor de teste',active:true});
+ db.notebook_codes.push({id:code,code:'NB-MOV-01',cart_id:id,active:true});
+ db.reservation_periods.push({id:pid,reservation_id:rid,cart_id:id,usage_date:parts,shift:'MATUTINO',quantity:3,active:true,reservations:{requester_id:teacher,status:'CONFIRMADA',destination_label:null}});
+ const headers={'access-control-allow-origin':'*','access-control-allow-headers':'*','access-control-allow-methods':'POST, OPTIONS'};
+ let pickups=0,returns=0;
+ await page.route('https://educart-e2e.supabase.co/rest/v1/rpc/register_equipment_pickup',async route=>{
+  if(route.request().method()==='OPTIONS'){await route.fulfill({status:204,headers});return;}
+  const body=route.request().postDataJSON();
+  expect(body).toMatchObject({p_period_id:pid,p_quantity:2,p_notebook_ids:[code],p_responsible:'Responsável teste',p_condition:'BOA',p_notes:null});
+  expect(body.p_key).toMatch(/^[\da-f-]{36}$/);pickups++;
+  db.equipment_movements.push({id:mid,period_id:pid,reservation_id:rid,cart_id:id,requester_id:teacher,usage_date:parts,shift:'MATUTINO',quantity:2,notebook_ids:[code],notebook_codes:['NB-MOV-01'],pickup_at:new Date().toISOString(),pickup_responsible:body.p_responsible,pickup_condition:'BOA',pickup_notes:null,return_at:null,return_responsible:null,return_condition:null,return_notes:null});
+  await route.fulfill({status:200,headers,json:mid});
+ });
+ await page.route('https://educart-e2e.supabase.co/rest/v1/rpc/register_equipment_return',async route=>{
+  if(route.request().method()==='OPTIONS'){await route.fulfill({status:204,headers});return;}
+  const body=route.request().postDataJSON();
+  expect(body).toMatchObject({p_movement_id:mid,p_responsible:'Responsável devolução',p_condition:'RESSALVA',p_notes:'Conferência registrada'});
+  returns++;Object.assign(db.equipment_movements[0],{return_at:new Date().toISOString(),return_responsible:body.p_responsible,return_condition:body.p_condition,return_notes:body.p_notes});
+  await route.fulfill({status:200,headers,json:mid});
+ });
+ await login(page);
+ await page.getByRole('button',{name:'Retirada e devolução',exact:true}).click();
+ await page.getByRole('button',{name:'Registrar retirada',exact:true}).click();
+ await page.getByLabel('Quantidade entregue').fill('2');
+ await page.getByRole('checkbox',{name:'NB-MOV-01'}).check();
+ await page.getByLabel('Responsável que recebeu').fill('Responsável teste');
+ await page.getByRole('button',{name:'Confirmar retirada'}).click();
+ await expect(page.getByRole('status')).toContainText('Retirada registrada');
+ await expect(page.getByText('1 sem código registrado')).toBeVisible();
+ await page.getByRole('button',{name:'Registrar devolução'}).click();
+ await page.getByLabel('Responsável que devolveu').fill('Responsável devolução');
+ await page.getByLabel('Condição dos equipamentos').selectOption('RESSALVA');
+ await expect(page.getByRole('button',{name:'Confirmar devolução'})).toBeDisabled();
+ await page.getByLabel('Observação (obrigatória)').fill('Conferência registrada');
+ await page.getByRole('button',{name:'Confirmar devolução'}).click();
+ await expect(page.getByRole('status')).toContainText('Devolução registrada');
+ await expect(page.getByText('Observação da devolução: Conferência registrada')).toBeVisible();
+ await expect(page.getByRole('button',{name:'Registrar devolução'})).toHaveCount(0);
+ expect(pickups).toBe(1);expect(returns).toBe(1);
 });
