@@ -24,7 +24,10 @@ export function clearRecovery(){
 
 const url = import.meta.env.VITE_SUPABASE_URL;
 const key = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
-export const isConfigured = Boolean(url && key && !key.includes('substitua_'));
+// Homologação intentionally rejects remote projects, including production.
+const isHomologacao=import.meta.env.MODE==='homologacao';
+const localUrl=typeof url==='string'&&/^http:\/\/(127\.0\.0\.1|localhost):54321\/?$/.test(url);
+export const isConfigured = Boolean(url && key && !key.includes('substitua_') && (!isHomologacao||localUrl));
 export const supabase = createClient(
   isConfigured ? url : 'https://invalid.supabase.co',
   isConfigured ? key : 'not-configured'

@@ -9,3 +9,7 @@ coverage/
 
 playwright-report/
 test-results/
+
+supabase/.temp/
+supabase/.branches/
+!.env.homologacao.example
