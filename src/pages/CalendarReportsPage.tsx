@@ -6,7 +6,7 @@ import {addCalendarDays,isWeekday,shiftLabel,showDate,todayInSaoPaulo,type Shift
 import {downloadCsv,downloadPdf,type ReportRow} from '../lib/reportExports';
 
 type Period={id:string;reservation_id:string;cart_id:string;usage_date:string;shift:Shift;quantity:number;active:boolean};
-type Booking={id:string;requester_id:string;cart_id:string;mode:string;needs_mouse:boolean;notes:string|null;created_by:string};
+type Booking={id:string;requester_id:string;cart_id:string;mode:string;needs_mouse:boolean;notes:string|null;created_by:string;destination_label?:string|null};
 type Admin={user_id:string;display_name:string};
 type CalendarRow=ReportRow&{dateIso:string;shiftCode:Shift;bookingId:string;active:boolean};
 function firstDayOfWeek(day:string):string{
@@ -78,7 +78,7 @@ export default function CalendarReportsPage(){
       const result:Booking[]=[];
       for(let index=0;index<bookingIds.length;index+=100){
         const {data,error}=await supabase.from('reservations')
-          .select('id,requester_id,cart_id,mode,needs_mouse,notes,created_by')
+          .select('id,requester_id,cart_id,mode,needs_mouse,notes,created_by,destination_label')
           .in('id',bookingIds.slice(index,index+100));
         if(error)throw error;
         result.push(...((data??[]) as Booking[]));
@@ -106,7 +106,7 @@ export default function CalendarReportsPage(){
         cart:cart?.name??'Carrinho',requester:requester?.name??'Solicitante',
         mode:booking.mode==='COMPLETA'?'Completa':'Parcial',quantity:p.quantity,
         needsMouse:booking.needs_mouse,status:p.active?'Confirmada':'Cancelada',
-        createdBy:admin?.display_name??'TI',notes:booking.notes??'',bookingId:booking.id,active:p.active
+        createdBy:admin?.display_name??'TI',notes:booking.notes??'',room:booking.destination_label??'',bookingId:booking.id,active:p.active
       }];
     });
   },[periodQuery.data,bookings.data,carts.data,teachers.data,admins.data,cartId,teacherId,includeCancelled]);
@@ -206,6 +206,6 @@ export default function CalendarReportsPage(){
           </article>;
         })}</div>}
     </section>
-    <p className="form-hint">O indicador “Reservas agrupadas” conta registros distintos; “Períodos ocupados” conta cada data e turno. O PDF e o CSV respeitam os filtros e incluem cancelamentos apenas se a opção estiver marcada. O PDF apresenta uma agenda por dia útil e um resumo geral; a linha complementar de mouses não corresponde a uma segunda reserva. Como a sala não está cadastrada no sistema, ela aparece como “Não informada”.</p>
+    <p className="form-hint">O indicador “Reservas agrupadas” conta registros distintos; “Períodos ocupados” conta cada data e turno. O PDF e o CSV respeitam os filtros e incluem cancelamentos apenas se a opção estiver marcada. O PDF apresenta uma agenda por dia útil e um resumo geral; a linha complementar de mouses não corresponde a uma segunda reserva. A sala de utilização é exibida conforme o registro da reserva; reservas sem sala permanecem como “Não informada”.</p>
   </div>;
 }
