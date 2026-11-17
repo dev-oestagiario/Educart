@@ -34,8 +34,14 @@ jobs:
           npx --yes supabase@2.79.0 start > /tmp/educart-local-start.log 2>&1 || { echo "Falha ao iniciar Supabase local; confira a configuração e disponibilidade Docker."; exit 1; }
           umask 077
           npx --yes supabase@2.79.0 status -o json > .env.homologacao.status.local
+      - name: Preparar Chromium para homologação real
+        run: npx playwright install --with-deps chromium
+      - name: Homologar interface com Supabase real (CSV, XLSX e reservas)
+        run: node scripts/homologacao-browser.mjs
       - name: Testar autenticação e acesso real com dados sintéticos
         run: node scripts/homologacao-auth.mjs
+      - name: Homologar cadastros e ciclo das reservas
+        run: node scripts/homologacao-cadastros-reservas.mjs
       - name: Encerrar ambiente isolado
         if: always()
         run: |

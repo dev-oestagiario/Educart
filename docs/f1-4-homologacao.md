@@ -34,7 +34,7 @@ Acesse http://127.0.0.1:5173/. Para criar contas manuais, utilize Studio local e
 - [x] Configuração versionada e migrações locais existentes.
 - [x] Ambiente explícito de frontend, bloqueio de URL remota nesse modo e arquivos ignorados.
 - [x] Script de testes Auth real com dados sintéticos, workflow isolado e teardown.
-- [ ] Confirmar primeira execução completa do workflow e aprovação dos testes.
+- [x] Confirmar primeira execução completa do workflow e aprovação dos testes (run 44121530023, job 134174011769; PR #38 integrado).
 - [ ] F2: ampliar CRUD completo, concorrência, relatórios e importação; testar recuperação de senha pelo capturador local; ensaiar restauração.
 - [ ] Aceite de usuários reais em ambiente autorizado, envio de e-mail e redirect no Supabase hospedado, proteção contra senhas vazadas e rate limits; dependem de configuração não acessível no conector.
 - [ ] Avaliar ambiente cloud permanente apenas se necessário; custos e autorização antes da criação.
