@@ -36,6 +36,8 @@ jobs:
           npx --yes supabase@2.79.0 status -o json > .env.homologacao.status.local
       - name: Testar autenticação e acesso real com dados sintéticos
         run: node scripts/homologacao-auth.mjs
+      - name: Homologar cadastros e ciclo das reservas
+        run: node scripts/homologacao-cadastros-reservas.mjs
       - name: Encerrar ambiente isolado
         if: always()
         run: |
