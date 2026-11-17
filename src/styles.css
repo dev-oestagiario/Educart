@@ -844,3 +844,25 @@ html,body,#root{width:100%;height:100%;min-width:0;margin:0}
 @media(max-width:1024px) and (pointer:coarse){
   .public-agenda .calendar-filter-grid>.public-agenda-refresh{min-height:44px;min-width:44px}
 }
+
+/* F3.4 — dashboard operational, using existing theme tokens. */
+.dashboard-page{min-width:0}
+.dashboard-header{display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap}
+.dashboard-header button,.dashboard-section-heading button{display:inline-flex;align-items:center;gap:7px}
+.dashboard-filters{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr) minmax(0,1fr) auto;align-items:end;gap:12px;padding:18px}
+.dashboard-updated{font-size:12px;color:var(--educart-muted);margin:0 0 12px}
+.dashboard-metrics{grid-template-columns:repeat(3,minmax(0,1fr))}
+.dashboard-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;align-items:start}
+.dashboard-section{margin:0;min-width:0}
+.dashboard-section-heading{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:14px}
+.dashboard-section-heading h2{margin:0}
+.dashboard-count{font-size:12px;font-weight:600;color:var(--educart-muted);margin-left:4px}
+.dashboard-item>div{min-width:0;flex:1;overflow-wrap:anywhere}
+.dashboard-item .dashboard-status{color:var(--educart-muted);border:1px solid var(--educart-border);border-radius:8px;padding:6px 9px;max-width:44%;white-space:normal;overflow-wrap:anywhere;margin:0}
+.dashboard-more{margin-top:12px}
+.dashboard-catalog{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:12px 0}
+.dashboard-catalog .stat{padding:12px;box-shadow:none;gap:6px}
+.dashboard-page>.form-hint{margin-top:16px}
+@media(max-width:1000px){.dashboard-filters{grid-template-columns:repeat(2,minmax(0,1fr))}.dashboard-grid{grid-template-columns:1fr}}
+@media(max-width:690px){.dashboard-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.dashboard-filters{padding:14px;gap:10px}.dashboard-header button,.dashboard-section-heading button,.dashboard-filters button{min-height:44px}.dashboard-item{align-items:flex-start;flex-wrap:wrap}.dashboard-item .dashboard-status{max-width:100%}}
+@media(max-width:370px){.dashboard-filters{grid-template-columns:1fr}.dashboard-section-heading button{width:100%;justify-content:space-between}}

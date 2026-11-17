@@ -1333,6 +1333,7 @@ test('Identidade visual — menu hambúrguer usa tema violeta em todos os celula
     await opener.click();
     const closer=page.getByRole('button',{name:'Fechar menu lateral'});
     await expect(closer).toBeVisible();
+    await page.mouse.move(width-2,2);
     await expect(closer).toHaveCSS('background-color','rgb(52, 41, 67)');
     await expect(closer).toHaveCSS('border-top-left-radius','12px');
     await expect(page.getByRole('navigation',{name:'Menu principal'})).toBeVisible();
@@ -1800,4 +1801,59 @@ test('Movimentações — retirada com códigos e devolução integral com ressa
  await expect(page.getByText('Observação da devolução: Conferência registrada')).toBeVisible();
  await expect(page.getByRole('button',{name:'Registrar devolução'})).toHaveCount(0);
  expect(pickups).toBe(1);expect(returns).toBe(1);
+});
+
+
+test('Dashboard operacional — recortes, pendências antigas, filtros e atalhos',async({page})=>{
+ const db=await useFakeSupabase(page);
+ const today=new Intl.DateTimeFormat('en-CA',{timeZone:'America/Sao_Paulo',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
+ const offset=(n:number)=>{const d=new Date(today+'T12:00:00Z');d.setUTCDate(d.getUTCDate()+n);return d.toISOString().slice(0,10)};
+ const c1='c3000000-0000-4000-8000-000000000001',c2='c3000000-0000-4000-8000-000000000002',p='c3000000-0000-4000-8000-000000000003';
+ db.carts.push({id:c1,name:'Carrinho Alfa',code:'D-A',capacity:10,active:true},{id:c2,name:'Carrinho Beta',code:'D-B',capacity:8,active:true});
+ db.requesters.push({id:p,name:'Professor sintético',active:true});
+ const row=(id:string,cart:string,date:string,shift:string,active=true)=>({id,reservation_id:id,cart_id:cart,usage_date:date,shift,quantity:2,active,reservations:{requester_id:p,status:'CONFIRMADA',destination_label:null}});
+ db.reservation_periods.push(row('p1',c1,today,'MATUTINO'),row('p2',c2,today,'VESPERTINO'),row('p3',c1,offset(12),'MATUTINO'),row('p4',c1,today,'NOTURNO',false));
+ db.equipment_movements.push({id:'m1',period_id:'old',cart_id:c1,requester_id:p,usage_date:offset(-12),shift:'MATUTINO',quantity:3,notebook_ids:[],notebook_codes:[],pickup_responsible:'Responsável sintético',pickup_condition:'BOA',pickup_notes:null,return_responsible:null,return_condition:null,return_notes:null,pickup_at:offset(-12)+'T10:00:00Z',return_at:null});
+ db.maintenance_windows.push({id:'m2',cart_id:c2,start_date:today,end_date:today,shifts:['NOTURNO'],closed_at:null});
+ db.reservation_requests.push({id:'r1',cart_id:c1,requester_id:p,dates:[offset(25)],shifts:['MATUTINO'],quantity:2,status:'PENDENTE',created_at:today});
+ await login(page);
+ const metric=(label:string)=>page.locator('.dashboard-metrics .stat').filter({has:page.getByText(label,{exact:true})}).locator('strong');
+ await expect(metric('Períodos de hoje')).toHaveText('2');
+ await expect(metric('Aguardando retirada')).toHaveText('2');
+ await expect(metric('Pendentes de devolução')).toHaveText('1');
+ await expect(metric('Manutenções de hoje')).toHaveText('1');
+ await expect(metric('Solicitações pendentes')).toHaveText('1');
+ await expect(page.getByText('De data anterior',{exact:true})).toBeVisible();
+ await expect(page.getByText('Nenhum período confirmado no intervalo.')).toBeVisible();
+ await page.getByLabel('Próximos dias').selectOption('14');
+ await expect(page.getByText('Nenhum período confirmado no intervalo.')).toHaveCount(0);
+ await page.getByRole('combobox',{name:'Carrinho',exact:true}).selectOption(c1);
+ await expect(metric('Períodos de hoje')).toHaveText('1');
+ await expect(metric('Manutenções de hoje')).toHaveText('0');
+ await page.getByRole('combobox',{name:'Turno',exact:true}).selectOption('VESPERTINO');
+ await expect(metric('Períodos de hoje')).toHaveText('0');
+ await expect(metric('Pendentes de devolução')).toHaveText('0');
+ await page.getByRole('button',{name:'Limpar filtros'}).click();
+ await expect(metric('Períodos de hoje')).toHaveText('2');
+ for(const width of [320,390,1280]){
+  await page.setViewportSize({width,height:800});
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth+1)).toBe(true);
+ }
+ await page.getByRole('button',{name:'Abrir movimentações'}).click();
+ await expect(page.getByRole('heading',{name:'Retirada e devolução',exact:true})).toBeVisible();
+});
+
+test('Dashboard operacional — falha de consulta não vira indicador zero',async({page})=>{
+ await useFakeSupabase(page);
+ await page.route('https://educart-e2e.supabase.co/rest/v1/equipment_movements?**',async route=>{
+  const headers={'access-control-allow-origin':'*','access-control-allow-headers':'*','access-control-allow-methods':'GET, OPTIONS'};
+  if(route.request().method()==='OPTIONS'){await route.fulfill({status:204,headers});return;}
+  await route.fulfill({status:503,headers,json:{message:'Serviço indisponível'}});
+ });
+ await login(page);
+ await expect(page.getByRole('alert')).toContainText('Não foi possível carregar o painel operacional');
+ await expect(page.locator('.dashboard-metrics .stat')).toHaveCount(0);
+ await page.unroute('https://educart-e2e.supabase.co/rest/v1/equipment_movements?**');
+ await page.getByRole('button',{name:'Atualizar painel'}).click();
+ await expect(page.locator('.dashboard-metrics .stat')).toHaveCount(6);
 });
