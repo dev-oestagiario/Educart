@@ -145,6 +145,9 @@ async function useFakeSupabase(page: Page, authorized = true) {
       await respond(reservationId);return;
     }
 
+    if (url.pathname === '/rest/v1/rpc/get_email_preference') {
+      await respond({enabled:false,channel_enabled:false}); return;
+    }
     if (url.pathname === '/rest/v1/rpc/mark_notification_read') {
       const body=req.postDataJSON() as {p_notification_id:string};
       const item=database.user_notifications.find(x=>x.id===body.p_notification_id&&x.recipient_user_id===ADMIN_ID);
@@ -1945,4 +1948,35 @@ test('F3.5 — edição não recria um turno cancelado de uma série',async({pag
  await expect(page.getByText(/Este agrupamento possui exceções por turno/)).toBeVisible();
  await expect(page.getByRole('heading',{name:'Editar reserva'})).toHaveCount(0);
  expect(db.reservation_periods.filter(p=>p.active)).toHaveLength(3);
+});
+
+
+test('F3.6 — preferências de e-mail opcionais, canal desativado e avisos internos',async({page})=>{
+ const db=await useFakeSupabase(page,false);
+ const teacher=crypto.randomUUID();
+ db.requesters.push({id:teacher,name:'Professor sintético',active:true});
+ db.teacher_account_links.push({user_id:ADMIN_ID,requester_id:teacher,active:true});
+ const headers={'access-control-allow-origin':'*','access-control-allow-headers':'*','access-control-allow-methods':'POST, OPTIONS'};
+ let enabled=false;
+ await page.route('https://educart-e2e.supabase.co/rest/v1/rpc/get_email_preference',async route=>{
+  if(route.request().method()==='OPTIONS'){await route.fulfill({status:204,headers});return;}
+  await route.fulfill({status:200,headers,json:{enabled,channel_enabled:false}});
+ });
+ await page.route('https://educart-e2e.supabase.co/rest/v1/rpc/set_email_preference',async route=>{
+  if(route.request().method()==='OPTIONS'){await route.fulfill({status:204,headers});return;}
+  enabled=route.request().postDataJSON().p_enabled;
+  await route.fulfill({status:200,headers,json:{enabled,channel_enabled:false}});
+ });
+ await page.setViewportSize({width:320,height:780});
+ await login(page);
+ await page.getByRole('button',{name:/^Notificações/}).click();
+ const panel=page.getByRole('region',{name:'Preferências de e-mail'});
+ const toggle=panel.getByRole('checkbox',{name:'Receber avisos no e-mail confirmado da minha conta'});
+ await expect(toggle).not.toBeChecked();
+ await expect(panel.getByText(/O envio externo ainda não está habilitado/)).toBeVisible();
+ await toggle.click();await expect(toggle).toBeChecked();await expect(panel.getByText('Preferência salva.')).toBeVisible();
+ expect(enabled).toBe(true);
+ await toggle.click();await expect(toggle).not.toBeChecked();expect(enabled).toBe(false);
+ await expect(page.getByRole('heading',{name:'Seus avisos'})).toBeVisible();
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth<=document.documentElement.clientWidth+1)).toBe(true);
 });

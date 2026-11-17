@@ -2,6 +2,7 @@ import {useState} from 'react';
 import {useMutation,useQueryClient} from '@tanstack/react-query';
 import {ArrowLeft,Bell,CheckCheck,ClipboardList} from 'lucide-react';
 import {supabase} from '../lib/supabase';
+import EmailPreference from '../components/EmailPreference';
 import {countUnread,useNotifications} from '../lib/notifications';
 
 type Props={userId:string;onReturn:()=>void;onViewRequests:()=>void;audience:'admin'|'teacher'};
@@ -46,6 +47,7 @@ export default function NotificationsPage({userId,onReturn,onViewRequests,audien
         ?'Avisos sobre novas solicitações de reserva e retiradas pelos professores.'
         :'Acompanhe as decisões da TI sobre suas solicitações de reserva.'}</p>
     </div>
+    <EmailPreference userId={userId}/>
     <section className="panel" aria-label="Caixa de notificações">
       <div className="notifications-heading">
         <div><h2><Bell size={19} aria-hidden="true"/> Seus avisos</h2>
