@@ -3,6 +3,8 @@ import { mkdir, readFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { expect, test, type Page } from '@playwright/test';
 
+test.use({launchOptions:{args:['--enable-unsafe-swiftshader']}});
+
 type Row = Record<string, unknown>;
 const ADMIN_ID = 'ae246078-d0ed-4b32-a4f4-ce96e459c628';
 const user = {
@@ -2290,4 +2292,76 @@ test('F4.4 — períodos são consultados por lote e códigos somente quando nec
  await page.getByRole('radio',{name:'Notebooks avulsos'}).check();
  await expect(page.getByText('PERF-NB',{exact:true})).toBeVisible();
  expect(urls.filter(u=>u.pathname.endsWith('/notebook_codes')).every(u=>u.searchParams.get('cart_id')==='eq.'+cart)).toBe(true);
+});
+
+test.describe('F5.0 — protótipo de ambiente 3D',()=>{
+  test('cena, inspeção, porta, busca e fallback acessível',async({page},testInfo)=>{
+    await useFakeSupabase(page);
+    await page.goto('/?prototype3d=1');
+    await page.getByLabel('E-mail').fill('test-admin@educart.example');
+    await page.getByLabel('Senha').fill('senha-de-teste-sem-uso-real');
+    await page.getByRole('button',{name:'Entrar no Educart'}).click();
+    await page.getByRole('button',{name:'Protótipo 3D'}).click();
+    await expect(page.getByRole('heading',{name:'Ambiente 3D · Protótipo'})).toBeVisible();
+    await expect(page.locator('.dt-cart')).toHaveCount(4);
+    await expect(page.locator('.dt-stage canvas')).toBeVisible();
+    const sceneMetrics=await page.locator('.dt-stage canvas').evaluate(el=>({drawCalls:Number(el.getAttribute('data-draw-calls')),triangles:Number(el.getAttribute('data-triangles'))}));
+    expect(sceneMetrics.drawCalls).toBeGreaterThan(0);expect(sceneMetrics.drawCalls).toBeLessThan(200);expect(sceneMetrics.triangles).toBeLessThan(10000);
+    console.log('F5.0 metricas da cena:',sceneMetrics);
+    await page.screenshot({path:testInfo.outputPath('visao-geral.png')});
+    await testInfo.attach('visao-geral',{path:testInfo.outputPath('visao-geral.png'),contentType:'image/png'});
+    await page.getByRole('button',{name:/DEMO-02/}).click();
+    await expect(page.locator('.dt-details')).toContainText('18');
+    await page.getByRole('button',{name:'Inspecionar carrinho'}).click();
+    await expect(page.getByRole('heading',{name:'Inspeção: DEMO-02'})).toBeVisible();
+    await page.getByRole('button',{name:'Abrir porta'}).click();
+    await expect(page.getByRole('button',{name:'Fechar porta'})).toHaveAttribute('aria-pressed','true');
+    await page.screenshot({path:testInfo.outputPath('inspecao.png')});
+    await testInfo.attach('inspecao',{path:testInfo.outputPath('inspecao.png'),contentType:'image/png'});
+    await page.keyboard.press('Escape');
+    await expect(page.getByRole('heading',{name:'Sala de TI — visão geral'})).toBeVisible();
+    await page.getByLabel('Exibir ambiente 3D').uncheck();
+    await expect(page.locator('.dt-stage canvas')).toHaveCount(0);
+    await page.getByLabel('Buscar carrinho na lista').fill('delta');
+    await expect(page.locator('.dt-cart')).toHaveCount(1);
+    await page.getByRole('button',{name:/DEMO-04/}).focus();
+    await page.keyboard.press('Enter');
+    await expect(page.locator('.dt-details')).toContainText('Sem localização definida');
+    await expect(page.locator('.dt-details')).toContainText('Em manutenção');
+    await page.getByLabel('Buscar carrinho na lista').fill('');
+    await expect(page.locator('.dt-cart')).toHaveCount(4);
+    await page.setViewportSize({width:390,height:844});
+    await page.getByLabel('Exibir ambiente 3D').check();
+    await expect(page.locator('.dt-stage canvas')).toBeVisible();
+    await expect.poll(()=>page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)).toBe(true);
+    await page.screenshot({path:testInfo.outputPath('mobile.png')});
+    await testInfo.attach('mobile',{path:testInfo.outputPath('mobile.png'),contentType:'image/png'});
+  });
+  test('lista permanece funcional sem WebGL',async({page})=>{
+    await page.addInitScript(()=>{
+      const original=HTMLCanvasElement.prototype.getContext;
+      HTMLCanvasElement.prototype.getContext=function(type:string,...args:unknown[]){
+        if(type==='webgl'||type==='webgl2'||type==='experimental-webgl')return null;
+        return Reflect.apply(original,this,[type,...args]);
+      } as typeof HTMLCanvasElement.prototype.getContext;
+    });
+    await useFakeSupabase(page);
+    await page.goto('/?prototype3d=1');
+    await page.getByLabel('E-mail').fill('test-admin@educart.example');
+    await page.getByLabel('Senha').fill('senha-de-teste-sem-uso-real');
+    await page.getByRole('button',{name:'Entrar no Educart'}).click();
+    await page.getByRole('button',{name:'Protótipo 3D'}).click();
+    await expect(page.getByText('WebGL indisponível.',{exact:false})).toBeVisible();
+    await page.getByRole('button',{name:/DEMO-03/}).click();
+    await expect(page.locator('.dt-details')).toContainText('Totalmente reservado');
+  });
+  test('flag não libera a demonstração a conta não autorizada',async({page})=>{
+    await useFakeSupabase(page,false);
+    await page.goto('/?prototype3d=1');
+    await page.getByLabel('E-mail').fill('test-admin@educart.example');
+    await page.getByLabel('Senha').fill('senha-de-teste-sem-uso-real');
+    await page.getByRole('button',{name:'Entrar no Educart'}).click();
+    await expect(page.getByRole('heading',{name:'Conta criada, aguardando autorização'})).toBeVisible();
+    await expect(page.getByRole('button',{name:'Protótipo 3D'})).toHaveCount(0);
+  });
 });

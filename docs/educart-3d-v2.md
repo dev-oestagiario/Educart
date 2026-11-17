@@ -1,6 +1,6 @@
 # Educart 3D V2 — Especificação e plano técnico do gêmeo digital
 
-**Estado:** especificação planejada, não implementada. **Fase:** F5 do [roadmap consolidado](roadmap-finalizacao-educart.md).
+**Estado:** protótipo F5.0 implementado em desenvolvimento; referências reais e homologação visual pendentes. Veja [registro F5.0](f5-0-prototipo-ambiente-3d.md). **Fase:** F5 do [roadmap consolidado](roadmap-finalizacao-educart.md).
 **Objetivo:** transformar a visualização isolada de um carrinho em um ambiente virtual detalhado e interativo, com todos os carrinhos simultaneamente, inspeção de notebooks e informações operacionais.
 
 ## 1. Problema e baseline
@@ -109,9 +109,9 @@ Acessibilidade: texto acompanha cor; foco visível, botões rotulados, sequênci
 ## 7. Tarefas de implementação
 
 ### F5.0 — Constitution / Specify / protótipo
-- [ ] DT-001 Confirmar escopo administrativo, fontes, permissões, inventário e modos de visualização.
+- [x] DT-001 Confirmar escopo administrativo, fontes, permissões, inventário e modos de visualização.
 - [ ] DT-002 Coletar apenas fotos e dimensões autorizadas (sala, mobiliário, carrinhos, notebooks); inventário de modelos e licença, sem dados pessoais em imagens.
-- [ ] DT-003 Wireframe da tela ampla e mobile, storyboard de clique/inspeção; protótipo de sala ilustrativa com 3+ carrinhos. Definir padrão visual e orçamento técnico; aprovar antes da modelagem detalhada.
+- [ ] DT-003 Wireframe da tela ampla e mobile, storyboard de clique/inspeção; protótipo de sala ilustrativa com 3+ carrinhos. Definir padrão visual e orçamento técnico; aprovar antes da modelagem detalhada. Protótipo e orçamento inicial implementados; aceite visual pendente.
 
 ### F5.1 — Fundação de dados (depende F3.1/F3.2)
 - [ ] DT-004 Revisar schema/migrations/RLS existentes e elaborar ADR do modelo espacial; migrar tabelas aditivamente, índices e policies.
