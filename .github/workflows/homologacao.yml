@@ -44,6 +44,8 @@ jobs:
         run: node scripts/homologacao-cadastros-reservas.mjs
       - name: Validar concorrência com sessões independentes
         run: node scripts/homologacao-concorrencia.mjs
+      - name: Homologar professores, TI e notificações em sessões reais
+        run: node scripts/homologacao-professores.mjs
       - name: Encerrar ambiente isolado
         if: always()
         run: |
