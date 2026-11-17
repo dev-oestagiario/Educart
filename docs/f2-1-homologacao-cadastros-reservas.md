@@ -28,7 +28,7 @@ Nesta fase, ampliar a verificação de negócio no mesmo Supabase local descart�
 ## Execução
 `node scripts/homologacao-cadastros-reservas.mjs` após iniciar o stack local descrito em f1-4-homologacao.md. A CI homologacao.yml roda a suíte real em conjunto com a F1.4. Os casos criam dados sintéticos com identificadores exclusivos e não dependem de credenciais institucionais.
 
-A importação de planilha é coberta pelo Playwright e pelos testes existentes de parsing; a nova suíte verifica a transação de inserção em lote via API real. A execução ponta a ponta do navegador com o banco real está prevista como complemento. Não afirmar homologação institucional ou utilização de dados reais.
+A suíte scripts/homologacao-browser.mjs roda Chromium sem mock contra Vite em modo homologacao e Supabase local: login, cadastros, importação CSV e XLSX com revisão de prévia, persistência de códigos, criação/edição/cancelamento de reserva e consulta de auditoria. Confere os registros também pela API autenticada. Executar primeiro em stack local limpo; o runner começa com banco descartável. Instalar Chromium previamente. O script restringe as requisições de navegador à aplicação e ao backend locais; senhas e chaves não são registradas. A suíte de banco verifica também a atomicidade da inserção em lote. Não afirmar homologação institucional ou utilização de dados reais.
 
 ## Pendências / próximo passo
 Confirmar CI desta fase. F2.2: concorrência simultânea de criação, edição, aprovação e capacidade com JWTs reais. F2.3: fluxos adicionais do professor e recuperação de senha. F2.4: impressão/PDF, F2.5: dispositivos reais, F2.6: restauração e migrations.
