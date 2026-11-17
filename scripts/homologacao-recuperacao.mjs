@@ -27,7 +27,10 @@ const opts={auth:{persistSession:false,autoRefreshToken:false,detectSessionInUrl
 function run(cmd,args,input){
   const r=spawnSync(cmd,args,{input,maxBuffer:100*1024*1024,timeout:300000});
   // Do not emit raw SQL, dump contents, status JSON or auth material on failure.
-  if(r.error||r.status!==0)throw Error(cmd+' '+args.slice(0,2).join(' ')+' falhou (status '+r.status+')');
+  if(r.error||r.status!==0){
+    const diagnostic=String(r.stderr??'').split('\n').filter(line=>/^pg_restore: error:/.test(line)).map(line=>line.replace(/DETAIL:.*$/,'').replace(/(COPY|INSERT INTO|VALUES).*$/,'[dados omitidos]')).slice(0,3).join(' | ');
+    throw Error(cmd+' '+args.slice(0,2).join(' ')+' falhou (status '+r.status+') '+diagnostic);
+  }
   return r.stdout;
 }
 function pg(sql){
@@ -102,7 +105,8 @@ try{
   assert.equal(createHash('sha256').update(data).digest('hex'),digest);
   // Only this local synthetic restore uses trigger suspension in one transaction.
   // Original schema/constraints/RLS/ACL come from the verified migrations.
-  run('docker',['exec','-i',container,'pg_restore','-U','postgres','-d','postgres','--data-only','--no-owner','--no-privileges','--disable-triggers','--single-transaction','--exit-on-error'],data);
+  const sql=run('docker',['exec','-i',container,'pg_restore','--data-only','--no-owner','--no-privileges','--file=-'],data);
+  run('docker',['exec','-i',container,'psql','-X','-U','postgres','-d','postgres','-v','ON_ERROR_STOP=1','--single-transaction','-c','SET session_replication_role = replica','-f','-'],sql);
   assert.deepEqual(manifest(),before,'Contagens ou conteúdo divergentes após restauração');
   history();acl();
   // New logins; sessions and refresh tokens were deliberately not restored.
