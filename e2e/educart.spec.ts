@@ -1691,3 +1691,28 @@ test('Recuperação de senha — link expirado e rota direta não autorizam rede
     await expect(page.getByRole('heading',{name:'Acesso ao Educart'})).toBeVisible();
   }
 });
+
+
+test('Segurança Auth — cadastro exige senha mínima e não altera a regra de login',async({page})=>{
+  await useFakeSupabase(page,false);
+  let signups=0;
+  await page.route('https://educart-e2e.supabase.co/auth/v1/signup**',async route=>{
+    const headers={'access-control-allow-origin':'*','access-control-allow-headers':'*','access-control-allow-methods':'POST, OPTIONS'};
+    if(route.request().method()==='OPTIONS'){await route.fulfill({status:204,headers});return;}
+    signups++;
+    await route.fulfill({status:200,headers,json:{user,session:null}});
+  });
+  await page.goto('/');
+  await page.getByRole('button',{name:'Ainda não tem conta? Criar conta'}).click();
+  await page.getByLabel('E-mail').fill('test-admin@educart.example');
+  await page.getByLabel('Senha',{exact:true}).fill('short');
+  await page.getByRole('button',{name:'Criar minha conta'}).click();
+  await expect(page.getByRole('alert')).toContainText('pelo menos 8 caracteres');
+  expect(signups).toBe(0);
+  await expect(page.getByLabel('Senha',{exact:true})).toHaveAttribute('autocomplete','new-password');
+  await page.getByRole('button',{name:'Já tem conta? Fazer login'}).click();
+  await expect(page.getByLabel('Senha',{exact:true})).toHaveAttribute('autocomplete','current-password');
+  await page.getByLabel('Senha',{exact:true}).fill('short');
+  await page.getByRole('button',{name:'Entrar no Educart'}).click();
+  await expect(page.getByRole('heading',{name:'Conta criada, aguardando autorização'})).toBeVisible();
+});

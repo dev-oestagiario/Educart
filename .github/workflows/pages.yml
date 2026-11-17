@@ -33,6 +33,8 @@ jobs:
       - name: Instalar dependencias
         run: npm ci --no-audit --no-fund
 
+      - name: Bloquear vulnerabilidades altas e críticas
+        run: npm run audit
       - name: Executar testes
         run: npm run test
 

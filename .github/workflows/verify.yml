@@ -20,6 +20,8 @@ jobs:
           node-version: '22'
       - name: Instalar dependências
         run: npm ci --no-audit --no-fund
+      - name: Bloquear vulnerabilidades altas e críticas
+        run: npm run audit
       - name: Validar tipos e compilar
         run: npm run build
       - name: Executar testes
