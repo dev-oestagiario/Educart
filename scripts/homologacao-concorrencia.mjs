@@ -152,7 +152,7 @@ for(let i=0;i<repetitions;i++){
   await race(()=>approve(A,same),()=>approve(B,same),1,'Mesmo pedido aprovado duas vezes');
   s=await state(c);assert.equal(s.bookings.length,1);assert.equal(s.periods.length,1);
   assert.equal((await rows('reservation_request_events','request_id',same)).filter(x=>x.event_type==='APROVACAO').length,1);
-  const notifications=await rows('user_notifications','request_id',same);
+  const notifications=ok(await P.client.from('user_notifications').select('kind,recipient_user_id').eq('request_id',same),'Notificações do professor destinatário');
   assert.equal(notifications.filter(x=>x.kind==='PEDIDO_APROVADO'&&x.recipient_user_id===P.id).length,1);
   console.log('PASS F2.2 aprovação '+(i+1)+': pedidos conflitantes e aprovação duplicada.');
 }
