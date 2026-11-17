@@ -11,6 +11,10 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+      - name: Gerar lockfile para consolidacao F0
+        run: |
+          npm install --package-lock-only --ignore-scripts --no-audit --no-fund
+          node -e "const s=require('fs').readFileSync('package-lock.json').toString('base64'); for(let i=0;i<s.length;i+=2000) console.log('EDUCART_LOCK:'+s.slice(i,i+2000));"
       - name: Instalar dependências
         run: npm install --no-audit --no-fund
       - name: Validar tipos e compilar
