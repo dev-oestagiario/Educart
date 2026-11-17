@@ -1,0 +1,40 @@
+name: Ensaio de recuperação Educart
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+concurrency:
+  group: educart-recuperacao-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  recuperacao:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      EDUCART_DISPOSABLE_RESTORE: educart-homologacao
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Instalar dependências
+        run: npm ci --no-audit --no-fund
+      - name: Iniciar banco local descartável
+        run: |
+          umask 077
+          npx --yes supabase@2.79.0 start > /tmp/educart-recovery-start.log 2>&1
+          npx --yes supabase@2.79.0 status -o json > .env.homologacao.status.local
+      - name: Popular dados de homologação sintéticos
+        run: |
+          node scripts/homologacao-auth.mjs
+          node scripts/homologacao-cadastros-reservas.mjs
+      - name: Conferir migrations e ensaiar recuperação
+        run: node scripts/homologacao-recuperacao.mjs
+      - name: Encerrar stack e remover material temporário
+        if: always()
+        run: |
+          rm -f /tmp/educart-recovery-start.log .env.homologacao.status.local
+          npx --yes supabase@2.79.0 stop --no-backup
