@@ -62,6 +62,8 @@ jobs:
           path: test-results/mobile-local/*.png
           if-no-files-found: ignore
           retention-days: 7
+      - name: Homologar cadastro de localizações e destinos
+        run: node scripts/homologacao-localizacoes.mjs
       - name: Encerrar ambiente isolado
         if: always()
         run: |
