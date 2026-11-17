@@ -126,7 +126,7 @@ export default function TeacherPortal({requesterId,userId,email,onLogout}:Props)
     setMessage(null);
   }
   return <div className="teacher-shell">
-    <a href="#teacher-main" className="skip-link">Ir ao conteúdo</a>
+    <a href="#teacher-main" className="skip-link" onClick={e=>{e.preventDefault();document.getElementById("teacher-main")?.focus();}}>Ir ao conteúdo</a>
     <header className="teacher-topbar">
       <BrandLogo tone="light"/>
       <div className="teacher-account"><ThemeToggle/><span title={email}>{teacher.data?.name??'Portal do professor'}</span>

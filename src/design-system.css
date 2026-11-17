@@ -102,3 +102,13 @@
 .record-row-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
 .record-list-filters{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,220px);gap:12px;margin-bottom:18px}
 @media(max-width:690px){.record-detail-fields,.record-list-filters{grid-template-columns:minmax(0,1fr)}.record-trail .text-button{min-height:44px}.record-row-actions{width:100%}.record-row-actions button{flex:1}}
+
+/* F4.3 — keyboard focus and reflow. */
+:root :is(.records-heading h1,.record-detail h2,#main-content,#teacher-main):focus-visible{outline:2px solid var(--ds-focus);outline-offset:3px}
+:root .record-detail h2:focus{outline:2px solid var(--ds-focus);outline-offset:3px}
+:root :is(button,a,input,select,textarea,[tabindex]){scroll-margin-block:12px}
+:root .public-clear-end{min-height:44px;min-width:44px}
+:root .public-end-control{min-width:0}
+:root .reservation-date-popover-footer .ghost{min-width:44px;min-height:44px}
+@media(prefers-reduced-motion:reduce){:root *, :root *::before, :root *::after{scroll-behavior:auto!important;animation-duration:.01ms!important;transition-duration:.01ms!important}}
+@media(max-width:1024px){.record-detail-fields dd{overflow-wrap:anywhere}}

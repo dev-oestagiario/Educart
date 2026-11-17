@@ -115,6 +115,8 @@ export default function App() {
   },[]);
   const menuButtonRef=useRef<HTMLButtonElement>(null);
   const closeButtonRef=useRef<HTMLButtonElement>(null);
+  const mainRef=useRef<HTMLElement>(null);
+  const skipRef=useRef<HTMLAnchorElement>(null);
   const sidebarRef=useRef<HTMLElement>(null);
   useEffect(()=>{
     let current=true;
@@ -132,6 +134,8 @@ export default function App() {
   },[qc,setPage]);
   useEffect(()=>{
     if(!menuOpen)return;
+    const main=mainRef.current,skip=skipRef.current;
+    if(main)main.inert=true;if(skip)skip.inert=true;
     const previousOverflow=document.body.style.overflow;
     document.body.style.overflow='hidden';
     // A gaveta inicia oculta por CSS. Aguarde a próxima atualização de layout
@@ -150,15 +154,15 @@ export default function App() {
 
     function handleKeydown(event:KeyboardEvent){
       if(event.key==='Escape'){
-        setMenuOpen(false);
-        menuButtonRef.current?.focus();
+        event.preventDefault();closeMobileMenu();
         return;
       }
       if(event.key!=='Tab')return;
-      const controls=sidebarRef.current?.querySelectorAll<HTMLElement>('button:not(:disabled), a[href]');
+      const controls=Array.from(sidebarRef.current?.querySelectorAll<HTMLElement>('button:not(:disabled), a[href]')??[]).filter(el=>el.getClientRects().length>0&&getComputedStyle(el).visibility!=='hidden');
       if(!controls?.length)return;
       const first=controls[0], last=controls[controls.length-1];
-      if(event.shiftKey&&document.activeElement===first){event.preventDefault();last.focus();}
+      if(!sidebarRef.current?.contains(document.activeElement)){event.preventDefault();(event.shiftKey?last:first).focus();}
+      else if(event.shiftKey&&document.activeElement===first){event.preventDefault();last.focus();}
       else if(!event.shiftKey&&document.activeElement===last){event.preventDefault();first.focus();}
     }
     function handleResize(){if(window.innerWidth>690)setMenuOpen(false);}
@@ -167,20 +171,25 @@ export default function App() {
     return ()=>{
       window.cancelAnimationFrame(focusFrame);
       window.clearTimeout(focusRetry);
+      if(main)main.inert=false;if(skip)skip.inert=false;
       document.body.style.overflow=previousOverflow;
       document.removeEventListener('keydown',handleKeydown);
       window.removeEventListener('resize',handleResize);
     };
   },[menuOpen]);
   function closeMobileMenu(){
+    if(mainRef.current)mainRef.current.inert=false;
+    if(skipRef.current)skipRef.current.inert=false;
     setMenuOpen(false);
     menuButtonRef.current?.focus();
   }
   function navigateTo(target:Page){
     setPage(target);
     if(menuOpen){
+      if(mainRef.current)mainRef.current.inert=false;
+      if(skipRef.current)skipRef.current.inert=false;
       setMenuOpen(false);
-      document.getElementById('main-content')?.focus();
+      mainRef.current?.focus();
     }
   }
   const check=useQuery({queryKey:['admin',session?.user.id],enabled:Boolean(session)&&recoveryState==='none',refetchOnWindowFocus:'always',refetchInterval:60_000,queryFn:async()=>{
@@ -227,7 +236,7 @@ export default function App() {
   }
   const nav:[Page,string,typeof Boxes][]=[['overview','Visão geral',ClipboardList],['carts','Carrinhos',Boxes],['locations','Localizações',MapPin],['maintenance','Manutenção',Wrench],['movements','Retirada e devolução',ArrowLeftRight],['requesters','Professores',UserRoundPlus],['notebooks','Notebooks',Laptop],['reservations','Reservas',CalendarDays],['calendar','Calendário',BarChart3],['approvals','Solicitações',ClipboardCheck],['notifications','Notificações',Bell]];
   return <div className="app-shell">
-    <a className="skip-link" href="#main-content">Pular para o conteúdo</a>
+    <a ref={skipRef} className="skip-link" href="#main-content" onClick={e=>{e.preventDefault();mainRef.current?.focus();}}>Pular para o conteúdo</a>
     {menuOpen&&<button type="button" tabIndex={-1} className="mobile-menu-backdrop" aria-label="Fechar navegação" onClick={closeMobileMenu}/>}
     <aside id="main-nav-panel" ref={sidebarRef} className={'sidebar '+(menuOpen?'sidebar-open':'')} role={menuOpen?'dialog':undefined} aria-modal={menuOpen||undefined} aria-label="Navegação principal">
       <div className="sidebar-top">
@@ -243,7 +252,7 @@ export default function App() {
         <button type="button" className="nav-item" onClick={()=>supabase.auth.signOut()}><LogOut size={18} aria-hidden="true"/> Sair</button>
       </div>
     </aside>
-    <main id="main-content" tabIndex={-1} className="main">
+    <main ref={mainRef} id="main-content" tabIndex={-1} className="main">
       <header className="topbar">
         <div className="topbar-main">
           <button type="button" ref={menuButtonRef} className="mobile-menu-toggle" aria-controls="main-nav-panel" aria-expanded={menuOpen} aria-label="Abrir menu lateral" onClick={()=>setMenuOpen(true)}>

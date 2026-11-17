@@ -49,6 +49,7 @@ export default function ReservationDatePicker({value,selectedDates,onChange,minD
     document.addEventListener('keydown',escape);
     return ()=>{document.removeEventListener('pointerdown',outside);document.removeEventListener('keydown',escape);};
   },[open]);
+  function closePicker(){setOpen(false);triggerRef.current?.focus();}
   function changeMode(mode:ReservationDateMode){
     setAwaitEnd(false);
     if(mode==='single')onChange({...value,mode,endDate:value.startDate});
@@ -64,7 +65,7 @@ export default function ReservationDatePicker({value,selectedDates,onChange,minD
     }
     if(value.mode==='single'){
       onChange({...value,startDate:date,endDate:date});
-      setOpen(false);
+      closePicker();
       return;
     }
     if(!awaitEnd){
@@ -75,7 +76,7 @@ export default function ReservationDatePicker({value,selectedDates,onChange,minD
     onChange({...value,startDate:date<value.startDate?date:value.startDate,
       endDate:date<value.startDate?value.startDate:date});
     setAwaitEnd(false);
-    setOpen(false);
+    closePicker();
   }
   function usePreset(kind:'day'|'week'|'month'){
     const anchor=isValidIsoDate(value.startDate)&&value.startDate>=minDate&&isWeekday(value.startDate)
@@ -84,7 +85,7 @@ export default function ReservationDatePicker({value,selectedDates,onChange,minD
     onChange({...value,mode,startDate,endDate});
     setAwaitEnd(false);
     setMonth(startDate.slice(0,7));
-    setOpen(false);
+    closePicker();
   }
   function openPicker(){
     setOpen(x=>!x);
@@ -115,7 +116,7 @@ export default function ReservationDatePicker({value,selectedDates,onChange,minD
         <button type="button" onClick={()=>usePreset('week')}>1 semana</button>
         <button type="button" onClick={()=>usePreset('month')}>1 mês</button>
       </div>
-      <p className="reservation-date-instruction">
+      <p className="reservation-date-instruction" aria-live="polite">
         {value.mode==='single'?'Clique no dia desejado.':
           value.mode==='multiple'?'Toque em cada dia desejado para adicionar ou remover.':
           awaitEnd?'Escolha a data final do período.':'Escolha a data inicial e depois a data final.'}
@@ -144,12 +145,12 @@ export default function ReservationDatePicker({value,selectedDates,onChange,minD
         })():<span className="reservation-date-blank" key={'blank-'+i} aria-hidden="true"/>)}
       </div>
       <div className="reservation-date-popover-footer">
-        <span>{selectedDates.length} dia(s) útil(eis) selecionado(s)</span>
-        <button className="secondary" type="button" onClick={()=>setOpen(false)}>
+        <span aria-live="polite">{selectedDates.length} dia(s) útil(eis) selecionado(s)</span>
+        <button className="secondary" type="button" onClick={closePicker}>
           <Check size={16} aria-hidden="true"/> Concluir
         </button>
         <button className="ghost" type="button" aria-label="Fechar calendário"
-          onClick={()=>{setOpen(false);triggerRef.current?.focus();}}><X size={17} aria-hidden="true"/></button>
+          onClick={closePicker}><X size={17} aria-hidden="true"/></button>
       </div>
       <p className="form-hint">Sábados e domingos são desativados. Feriados continuam disponíveis.</p>
     </div>}
