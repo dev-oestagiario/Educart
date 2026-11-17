@@ -18,16 +18,10 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Resolver lockfile F1.3 (temporário)
-        run: npm install --package-lock-only --ignore-scripts --no-audit --no-fund
       - name: Instalar dependências
         run: npm ci --no-audit --no-fund
-      - name: Exportar lockfile F1.3 (temporário)
-        run: node -e "const s=require('fs').readFileSync('package-lock.json').toString('base64'); for(let i=0;i<s.length;i+=2000) console.log('EDUCART_LOCK:'+s.slice(i,i+2000));"
-      - name: Inventário de vulnerabilidades npm
-        run: |
-          npm audit --json > npm-audit.json || true
-          node -e "const r=require('./npm-audit.json'); if(!r.metadata) throw Error('npm audit indisponível'); console.log(JSON.stringify({metadata:r.metadata.vulnerabilities,findings:Object.entries(r.vulnerabilities||{}).map(([name,v])=>({name,severity:v.severity,range:v.range,fix:v.fixAvailable,via:v.via.map(x=>typeof x==='string'?x:{title:x.title,url:x.url,range:x.range})}))}));"
+      - name: Bloquear vulnerabilidades altas e críticas
+        run: npm run audit
       - name: Validar tipos e compilar
         run: npm run build
       - name: Executar testes
@@ -40,8 +34,6 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Resolver lockfile F1.3 (temporário)
-        run: npm install --package-lock-only --ignore-scripts --no-audit --no-fund
       - name: Instalar dependências
         run: npm ci --no-audit --no-fund
       - name: Instalar Chromium para Playwright
