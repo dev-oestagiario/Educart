@@ -2,6 +2,8 @@ import {useState,type FormEvent} from 'react';
 import {useLocations,roomOptions} from '../lib/locations';
 import {useMutation,useQuery,useQueryClient} from '@tanstack/react-query';
 import {ClipboardCheck,Link2,ShieldCheck,UserMinus} from 'lucide-react';
+import {collectPages,invalidateReservationViews} from '../lib/queryRefresh';
+import {fetchCatalogRows} from '../lib/catalog';
 import RecordsHeader from '../components/RecordsHeader';
 import {supabase,type Cart,type Requester} from '../lib/supabase';
 import {shiftLabel,showDate,type Shift} from '../lib/reservations';
@@ -14,13 +16,9 @@ const explain=(err:unknown)=>{
   return 'Não foi possível concluir a operação.';
 };
 
-async function rows<T>(table:'requesters'|'carts'):Promise<T[]>{
-  const {data,error}=await supabase.from(table).select('*').eq('active',true).order('name');
-  if(error)throw error;
-  return (data??[]) as T[];
-}
 export default function TeacherApprovalsPage(){
   const qc=useQueryClient();
+  const [limit,setLimit]=useState(50);
   const [screen,setScreen]=useState<'list'|'link'>('list');
   const [requesterId,setRequesterId]=useState('');
   const [email,setEmail]=useState('');
@@ -31,8 +29,8 @@ export default function TeacherApprovalsPage(){
   const [reviewNotes,setReviewNotes]=useState<Record<string,string>>({});
   const [filter,setFilter]=useState<'PENDENTE'|'TODAS'>('PENDENTE');
   const [confirmRevoke,setConfirmRevoke]=useState<string|null>(null);
-  const teachers=useQuery({queryKey:['requesters'],queryFn:()=>rows<Requester>('requesters')});
-  const carts=useQuery({queryKey:['carts'],queryFn:()=>rows<Cart>('carts')});
+  const teachers=useQuery({queryKey:['requesters'],queryFn:()=>fetchCatalogRows<Requester>('requesters')});
+  const carts=useQuery({queryKey:['carts'],queryFn:()=>fetchCatalogRows<Cart>('carts')});
   const links=useQuery({
     queryKey:['teacher-account-links'],queryFn:async()=>{
       const {data,error}=await supabase.rpc('list_teacher_accounts');
@@ -41,21 +39,15 @@ export default function TeacherApprovalsPage(){
   });
   const requests=useQuery({
     queryKey:['admin-teacher-requests'],queryFn:async()=>{
-      const {data,error}=await supabase.from('reservation_requests')
+      return collectPages<TeacherRequest>((a,b)=>supabase.from('reservation_requests')
         .select('id,requester_id,requested_by,cart_id,mode,quantity,dates,shifts,needs_mouse,notes,status,review_notes,reservation_id,created_at,reviewed_at')
-        .order('created_at',{ascending:false}).limit(200);
-      if(error)throw error;return (data??[]) as TeacherRequest[];
+        .order('created_at',{ascending:false}).order('id').range(a,b));
     }
   });
   function refresh(){
     void qc.invalidateQueries({queryKey:['admin-teacher-requests']});
     void qc.invalidateQueries({queryKey:['teacher-account-links']});
-    void qc.invalidateQueries({queryKey:['reservations']});
-    void qc.invalidateQueries({queryKey:['reservation-periods']});
-    void qc.invalidateQueries({queryKey:['booking-periods']});
-    void qc.invalidateQueries({queryKey:['reservation-events']});
-    void qc.invalidateQueries({queryKey:['calendar-']});
-    void qc.invalidateQueries({queryKey:['3d-periods']});
+    void invalidateReservationViews(qc);
   }
   const link=useMutation({
     mutationFn:async()=>{
@@ -91,12 +83,12 @@ export default function TeacherApprovalsPage(){
   });
   const pending=(requests.data??[]).filter(x=>x.status==='PENDENTE').length;
   const displayed=(requests.data??[]).filter(x=>filter==='TODAS'||x.status==='PENDENTE');
-  function submitLink(event:FormEvent){event.preventDefault();setMessage(null);link.mutate();}
+  function submitLink(event:FormEvent){event.preventDefault();if(link.isPending)return;setMessage(null);link.mutate();}
   return <div className="teacher-approvals">
     {screen==='link'?<>
       <RecordsHeader editing title="Vincular conta de professor"
         description="Autorize uma conta existente e com e-mail confirmado para acessar o portal."
-        actionLabel="Voltar para solicitações" onAction={()=>{if(!link.isPending){setScreen('list');setMessage(null);}}}/>
+        actionLabel="Voltar para solicitações" busy={link.isPending} onAction={()=>{if(!link.isPending){setScreen('list');setMessage(null);}}}/>
       <section className="panel records-form-panel" aria-labelledby="link-form-title">
         <h2 id="link-form-title">Dados do vínculo</h2>
         <p className="form-hint">O professor deve criar a conta e confirmar o e-mail antes. A TI escolhe o cadastro correspondente.</p>
@@ -105,7 +97,7 @@ export default function TeacherApprovalsPage(){
         <label className="field" htmlFor="teacher-link-requester"><span>Professor cadastrado</span>
           <select id="teacher-link-requester" required value={requesterId} onChange={e=>setRequesterId(e.target.value)}>
             <option value="">Selecione um professor</option>
-            {(teachers.data??[]).map(t=><option key={t.id} value={t.id}>{t.name}</option>)}
+            {(teachers.data??[]).filter(t=>t.active).map(t=><option key={t.id} value={t.id}>{t.name}</option>)}
           </select>
         </label>
         <label className="field" htmlFor="teacher-link-email"><span>E-mail da conta confirmada</span>
@@ -125,14 +117,14 @@ export default function TeacherApprovalsPage(){
     </div>
     {message&&<p role={message.kind==='error'?'alert':'status'} className={'notice '+message.kind}>{message.text}</p>}
     <div className="stats teacher-approval-stats">
-      <div className="stat"><span className="stat-label">Pedidos pendentes</span><strong>{requests.isLoading?'—':pending}</strong></div>
+      <div className="stat"><span className="stat-label">Pedidos pendentes</span><strong>{requests.isLoading||requests.error?'—':pending}</strong></div>
       <div className="stat"><span className="stat-label">Solicitações registradas</span><strong>{requests.isLoading?'—':requests.data?.length??0}</strong></div>
-      <div className="stat"><span className="stat-label">Contas de professor ativas</span><strong>{links.isLoading?'—':(links.data??[]).filter(x=>x.active).length}</strong></div>
+      <div className="stat"><span className="stat-label">Contas de professor ativas</span><strong>{links.isLoading||links.error?'—':(links.data??[]).filter(x=>x.active).length}</strong></div>
     </div>
     <section className="panel" aria-labelledby="approval-list-heading">
       <div className="approval-list-head"><h2 id="approval-list-heading"><ClipboardCheck size={19} aria-hidden="true"/> Analisar solicitações</h2>
         <label className="field" htmlFor="approval-filter"><span>Exibir</span>
-          <select id="approval-filter" value={filter} onChange={e=>setFilter(e.target.value as 'PENDENTE'|'TODAS')}>
+          <select id="approval-filter" value={filter} onChange={e=>{setFilter(e.target.value as 'PENDENTE'|'TODAS');setLimit(50);}}>
             <option value="PENDENTE">Pendentes</option><option value="TODAS">Todas</option>
           </select>
         </label>
@@ -140,7 +132,7 @@ export default function TeacherApprovalsPage(){
       {requests.isLoading?<p role="status">Carregando pedidos…</p>:
         requests.error?<p className="notice error" role="alert">Não foi possível carregar os pedidos.</p>:
         displayed.length===0?<p className="empty">Nenhuma solicitação para este filtro.</p>:
-        <div className="teacher-request-list">{displayed.map(req=><article className="booking-item" key={req.id}>
+        <div className="teacher-request-list">{displayed.slice(0,limit).map(req=><article className="booking-item" key={req.id}>
           <div className="teacher-request-heading"><strong>{teachers.data?.find(t=>t.id===req.requester_id)?.name??'Professor'}</strong>
             <span className={'teacher-status '+req.status.toLowerCase()}>{requestStatusLabel[req.status]}</span></div>
           <p className="reservation-subtle">{carts.data?.find(c=>c.id===req.cart_id)?.name??'Carrinho'} · {req.mode==='COMPLETA'?'Carrinho completo':req.quantity+' notebooks'} · {req.shifts.map(x=>shiftLabel[x as Shift]??x).join(', ')}</p>
@@ -168,6 +160,7 @@ export default function TeacherApprovalsPage(){
             <p className="form-hint">Se não houver disponibilidade, a aprovação falhará e o pedido continuará pendente.</p>
           </div>}
         </article>)}</div>}
+      {displayed.length>limit&&<button className="secondary" onClick={()=>setLimit(n=>n+50)}>Carregar mais solicitações</button>}
     </section>
     <section className="panel" aria-labelledby="links-heading">
       <div className="records-list-heading">

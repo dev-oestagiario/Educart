@@ -274,9 +274,17 @@ async function useFakeSupabase(page: Page, authorized = true) {
     const table = url.pathname.slice('/rest/v1/'.length);
     if (Object.prototype.hasOwnProperty.call(database, table)) {
       if (req.method() === 'GET') {
-        const rows=table==='user_notifications'?
+        let rows=table==='user_notifications'?
           database[table].filter(item=>item.recipient_user_id===ADMIN_ID):database[table];
-        await respond(rows); return;
+        // Model server-side pagination and ID batches for the large-data flows.
+        for(const field of ['id','reservation_id','period_id']){
+          const value=url.searchParams.get(field);
+          if(value?.startsWith('in.(')){const ids=value.slice(4,-1).split(',').map(x=>x.replace(/^"|"$/g,''));rows=rows.filter(r=>ids.includes(String(r[field])));}
+        }
+        if(table==='notebook_codes'&&url.searchParams.get('cart_id')?.startsWith('eq.'))rows=rows.filter(r=>r.cart_id===url.searchParams.get('cart_id')?.slice(3));
+        if(table==='reservation_periods'&&url.searchParams.get('select')?.includes('reservations('))rows=rows.map(r=>({...r,reservations:r.reservations??database.reservations.find(b=>b.id===r.reservation_id)??null}));
+        const offset=Number(url.searchParams.get('offset')??0),limit=url.searchParams.get('limit');
+        await respond(limit===null?rows.slice(offset):rows.slice(offset,offset+Number(limit))); return;
       }
       if (req.method() === 'POST') {
         const body = req.postDataJSON() as Row | Row[];
@@ -2191,4 +2199,95 @@ test('F4.3 — auditoria do professor e consulta pública em telas pequenas',asy
  await page.getByRole('heading',{name:'Disponibilidade dos carrinhos'}).waitFor();
  await scan('light consulta pública 320');
  await page.getByRole('button',{name:'Ativar modo escuro'}).click();await scan('dark consulta pública 320');
+});
+
+
+test('F4.4 — pedido antigo não desaparece após 250 solicitações',async({page})=>{
+ const db=await useFakeSupabase(page),teacher=crypto.randomUUID(),cart=crypto.randomUUID();
+ db.requesters.push({id:teacher,name:'Professor pendência antiga',active:true});
+ db.carts.push({id:cart,name:'Carrinho histórico',code:'HIST',capacity:10,active:true});
+ const day=futureMondays()[0];
+ for(let i=0;i<251;i++)db.reservation_requests.push({id:crypto.randomUUID(),requester_id:teacher,cart_id:cart,mode:'PARCIAL',quantity:1,dates:[day],shifts:['MATUTINO'],needs_mouse:false,notes:null,status:i===250?'PENDENTE':'REJEITADA',created_at:new Date().toISOString()});
+ await login(page);
+ await page.getByRole('button',{name:'Solicitações',exact:true}).click();
+ const metric=(label:string)=>page.locator('.teacher-approval-stats .stat').filter({has:page.getByText(label,{exact:true})}).locator('strong');
+ await expect(metric('Pedidos pendentes')).toHaveText('1');await expect(metric('Solicitações registradas')).toHaveText('251');
+ await expect(page.getByRole('button',{name:'Aprovar e confirmar reserva'})).toHaveCount(1);
+ await page.locator('#approval-filter').selectOption('TODAS');
+ await expect(page.locator('.teacher-request-list article')).toHaveCount(50);
+ await page.getByRole('button',{name:'Carregar mais solicitações'}).click();
+ await expect(page.locator('.teacher-request-list article')).toHaveCount(100);
+ await page.locator('#approval-filter').selectOption('PENDENTE');
+ await expect(page.locator('.teacher-request-list article')).toHaveCount(1);
+});
+
+test('F4.4 — recorte incompleto bloqueia exportação e atualização recupera dados',async({page})=>{
+ const db=await useFakeSupabase(page),teacher=crypto.randomUUID(),cart=crypto.randomUUID(),booking=crypto.randomUUID();
+ const day=futureMondays()[0];
+ db.requesters.push({id:teacher,name:'Professor relatório',active:true});
+ db.carts.push({id:cart,name:'Carrinho relatório',code:'REL',capacity:10,active:true});
+ db.reservations.push({id:booking,requester_id:teacher,cart_id:cart,mode:'PARCIAL',quantity:2,needs_mouse:false,notes:null,status:'CONFIRMADA',created_by:ADMIN_ID});
+ db.reservation_periods.push({id:crypto.randomUUID(),reservation_id:booking,cart_id:cart,usage_date:day,shift:'MATUTINO',quantity:2,active:true});
+ const pattern='https://educart-e2e.supabase.co/rest/v1/reservations?**';
+ await page.route(pattern,async route=>{
+  if(!new URL(route.request().url()).searchParams.get('id')?.startsWith('in.(')){await route.fallback();return;}
+  await route.fulfill({status:200,headers:{'access-control-allow-origin':'*','access-control-allow-headers':'*'},json:[]});
+ });
+ await login(page);await page.getByRole('button',{name:'Calendário',exact:true}).click();
+ await page.locator('#calendar-focus').fill(day);
+ await expect(page.getByRole('alert')).toContainText('Falha ao carregar o recorte completo');
+ await expect(page.getByRole('button',{name:'Planilha CSV'})).toBeDisabled();
+ await expect(page.getByRole('button',{name:'Exportar PDF'})).toBeDisabled();
+ await page.unroute(pattern);
+ await page.getByRole('button',{name:'Atualizar relatório'}).click();
+ await expect(page.getByRole('button',{name:'Planilha CSV'})).toBeEnabled();
+ await expect(page.locator('.calendar-event')).toContainText('Professor relatório');
+});
+
+test('F4.4 — aprovação invalida relatório e painel sem aguardar expiração do cache',async({page})=>{
+ const db=await useFakeSupabase(page),teacher=crypto.randomUUID(),cart=crypto.randomUUID(),request=crypto.randomUUID();
+ const day=futureMondays()[0];
+ db.requesters.push({id:teacher,name:'Professor integração',active:true});
+ db.carts.push({id:cart,name:'Carrinho integração',code:'INT',capacity:10,active:true});
+ db.reservation_requests.push({id:request,requester_id:teacher,cart_id:cart,mode:'PARCIAL',quantity:2,dates:[day],shifts:['MATUTINO'],needs_mouse:false,notes:null,status:'PENDENTE',created_at:new Date().toISOString()});
+ await login(page);await page.getByRole('button',{name:'Calendário',exact:true}).click();
+ await page.locator('#calendar-focus').fill(day);
+ const metric=()=>page.locator('.calendar-stats .stat').filter({has:page.getByText('Períodos ocupados',{exact:true})}).locator('strong');
+ await expect(metric()).toHaveText('0');
+ await page.getByRole('button',{name:'Solicitações',exact:true}).click();
+ await page.getByRole('button',{name:'Aprovar e confirmar reserva'}).click();
+ await expect(page.getByText('Solicitação aprovada e reserva confirmada.')).toBeVisible();
+ await page.getByRole('button',{name:'Calendário',exact:true}).click();
+ await page.locator('#calendar-focus').fill(day);
+ await expect(metric()).toHaveText('1');
+ await page.getByRole('button',{name:'Visão geral',exact:true}).click();
+ await page.getByLabel('Próximos dias').selectOption('30');
+ await expect(page.getByText('Professor integração',{exact:false}).first()).toBeVisible();
+});
+
+
+test('F4.4 — períodos são consultados por lote e códigos somente quando necessários',async({page})=>{
+ const db=await useFakeSupabase(page),cart=crypto.randomUUID(),teacher=crypto.randomUUID(),booking=crypto.randomUUID(),day=futureMondays()[0];
+ db.carts.push({id:cart,name:'Carrinho desempenho',code:'PERF',capacity:10,active:true});
+ db.requesters.push({id:teacher,name:'Professor desempenho',active:true});
+ db.notebook_codes.push({id:crypto.randomUUID(),cart_id:cart,code:'PERF-NB',active:true});
+ db.reservations.push({id:booking,cart_id:cart,requester_id:teacher,mode:'PARCIAL',quantity:1,status:'CONFIRMADA',needs_mouse:false,notes:null});
+ db.reservation_periods.push({id:crypto.randomUUID(),reservation_id:booking,cart_id:cart,usage_date:day,shift:'MATUTINO',quantity:1,active:true});
+ await login(page);await expect(page.getByRole('heading',{name:'Visão geral'})).toBeVisible();
+ await expect(page.locator('.dashboard-metrics .stat')).toHaveCount(6);
+ const urls:URL[]=[];
+ page.on('request',r=>{if(r.method()==='GET'&&r.url().startsWith('https://educart-e2e.supabase.co/rest/v1/'))urls.push(new URL(r.url()));});
+ await page.getByRole('button',{name:'Reservas',exact:true}).click();
+ await expect(page.getByRole('button',{name:'Editar',exact:true})).toBeEnabled();
+ const periodQueries=urls.filter(u=>u.pathname.endsWith('/reservation_periods'));
+ expect(periodQueries.length).toBeGreaterThan(0);
+ expect(periodQueries.every(u=>u.searchParams.get('reservation_id')?.startsWith('in.('))).toBe(true);
+ expect(urls.some(u=>u.pathname.endsWith('/notebook_codes'))).toBe(false);
+ await page.getByRole('button',{name:'Nova reserva'}).click();
+ await page.locator('#reservation-requester').selectOption(teacher);await page.locator('#reservation-cart').selectOption(cart);
+ await expect(page.getByRole('radio',{name:'Carrinho completo'})).toBeChecked();
+ expect(urls.some(u=>u.pathname.endsWith('/notebook_codes'))).toBe(false);
+ await page.getByRole('radio',{name:'Notebooks avulsos'}).check();
+ await expect(page.getByText('PERF-NB',{exact:true})).toBeVisible();
+ expect(urls.filter(u=>u.pathname.endsWith('/notebook_codes')).every(u=>u.searchParams.get('cart_id')==='eq.'+cart)).toBe(true);
 });

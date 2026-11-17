@@ -14,14 +14,9 @@ import {
   SHIFTS, shiftLabel, showDate, todayInSaoPaulo, type Shift, type UsagePeriod
 } from '../lib/reservations';
 
-const today=todayInSaoPaulo();
-let firstBookableDay=today;
-while(!isWeekday(firstBookableDay))firstBookableDay=addCalendarDays(firstBookableDay,1);
-async function fetchActive<T>(table:'carts'|'requesters'|'notebook_codes'):Promise<T[]>{
-  const {data,error}=await supabase.from(table).select('*').eq('active',true).order('created_at',{ascending:false});
-  if(error)throw error;
-  return (data??[]) as T[];
-}
+import {fetchCatalogRows} from '../lib/catalog';
+import {invalidateReservationViews} from '../lib/queryRefresh';
+function bookableDay(today:string){while(!isWeekday(today))today=addCalendarDays(today,1);return today;}
 function explainError(error:unknown):string {
   if(error&&typeof error==='object'&&'message' in error && typeof error.message==='string')
     return error.message;
@@ -29,12 +24,13 @@ function explainError(error:unknown):string {
 }
 export default function ReservationsPage() {
   const qc=useQueryClient();
+  const today=todayInSaoPaulo(),firstBookableDay=bookableDay(today);
   const locations=useLocations();
   const roomList=roomOptions(locations.data);
   const [roomId,setRoomId]=useState(''),[oldRoom,setOldRoom]=useState('');
-  const carts=useQuery({queryKey:['carts','active'],queryFn:()=>fetchActive<Cart>('carts')});
-  const teachers=useQuery({queryKey:['requesters','active'],queryFn:()=>fetchActive<Requester>('requesters')});
-  const notebooks=useQuery({queryKey:['notebooks','active'],queryFn:()=>fetchActive<Notebook>('notebook_codes')});
+  const carts=useQuery({queryKey:['carts','active'],queryFn:()=>fetchCatalogRows<Cart>('carts',true)});
+  const teachers=useQuery({queryKey:['requesters','active'],queryFn:()=>fetchCatalogRows<Requester>('requesters',true)});
+
   const [screen,setScreen]=useState<'list'|'form'>('list');
   const [cartId,setCartId]=useState('');
   const [requesterId,setRequesterId]=useState('');
@@ -52,6 +48,7 @@ export default function ReservationsPage() {
   const [notes,setNotes]=useState('');
   const [feedback,setFeedback]=useState<{kind:'error'|'success';text:string}|null>(null);
   const [editingId,setEditingId]=useState<string|null>(null);
+  const notebooks=useQuery({queryKey:['notebooks','active',cartId],enabled:screen==='form'&&!!cartId&&reservationMode==='PARCIAL',queryFn:()=>fetchCatalogRows<Notebook>('notebook_codes',true,cartId)});
   const selectedCart=carts.data?.find(c=>c.id===cartId);
   const requestedQuantity=reservationMode==='COMPLETA'?(selectedCart?.capacity??0):Number(quantity);
 
@@ -61,13 +58,13 @@ export default function ReservationsPage() {
     } catch(error) {
       return {dates:[] as string[],error:explainError(error)};
     }
-  },[weekly,pattern,dateMode,startDate,endDate,specificDates]);
+  },[weekly,pattern,dateMode,startDate,endDate,specificDates,today]);
   const dates=dateResult.dates;
-  const maintenance=useMaintenanceWindows(cartId,dates[0]??'',dates[dates.length-1]??'');
+  const maintenance=useMaintenanceWindows(cartId,screen==='form'?dates[0]??'':'',screen==='form'?dates[dates.length-1]??'':'');
 
   const periods=useQuery({
     queryKey:['reservation-periods',cartId,dates.join(',')],
-    enabled:!!cartId&&dates.length>0,
+    enabled:screen==='form'&&!!cartId&&dates.length>0,
     queryFn:async():Promise<UsagePeriod[]>=>{
       const result:UsagePeriod[]=[];
       for(let offset=0;;offset+=250){
@@ -93,7 +90,7 @@ export default function ReservationsPage() {
       if(!selectedCart)throw new Error('Selecione um carrinho.');
       if(periods.isLoading||periods.isFetching||maintenance.isLoading||maintenance.isFetching)throw new Error('Aguarde a consulta de disponibilidade.');
       if(periods.error||maintenance.error)throw new Error('Não foi possível verificar a disponibilidade. Tente novamente.');
-      const checkedDates=weekly?expandWeeklyPattern(pattern,todayInSaoPaulo()):dates;
+      const checkedDates=weekly?expandWeeklyPattern(pattern,todayInSaoPaulo()):expandReservationDates(dateMode==='multiple'?'avulsas':'intervalo',startDate,dateMode==='single'?startDate:endDate,specificDates,todayInSaoPaulo());
       const data=reservationInputSchema.parse({
         requester_id:requesterId,cart_id:cartId,mode:reservationMode,
         quantity:requestedQuantity,dates:checkedDates,shifts:selectedShifts,needs_mouse:needsMouse,
@@ -121,10 +118,7 @@ export default function ReservationsPage() {
   });
 
   function refreshData(){
-    void qc.invalidateQueries({queryKey:['reservation-periods']});
-    void qc.invalidateQueries({queryKey:['reservations']});
-    void qc.invalidateQueries({queryKey:['booking-periods']});
-    void qc.invalidateQueries({queryKey:['reservation-events']});
+    void invalidateReservationViews(qc);
   }
   function loadForEdit(info:ReservationEdit){
     const {booking,dates:bookedDates,shifts,notebookIds}=info;
@@ -145,7 +139,7 @@ export default function ReservationsPage() {
     window.scrollTo({top:0,behavior:'smooth'});
   }
   function submit(event:FormEvent) {
-    event.preventDefault();setFeedback(null);save.mutate();
+    event.preventDefault();if(save.isPending)return;setFeedback(null);save.mutate();
   }
   function toggleShift(shift:Shift,checked:boolean) {
     setSelectedShifts(prev=>checked?[...prev,shift]:prev.filter(s=>s!==shift));
@@ -167,6 +161,7 @@ export default function ReservationsPage() {
     setFeedback(null);
   }
   function returnToList(){
+    if(save.isPending)return;
     setEditingId(null);setFeedback(null);setScreen('list');
     window.scrollTo({top:0,behavior:'smooth'});
   }
@@ -193,7 +188,7 @@ export default function ReservationsPage() {
       <ReservationManager carts={carts.data??[]} requesters={teachers.data??[]}
         onEdit={loadForEdit} onChanged={()=>{setEditingId(null);refreshData()}}/>
     </>:<>
-      <button type="button" className="ghost reservation-back" onClick={returnToList}>
+      <button type="button" className="ghost reservation-back" disabled={save.isPending} onClick={returnToList}>
         <ArrowLeft size={18} aria-hidden="true"/> Voltar para reservas
       </button>
       <div className="page-header reservation-form-page-header">
@@ -255,9 +250,11 @@ export default function ReservationsPage() {
           {reservationMode==='PARCIAL'&&<fieldset className="reservation-fieldset">
             <legend>Notebooks identificados (opcional)</legend>
             <p className="form-hint">Selecione os códigos conhecidos. Também é possível reservar notebooks sem identificar todos.</p>
-            {cartId&&!knownNotebooks.length&&<p className="reservation-subtle">Nenhum código individual cadastrado neste carrinho.</p>}
+            {notebooks.isFetching&&<p role="status">Consultando códigos…</p>}
+            {cartId&&!notebooks.isFetching&&!notebooks.error&&!knownNotebooks.length&&<p className="reservation-subtle">Nenhum código individual cadastrado neste carrinho.</p>}
+            {selectedNotebookIds.length>requestedQuantity&&<p className="notice warning" role="status">A quantidade de códigos selecionados excede a quantidade solicitada. Remova códigos ou aumente a quantidade.</p>}
             <div className="reservation-notebooks">{knownNotebooks.map(n=><label key={n.id}>
-              <input type="checkbox" checked={selectedNotebookIds.includes(n.id)}
+              <input type="checkbox" checked={selectedNotebookIds.includes(n.id)} disabled={!selectedNotebookIds.includes(n.id)&&selectedNotebookIds.length>=requestedQuantity}
                 onChange={e=>toggleNotebook(n.id,e.target.checked)}/>
               <span>{n.code}</span>
             </label>)}</div>
@@ -299,10 +296,10 @@ export default function ReservationsPage() {
           {feedback&&<p className={'notice '+feedback.kind} role={feedback.kind==='error'?'alert':'status'}>{feedback.text}</p>}
           <div className="reservation-form-actions">
             <button className="primary" type="submit"
-              disabled={!requesterId||!cartId||!requestedValid||!dates.length||!selectedShifts.length||blocked||periods.isFetching||maintenance.isFetching||!!maintenance.error||save.isPending}>
+              disabled={!requesterId||!cartId||!requestedValid||!dates.length||!selectedShifts.length||blocked||periods.isFetching||maintenance.isFetching||!!maintenance.error||!!periods.error||!!carts.error||!!teachers.error||(reservationMode==='PARCIAL'&&(notebooks.isFetching||!!notebooks.error||selectedNotebookIds.length>requestedQuantity))||save.isPending}>
               {save.isPending?'Salvando…':editingId?'Salvar alterações':'Confirmar reserva'}
             </button>
-            <button type="button" className="ghost" onClick={returnToList}>Cancelar e voltar</button>
+            <button type="button" className="ghost" disabled={save.isPending} onClick={returnToList}>Cancelar e voltar</button>
           </div>
           <p className="form-hint"><Info size={15} aria-hidden="true"/> A confirmação verifica todos os períodos. Se houver conflito, nada será registrado.</p>
         </form>
