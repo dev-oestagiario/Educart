@@ -78,10 +78,16 @@ create function public.update_reservation_with_room(
  p_reservation_id uuid,p_requester_id uuid,p_cart_id uuid,p_mode text,p_quantity integer,p_dates date[],p_shifts text[],
  p_needs_mouse boolean,p_notes text,p_notebook_ids uuid[],p_room_id uuid)
 returns uuid language plpgsql security definer set search_path='' as $$
-declare v_id uuid; v_label text;
+declare v_id uuid; v_label text; v_old public.reservations%rowtype;
 begin
  if not app_private.is_admin() then raise exception 'Sem permissão' using errcode='42501'; end if;
- v_label:=app_private.active_room_label(p_room_id);
+ select * into v_old from public.reservations where id=p_reservation_id for update;
+ if not found then raise exception 'Reserva inexistente'; end if;
+ if p_room_id is not distinct from v_old.destination_room_id then
+  v_label:=v_old.destination_label;
+ else
+  v_label:=app_private.active_room_label(p_room_id);
+ end if;
  v_id:=public.update_reservation(p_reservation_id,p_requester_id,p_cart_id,p_mode,p_quantity,p_dates,p_shifts,p_needs_mouse,p_notes,p_notebook_ids);
  update public.reservations set destination_room_id=p_room_id,destination_label=v_label where id=v_id;
  update public.reservation_events set after_data=coalesce(after_data,'{}'::jsonb)||jsonb_build_object('destination_room_id',p_room_id,'destination_label',v_label)
