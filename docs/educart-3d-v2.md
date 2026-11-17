@@ -1,6 +1,6 @@
 # Educart 3D V2 — Especificação e plano técnico do gêmeo digital
 
-**Estado:** protótipo F5.0 implementado em desenvolvimento; referências reais e homologação visual pendentes. Veja [registro F5.0](f5-0-prototipo-ambiente-3d.md). **Fase:** F5 do [roadmap consolidado](roadmap-finalizacao-educart.md).
+**Estado:** protótipo F5.0 e fundação F5.1 implementados em desenvolvimento; referências reais, homologação visual e Supabase completo pendentes. Veja [registro F5.0](f5-0-prototipo-ambiente-3d.md). **Fase:** F5 do [roadmap consolidado](roadmap-finalizacao-educart.md).
 **Objetivo:** transformar a visualização isolada de um carrinho em um ambiente virtual detalhado e interativo, com todos os carrinhos simultaneamente, inspeção de notebooks e informações operacionais.
 
 ## 1. Problema e baseline
@@ -114,10 +114,11 @@ Acessibilidade: texto acompanha cor; foco visível, botões rotulados, sequênci
 - [ ] DT-003 Wireframe da tela ampla e mobile, storyboard de clique/inspeção; protótipo de sala ilustrativa com 3+ carrinhos. Definir padrão visual e orçamento técnico; aprovar antes da modelagem detalhada. Protótipo e orçamento inicial implementados; aceite visual pendente.
 
 ### F5.1 — Fundação de dados (depende F3.1/F3.2)
-- [ ] DT-004 Revisar schema/migrations/RLS existentes e elaborar ADR do modelo espacial; migrar tabelas aditivamente, índices e policies.
-- [ ] DT-005 CRUD de ambientes e posicionamento; área sem localização; importação/edição de medidas e poses com validação e versão/registro.
-- [ ] DT-006 RPC agregada por data/turno, contratos de detalhe e autorização negativa (anon/professor/conta sem vínculo).
-- [ ] DT-007 Mapeamento opcional slot/notebook físico; preservar capacidade sem código e impedir associação falsa/duplicada.
+Implementação e testes locais: [F5.1](f5-1-fundacao-espacial.md). Editor numérico; importação em lote e drag 3D ficam para depois; Auth real e aceite da TI pendentes.
+- [x] DT-004 Revisar schema/migrations/RLS existentes e elaborar ADR do modelo espacial; migrar tabelas aditivamente, índices e policies.
+- [x] DT-005 CRUD de ambientes e posicionamento; área sem localização; importação/edição de medidas e poses com validação e versão/registro.
+- [x] DT-006 RPC agregada por data/turno, contratos de detalhe e autorização negativa (anon/professor/conta sem vínculo).
+- [x] DT-007 Mapeamento opcional slot/notebook físico; preservar capacidade sem código e impedir associação falsa/duplicada.
 
 ### F5.2 — Experiência de visão geral
 - [ ] DT-008 Criar layout canvas + toolbar + painel, carregar todos sem seleção; manter lazy load e dados acessíveis.
