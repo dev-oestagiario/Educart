@@ -111,7 +111,7 @@ try{
   assert.ok(total>2,'PDF deve possuir múltiplas páginas');
   assert.match(info,/Page size:\s+595(?:\.\d+)? x 841(?:\.\d+)? pts/);
   const text=execFileSync('pdftotext',['-layout',pdf,'-'],{encoding:'utf8'});
-  assert.ok(text.includes(teacherName));assert.ok(text.includes('FIM-OBJETIVO'));
+  assert.ok(text.includes('Professora Júlia')&&text.includes(tag));assert.ok(text.includes('FIM-OBJETIVO'));
   assert.ok(text.includes('Trecho 01')&&text.includes('Trecho 78'));
   assert.ok(text.includes('Não informada')&&text.includes('Mouses'));
   assert.ok(text.includes('CANCELAMENTO-SINTETICO')&&text.includes('[Cancelada]'));
