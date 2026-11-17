@@ -29,9 +29,23 @@ function humanMonth(iso:string){
     .format(new Date(iso+'T12:00:00Z'));
 }
 const today=todayInSaoPaulo();
+const REPORT_PAGE_SIZE=250;
+async function collectReportPages<T>(fetchPage:(start:number,end:number)=>PromiseLike<{data:T[]|null;error:unknown}>):Promise<T[]>{
+  const rows:T[]=[];
+  for(let offset=0;;offset+=REPORT_PAGE_SIZE){
+    const {data,error}=await fetchPage(offset,offset+REPORT_PAGE_SIZE-1);
+    if(error)throw error;
+    const page=data??[];
+    rows.push(...page);
+    if(page.length<REPORT_PAGE_SIZE)return rows;
+  }
+}
 async function getRows<T>(table:'carts'|'requesters'|'admin_users',cols='*'):Promise<T[]>{
-  const {data,error}=await supabase.from(table).select(cols);
-  if(error)throw error;return (data??[]) as T[];
+  return collectReportPages<T>(async(start,end)=>{
+    const {data,error}=await supabase.from(table).select(cols)
+      .order(table==='admin_users'?'user_id':'id').range(start,end);
+    return {data:data as T[]|null,error};
+  });
 }
 export default function CalendarReportsPage(){
   const [mode,setMode]=useState<'semana'|'mes'>('semana');
@@ -46,12 +60,13 @@ export default function CalendarReportsPage(){
   const periodQuery=useQuery({
     queryKey:['calendar-periods',mode,first,last],
     queryFn:async():Promise<Period[]>=>{
-      const {data,error}=await supabase.from('reservation_periods')
-        .select('id,reservation_id,cart_id,usage_date,shift,quantity,active')
-        .gte('usage_date',first).lte('usage_date',last)
-        .order('usage_date',{ascending:true});
-      if(error)throw error;
-      return (data??[]) as Period[];
+      return collectReportPages<Period>(async(start,end)=>{
+        const {data,error}=await supabase.from('reservation_periods')
+          .select('id,reservation_id,cart_id,usage_date,shift,quantity,active')
+          .gte('usage_date',first).lte('usage_date',last)
+          .order('usage_date',{ascending:true}).order('id',{ascending:true}).range(start,end);
+        return {data:data as Period[]|null,error};
+      });
     }
   });
   const bookingIds=useMemo(()=>[...new Set((periodQuery.data??[]).map(p=>p.reservation_id))],[periodQuery.data]);
@@ -59,11 +74,16 @@ export default function CalendarReportsPage(){
     queryKey:['calendar-bookings',bookingIds.join(',')],
     enabled:bookingIds.length>0,
     queryFn:async():Promise<Booking[]>=>{
-      const {data,error}=await supabase.from('reservations')
-        .select('id,requester_id,cart_id,mode,needs_mouse,notes,created_by')
-        .in('id',bookingIds);
-      if(error)throw error;
-      return (data??[]) as Booking[];
+      // Avoid URL-size limits and PostgREST's maximum response row count.
+      const result:Booking[]=[];
+      for(let index=0;index<bookingIds.length;index+=100){
+        const {data,error}=await supabase.from('reservations')
+          .select('id,requester_id,cart_id,mode,needs_mouse,notes,created_by')
+          .in('id',bookingIds.slice(index,index+100));
+        if(error)throw error;
+        result.push(...((data??[]) as Booking[]));
+      }
+      return result;
     }
   });
   const carts=useQuery({queryKey:['carts','report'],queryFn:()=>getRows<Cart>('carts')});
@@ -130,7 +150,7 @@ export default function CalendarReportsPage(){
             value={mode==='semana'?focus:focus.slice(0,7)}
             onChange={e=>{
               const value=e.target.value;
-              setFocus(mode==='semana'?value:value+'-01');
+              if(value)setFocus(mode==='semana'?value:value+'-01');
             }}/>
         </label>
         <label className="field" htmlFor="calendar-cart"><span>Carrinho</span>

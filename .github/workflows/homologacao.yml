@@ -46,6 +46,10 @@ jobs:
         run: node scripts/homologacao-concorrencia.mjs
       - name: Homologar professores, TI e notificações em sessões reais
         run: node scripts/homologacao-professores.mjs
+      - name: Instalar verificador de impressão PDF
+        run: sudo apt-get update -qq && sudo apt-get install -y --no-install-recommends poppler-utils
+      - name: Homologar relatórios reais e PDF A4
+        run: node scripts/homologacao-relatorios.mjs
       - name: Encerrar ambiente isolado
         if: always()
         run: |

@@ -27,3 +27,6 @@ No stack Supabase local iniciado, com Chromium instalado: `node scripts/homologa
 
 ## Limites
 Os testes incluem recarga para obter mudanças entre sessões; não provam entrega instantânea nem polling durante toda a sessão. A política atual admite leitura de avisos antigos pelo destinatário após revogar vínculo; não altera essa regra. Não testar contra produção, não registrar tokens/senhas. A conta não confirmada é criada sem confirmação pelo administrador local; isso não é um teste de recebimento de e-mail. Recuperação por e-mail, redirect/SMTP hospedado, aceite institucional e dispositivos físicos permanecem pendentes. Próxima etapa F2.4: relatórios e impressão. Merge condicionado à aprovação da CI.
+
+## Evidência final
+Reexecução do run 44130808377, job 134208812149: fluxo multiusuário real aprovado, incluindo vínculo, prévia, aprovação, conflito, rejeição, avisos, retirada e revogação. Primeiro job falhou na inicialização local antes dos testes. CI regular 44130808273 aprovada. PR #41 integrado em main (9d50400).
