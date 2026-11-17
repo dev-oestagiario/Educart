@@ -1,6 +1,8 @@
 import { useMemo, useState, type FormEvent } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ArrowLeft, CalendarDays, Info, Laptop2, Plus } from 'lucide-react';
+import WeeklyRecurrence from '../components/WeeklyRecurrence';
+import {defaultWeeklyPattern,expandWeeklyPattern} from '../lib/recurrence';
 import ReservationDatePicker from '../components/ReservationDatePicker';
 import type {ReservationDateSelection,ReservationDateMode} from '../lib/reservationDatePicker';
 import {useLocations,roomOptions} from '../lib/locations';
@@ -38,6 +40,8 @@ export default function ReservationsPage() {
   const [requesterId,setRequesterId]=useState('');
   const [reservationMode,setReservationMode]=useState<'COMPLETA'|'PARCIAL'>('COMPLETA');
   const [quantity,setQuantity]=useState('1');
+  const [weekly,setWeekly]=useState(false);
+  const [pattern,setPattern]=useState(()=>defaultWeeklyPattern(firstBookableDay));
   const [dateMode,setDateMode]=useState<ReservationDateMode>('single');
   const [startDate,setStartDate]=useState(firstBookableDay);
   const [endDate,setEndDate]=useState(firstBookableDay);
@@ -53,11 +57,11 @@ export default function ReservationsPage() {
 
   const dateResult=useMemo(()=>{
     try {
-      return {dates:expandReservationDates(dateMode==='multiple'?'avulsas':'intervalo',startDate,dateMode==='single'?startDate:endDate,specificDates),error:''};
+      return {dates:weekly?expandWeeklyPattern(pattern,todayInSaoPaulo()):expandReservationDates(dateMode==='multiple'?'avulsas':'intervalo',startDate,dateMode==='single'?startDate:endDate,specificDates),error:''};
     } catch(error) {
       return {dates:[] as string[],error:explainError(error)};
     }
-  },[dateMode,startDate,endDate,specificDates]);
+  },[weekly,pattern,dateMode,startDate,endDate,specificDates]);
   const dates=dateResult.dates;
   const maintenance=useMaintenanceWindows(cartId,dates[0]??'',dates[dates.length-1]??'');
 
@@ -65,12 +69,16 @@ export default function ReservationsPage() {
     queryKey:['reservation-periods',cartId,dates.join(',')],
     enabled:!!cartId&&dates.length>0,
     queryFn:async():Promise<UsagePeriod[]>=>{
-      const {data,error}=await supabase.from('reservation_periods')
-        .select('reservation_id,usage_date,shift,quantity,active')
-        .eq('cart_id',cartId).gte('usage_date',dates[0]).lte('usage_date',dates[dates.length-1])
-        .eq('active',true);
-      if(error)throw error;
-      return (data??[]) as UsagePeriod[];
+      const result:UsagePeriod[]=[];
+      for(let offset=0;;offset+=250){
+        const {data,error}=await supabase.from('reservation_periods')
+          .select('reservation_id,usage_date,shift,quantity,active')
+          .eq('cart_id',cartId).gte('usage_date',dates[0]).lte('usage_date',dates[dates.length-1])
+          .eq('active',true).order('id').range(offset,offset+249);
+        if(error)throw error;
+        const page=(data??[]) as UsagePeriod[];
+        result.push(...page);if(page.length<250)return result;
+      }
     }
   });
   const slots=useMemo(()=>applyMaintenance(calculateAvailability(
@@ -85,9 +93,10 @@ export default function ReservationsPage() {
       if(!selectedCart)throw new Error('Selecione um carrinho.');
       if(periods.isLoading||periods.isFetching||maintenance.isLoading||maintenance.isFetching)throw new Error('Aguarde a consulta de disponibilidade.');
       if(periods.error||maintenance.error)throw new Error('Não foi possível verificar a disponibilidade. Tente novamente.');
+      const checkedDates=weekly?expandWeeklyPattern(pattern,todayInSaoPaulo()):dates;
       const data=reservationInputSchema.parse({
         requester_id:requesterId,cart_id:cartId,mode:reservationMode,
-        quantity:requestedQuantity,dates,shifts:selectedShifts,needs_mouse:needsMouse,
+        quantity:requestedQuantity,dates:checkedDates,shifts:selectedShifts,needs_mouse:needsMouse,
         notes,notebook_ids:reservationMode==='PARCIAL'?selectedNotebookIds:[]
       });
       if(blocked)throw new Error('Um ou mais períodos não possuem a quantidade solicitada.');
@@ -124,6 +133,7 @@ export default function ReservationsPage() {
     setCartId(booking.cart_id);
     setReservationMode(booking.mode);
     setQuantity(String(booking.quantity));
+    setWeekly(false);setPattern(defaultWeeklyPattern(firstBookableDay));
     setDateMode('multiple');setSpecificDates(bookedDates);
     setStartDate(bookedDates[0]??firstBookableDay);
     setEndDate(bookedDates[bookedDates.length-1]??firstBookableDay);
@@ -144,6 +154,7 @@ export default function ReservationsPage() {
   function openNew(){
     setEditingId(null);setCartId('');setRequesterId('');setRoomId('');setOldRoom('');
     setReservationMode('COMPLETA');setQuantity('1');
+    setWeekly(false);setPattern(defaultWeeklyPattern(firstBookableDay));
     setDateMode('single');setStartDate(firstBookableDay);setEndDate(firstBookableDay);setSpecificDates([]);
     setSelectedShifts(['MATUTINO']);setSelectedNotebookIds([]);
     setNeedsMouse(false);setNotes('');setFeedback(null);
@@ -233,10 +244,14 @@ export default function ReservationsPage() {
               {shiftLabel[shift]}
             </label>)}</div>
           </fieldset>
-          <ReservationDatePicker
-            value={{mode:dateMode,startDate,endDate,specificDates}}
-            selectedDates={dates} onChange={updateDates} minDate={today}/>
-          {dateResult.error&&<p role="alert" className="notice error">{dateResult.error}</p>}
+          <div className="weekly-mode-toggle" role="group" aria-label="Forma de escolher as datas">
+            <button type="button" className={weekly?'secondary':'primary'} aria-pressed={!weekly} disabled={save.isPending} onClick={()=>{if(weekly){setSpecificDates(dates);setDateMode('multiple');setWeekly(false);setFeedback(null);}}}>Calendário</button>
+            <button type="button" className={weekly?'primary':'secondary'} aria-pressed={weekly} disabled={save.isPending} onClick={()=>{if(!weekly){setPattern(defaultWeeklyPattern(firstBookableDay));setWeekly(true);setFeedback(null);}}}>Repetir semanalmente</button>
+          </div>
+          {weekly?<WeeklyRecurrence id="reservation-weekly" value={pattern} today={todayInSaoPaulo()} shifts={selectedShifts.length} disabled={save.isPending} onChange={p=>{setPattern(p);setFeedback(null);}}/>:
+          <ReservationDatePicker value={{mode:dateMode,startDate,endDate,specificDates}} selectedDates={dates} onChange={updateDates} minDate={today}/>}
+          {editingId&&weekly&&<p className="form-hint">O padrão substituirá as datas do agrupamento em edição. Períodos já utilizados continuam protegidos pelas regras existentes.</p>}
+          {!weekly&&dateResult.error&&<p role="alert" className="notice error">{dateResult.error}</p>}
           {reservationMode==='PARCIAL'&&<fieldset className="reservation-fieldset">
             <legend>Notebooks identificados (opcional)</legend>
             <p className="form-hint">Selecione os códigos conhecidos. Também é possível reservar notebooks sem identificar todos.</p>

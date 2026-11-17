@@ -8,6 +8,8 @@ import NotificationBell from '../components/NotificationBell';
 import BrandLogo from '../components/BrandLogo';
 import ThemeToggle from '../components/ThemeToggle';
 import RecordsHeader from '../components/RecordsHeader';
+import WeeklyRecurrence from '../components/WeeklyRecurrence';
+import {defaultWeeklyPattern,expandWeeklyPattern} from '../lib/recurrence';
 import TeacherAvailabilityPreview from '../components/TeacherAvailabilityPreview';
 const NotificationsPage = lazy(()=>import('./NotificationsPage'));
 
@@ -33,7 +35,8 @@ export default function TeacherPortal({requesterId,userId,email,onLogout}:Props)
   const [cartId,setCartId]=useState('');
   const [mode,setMode]=useState<'PARCIAL'|'COMPLETA'>('PARCIAL');
   const [quantity,setQuantity]=useState('1');
-  const [dateMode,setDateMode]=useState<'intervalo'|'avulsas'>('intervalo');
+  const [dateMode,setDateMode]=useState<'intervalo'|'avulsas'|'weekly'>('intervalo');
+  const [pattern,setPattern]=useState(()=>defaultWeeklyPattern(firstDay));
   const [start,setStart]=useState(firstDay),[end,setEnd]=useState(firstDay);
   const [individualDate,setIndividualDate]=useState(firstDay);
   const [individualDates,setIndividualDates]=useState<string[]>([]);
@@ -68,12 +71,12 @@ export default function TeacherPortal({requesterId,userId,email,onLogout}:Props)
   const cart=carts.data?.find(x=>x.id===cartId);
   const requestedQuantity=mode==='COMPLETA'?(cart?.capacity??0):Number(quantity);
   const days=useMemo(()=>{
-    try {return expandReservationDates(dateMode,start,end,individualDates,today);}
+    try {return dateMode==='weekly'?expandWeeklyPattern(pattern,todayInSaoPaulo()):expandReservationDates(dateMode,start,end,individualDates,todayInSaoPaulo());}
     catch{return [];}
-  },[dateMode,start,end,individualDates]);
+  },[dateMode,pattern,start,end,individualDates]);
   const create=useMutation({
     mutationFn:async()=>{
-      const selected=expandReservationDates(dateMode,start,end,individualDates,today);
+      const selected=dateMode==='weekly'?expandWeeklyPattern(pattern,todayInSaoPaulo()):expandReservationDates(dateMode,start,end,individualDates,todayInSaoPaulo());
       const input=validateTeacherRequest({
         cart_id:cartId,mode,quantity:requestedQuantity,dates:selected,
         shifts,needs_mouse:needsMouse,notes:notes.trim()
@@ -106,7 +109,7 @@ export default function TeacherPortal({requesterId,userId,email,onLogout}:Props)
   });
   function newRequest(){
     setCartId('');setMode('PARCIAL');setQuantity('1');
-    setDateMode('intervalo');setStart(firstDay);setEnd(firstDay);
+    setDateMode('intervalo');setPattern(defaultWeeklyPattern(firstDay));setStart(firstDay);setEnd(firstDay);
     setIndividualDate(firstDay);setIndividualDates([]);setShifts(['MATUTINO']);
     setNeedsMouse(false);setNotes('');setMessage(null);setScreen('form');
   }
@@ -207,12 +210,14 @@ export default function TeacherPortal({requesterId,userId,email,onLogout}:Props)
             </fieldset>
             <label className="field" htmlFor="teacher-date-mode"><span>Datas da solicitação</span>
               <select id="teacher-date-mode" value={dateMode}
-                onChange={e=>setDateMode(e.target.value as 'intervalo'|'avulsas')}>
+                onChange={e=>setDateMode(e.target.value as 'intervalo'|'avulsas'|'weekly')}>
                 <option value="intervalo">Período (somente dias úteis)</option>
                 <option value="avulsas">Datas avulsas</option>
+                <option value="weekly">Recorrência semanal</option>
               </select>
             </label>
-            {dateMode==='intervalo'?
+            {dateMode==='weekly'?<WeeklyRecurrence id="teacher-weekly" value={pattern} today={todayInSaoPaulo()} shifts={shifts.length} disabled={create.isPending} onChange={setPattern}/>:
+            dateMode==='intervalo'?
               <div className="reservation-dates">
                 <label className="field" htmlFor="teacher-start"><span>De</span><input id="teacher-start" type="date" min={today} value={start} onChange={e=>setStart(e.target.value)}/></label>
                 <label className="field" htmlFor="teacher-end"><span>Até</span><input id="teacher-end" type="date" min={today} value={end} onChange={e=>setEnd(e.target.value)}/></label>

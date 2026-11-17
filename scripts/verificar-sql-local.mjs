@@ -102,4 +102,22 @@ try{
   console.log('PASS F3.3: retirada, repetição idempotente, códigos, limite físico, proteção da reserva, permissões, devolução e nova retirada.');
  }else console.log('SKIP F3.3: retirada somente em dia útil; teste de data futura aprovado.');
 
+ await who('authenticated',admin);
+ const recurringCart=(await one("insert into public.carts(code,name,capacity) values('SQL-WEEKLY','Recorrência sintética',10) returning id")).id;
+ const mondays=(await one("select array_agg(d::date::text order by d) as days from generate_series(current_date+21,current_date+41,interval '1 day') d where extract(isodow from d)=1")).days;
+ assert.equal(mondays.length,3);
+ const insertSeries="select public.create_reservation($1,$2,'PARCIAL',$3,$4::date[],array['MATUTINO','VESPERTINO'],false,null,'{}'::uuid[]) as id";
+ const conflict=(await one(insertSeries,[requester,recurringCart,10,[mondays[1]]])).id;
+ await denied(insertSeries,[requester,recurringCart,2,mondays]);
+ assert.equal((await one("select count(*)::int as n from public.reservations where cart_id=$1",[recurringCart])).n,1);
+ assert.equal((await one("select count(*)::int as n from public.reservation_periods where cart_id=$1",[recurringCart])).n,2);
+ const series=(await one(insertSeries,[requester,recurringCart,2,[mondays[0],mondays[2]]])).id;
+ assert.equal((await one("select count(*)::int as n from public.reservation_periods where reservation_id=$1 and active",[series])).n,4);
+ await one("select public.update_reservation($1,$2,$3,'PARCIAL',3,$4::date[],array['MATUTINO','VESPERTINO'],false,null,'{}'::uuid[])",[series,requester,recurringCart,[mondays[0],mondays[2]]]);
+ assert.equal((await one("select count(*)::int as n from public.reservation_periods where reservation_id=$1 and active and quantity=3",[series])).n,4);
+ await one("select public.cancel_reservation($1)",[series]);
+ assert.equal((await one("select count(*)::int as n from public.reservation_periods where reservation_id=$1 and active",[series])).n,0);
+ assert.equal((await one("select count(*)::int as n from public.reservation_periods where reservation_id=$1 and active",[conflict])).n,2);
+ console.log('PASS F3.5: conflito em uma ocorrência reverte o agrupamento inteiro, exceção, edição e cancelamento preservam reserva independente.');
+
 }finally{await pg.close();}

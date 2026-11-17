@@ -65,11 +65,15 @@ export default function ReservationManager({carts,requesters,onEdit,onChanged}:P
   const periods=useQuery({
     queryKey:['booking-periods'],
     queryFn:async()=>{
-      const {data,error}=await supabase.from('reservation_periods')
-        .select('id,reservation_id,usage_date,shift,quantity,active')
-        .order('usage_date',{ascending:true}).limit(1000);
-      if(error)throw error;
-      return (data??[]) as BookingPeriod[];
+      const rows:BookingPeriod[]=[];
+      for(let offset=0;;offset+=250){
+        const {data,error}=await supabase.from('reservation_periods')
+          .select('id,reservation_id,usage_date,shift,quantity,active')
+          .order('usage_date',{ascending:true}).order('id').range(offset,offset+249);
+        if(error)throw error;
+        const page=(data??[]) as BookingPeriod[];
+        rows.push(...page);if(page.length<250)return rows;
+      }
     }
   });
   const events=useQuery({
@@ -115,18 +119,27 @@ export default function ReservationManager({carts,requesters,onEdit,onChanged}:P
     if(active.some(p=>p.usage_date<currentDay)){
       setNotice('Reservas com utilização já transcorrida não podem ser editadas nesta versão.');return;
     }
+    const dates=[...new Set(active.map(p=>p.usage_date))].sort();
+    const shifts=[...new Set(active.map(p=>p.shift))];
+    if(active.length!==dates.length*shifts.length){
+      setNotice('Este agrupamento possui exceções por turno. A edição conjunta poderia recriar um período cancelado; cancele os períodos desejados ou cadastre uma nova reserva.');return;
+    }
     setLoadingEdit(booking.id);setNotice('');
     try {
       const ids=active.map(p=>p.id);
-      const {data,error}=await supabase.from('reservation_notebooks')
-        .select('notebook_id').in('period_id',ids).eq('active',true);
-      if(error)throw error;
-      onEdit({
-        booking,
-        dates:[...new Set(active.map(p=>p.usage_date))].sort(),
-        shifts:[...new Set(active.map(p=>p.shift))],
-        notebookIds:[...new Set((data??[]).map(n=>n.notebook_id))]
-      });
+      const notebookIds=new Set<string>();
+      for(let i=0;i<ids.length;i+=50){
+        for(let offset=0;;offset+=250){
+          const {data,error}=await supabase.from('reservation_notebooks')
+            .select('notebook_id,period_id').in('period_id',ids.slice(i,i+50)).eq('active',true)
+            .order('period_id').order('notebook_id').range(offset,offset+249);
+          if(error)throw error;
+          const page=data??[];
+          for(const row of page)notebookIds.add(row.notebook_id);
+          if(page.length<250)break;
+        }
+      }
+      onEdit({booking,dates,shifts,notebookIds:[...notebookIds]});
     } catch(error){
       setNotice(error instanceof Error?error.message:'Não foi possível preparar a edição.');
     } finally {setLoadingEdit(null);}
