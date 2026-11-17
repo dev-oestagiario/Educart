@@ -1,6 +1,7 @@
 import {useState,type FormEvent} from 'react';
 import {useMutation,useQuery,useQueryClient} from '@tanstack/react-query';
 import {Feedback,LoadingState,EmptyState} from '../components/Feedback';
+import {RecordTrail,RecordDetail,DetailFields} from '../components/RecordDetail';
 import RecordsHeader from '../components/RecordsHeader';
 import {supabase,type Cart} from '../lib/supabase';
 import {fetchCatalogRows} from '../lib/catalog';
@@ -20,6 +21,7 @@ export default function MaintenancePage(){
  }});
  const [form,setForm]=useState(false),[cart,setCart]=useState(''),[start,setStart]=useState(today),[end,setEnd]=useState(today);
  const [shifts,setShifts]=useState<Shift[]>([...SHIFTS]),[reason,setReason]=useState('');
+ const [selected,setSelected]=useState<string|null>(null),[search,setSearch]=useState(''),[status,setStatus]=useState('all');
  const [closing,setClosing]=useState<string|null>(null),[closeReason,setCloseReason]=useState('');
  const [notice,setNotice]=useState<{error:boolean;text:string}|null>(null);
  const refresh=()=>{void qc.invalidateQueries();};
@@ -29,13 +31,18 @@ export default function MaintenancePage(){
      :await supabase.rpc('close_maintenance',{p_id:closing,p_reason:closeReason.trim()});
    if(result.error)throw result.error;
    return action;
- },onSuccess:action=>{setForm(false);setClosing(null);setNotice({error:false,text:action==='schedule'?'Manutenção programada.':'Manutenção encerrada; disponibilidade liberada.'});refresh();},onError:e=>setNotice({error:true,text:errorMessage(e)})});
- function open(){setCart('');setStart(today);setEnd(today);setShifts([...SHIFTS]);setReason('');setNotice(null);setClosing(null);setForm(true);}
+ },onSuccess:async action=>{await qc.invalidateQueries({queryKey:['maintenance']});setForm(false);setClosing(null);setNotice({error:false,text:action==='schedule'?'Manutenção programada.':'Manutenção encerrada; disponibilidade liberada.'});refresh();},onError:e=>setNotice({error:true,text:errorMessage(e)})});
+ function open(){setSelected(null);setCart('');setStart(today);setEnd(today);setShifts([...SHIFTS]);setReason('');setNotice(null);setClosing(null);setForm(true);}
  function submit(e:FormEvent){e.preventDefault();if(!mutation.isPending){setNotice(null);mutation.mutate('schedule');}}
+ const record=windows.data?.find(m=>m.id===selected);
+ const list=()=>{if(!mutation.isPending){setForm(false);setClosing(null);setSelected(null);setNotice(null);}};
+ const cartName=(id:string)=>carts.data?.find(c=>c.id===id)?.name??'Carrinho';
  const label=(m:Window)=>m.closed_at?'Encerrada':m.end_date<today?'Período concluído':m.start_date>today?'Programada':'Em janela de manutenção';
+ const filtered=(windows.data??[]).filter(m=>(cartName(m.cart_id)+' '+m.reason).toLocaleLowerCase('pt-BR').includes(search.trim().toLocaleLowerCase('pt-BR'))&&(status==='all'||(status==='closed'?!!m.closed_at:status==='current'?!m.closed_at&&m.start_date<=today&&m.end_date>=today:status==='future'?!m.closed_at&&m.start_date>today:!m.closed_at&&m.end_date<today)));
  return <div className="records-page">
-  <RecordsHeader title={form?'Programar manutenção':'Manutenção'} description="Controle as janelas de indisponibilidade dos carrinhos sem cancelar reservas existentes."
-    actionLabel={form?'Voltar para manutenção':'Nova manutenção'} actionKind={form?'back':'add'} busy={mutation.isPending} onAction={()=>form?setForm(false):open()}/>
+  {(form||selected)&&<RecordTrail module="Manutenção" current={form?'Nova manutenção':closing?'Encerrar':'Detalhes'} onBack={list} busy={mutation.isPending}/>}
+  <RecordsHeader title={form?'Programar manutenção':closing?'Encerrar manutenção':selected?'Detalhes da manutenção':'Manutenção'} description="Controle as janelas de indisponibilidade dos carrinhos sem cancelar reservas existentes."
+    actionLabel={form?'Voltar para manutenção':closing?'Voltar aos detalhes':selected?'Voltar à listagem':'Nova manutenção'} actionKind={form||selected?'back':'add'} busy={mutation.isPending} onAction={()=>closing?setClosing(null):form||selected?list():open()}/>
   {notice&&<Feedback kind={notice.error?'error':'success'}>{notice.text}</Feedback>}
   {form?<section className="panel records-form-panel"><h2>Dados da manutenção</h2><form className="form-stack" onSubmit={submit}>
    <label className="field"><span>Carrinho</span><select value={cart} onChange={e=>setCart(e.target.value)} required><option value="">Selecione um carrinho</option>{(carts.data??[]).filter(c=>c.active).map(c=><option key={c.id} value={c.id}>{c.name}</option>)}</select></label>
@@ -45,11 +52,12 @@ export default function MaintenancePage(){
    <label className="field"><span>Motivo interno</span><textarea required maxLength={1000} value={reason} onChange={e=>setReason(e.target.value)}/></label>
    <p className="form-hint">O carrinho inteiro ficará indisponível nos turnos selecionados. Se houver uma reserva confirmada, resolva o conflito antes de continuar.</p>
    <div className="records-form-actions"><button className="primary" disabled={mutation.isPending||!cart||!shifts.length||!reason.trim()}>Programar manutenção</button><button type="button" className="ghost" disabled={mutation.isPending} onClick={()=>setForm(false)}>Cancelar</button></div>
-  </form></section>:<section className="panel records-panel"><h2>Janelas de manutenção</h2>
-   {windows.isLoading?<LoadingState>Carregando manutenção…</LoadingState>:windows.error?<p role="alert" className="notice error">{errorMessage(windows.error)}</p>:!windows.data?.length?<EmptyState>Nenhuma manutenção cadastrada.</EmptyState>:<div className="item-list">{windows.data.map(m=><article className="item records-item" key={m.id}>
-    <div><strong>{carts.data?.find(c=>c.id===m.cart_id)?.name??'Carrinho'} · {label(m)}</strong><span>{showDate(m.start_date)} até {showDate(m.end_date)} · {m.shifts.map(s=>shiftLabel[s]).join(', ')}</span><span>{m.reason}</span>{m.close_reason&&<span>Encerramento: {m.close_reason}</span>}</div>
-    {!m.closed_at&&(closing===m.id?<form className="form-stack" onSubmit={e=>{e.preventDefault();mutation.mutate('close')}}><label className="field"><span>Motivo do encerramento</span><input value={closeReason} maxLength={1000} required onChange={e=>setCloseReason(e.target.value)}/></label><button className="primary" disabled={mutation.isPending||!closeReason.trim()}>Confirmar encerramento</button><button type="button" className="ghost" onClick={()=>setClosing(null)}>Voltar</button></form>:<button type="button" className="secondary" disabled={mutation.isPending} onClick={()=>{setClosing(m.id);setCloseReason('');setNotice(null)}}>Encerrar</button>)}
-   </article>)}</div>}
-  </section>}
+  </form></section>:selected?record?closing?<section className="panel records-form-panel"><h2>Encerrar janela de manutenção</h2><p>{cartName(record.cart_id)} · {showDate(record.start_date)} a {showDate(record.end_date)}</p><form className="form-stack" onSubmit={e=>{e.preventDefault();if(!mutation.isPending)mutation.mutate('close')}}><label className="field"><span>Motivo do encerramento</span><textarea value={closeReason} maxLength={1000} required onChange={e=>setCloseReason(e.target.value)}/></label><div className="records-form-actions"><button className="primary" disabled={mutation.isPending||!closeReason.trim()}>Confirmar encerramento</button><button type="button" className="ghost" disabled={mutation.isPending} onClick={()=>setClosing(null)}>Cancelar</button></div></form></section>:
+ <RecordDetail title={cartName(record.cart_id)} actions={!record.closed_at&&<button className="primary" disabled={mutation.isPending} onClick={()=>{setClosing(record.id);setCloseReason('');setNotice(null)}}>Encerrar</button>}>
+  <DetailFields fields={[{label:'Situação',value:label(record)},{label:'Período',value:showDate(record.start_date)+' a '+showDate(record.end_date)},{label:'Turnos',value:record.shifts.map(s=>shiftLabel[s]).join(', ')},{label:'Motivo interno',value:record.reason},...(record.closed_at?[{label:'Encerramento',value:record.close_reason??'Não informado'}]:[])]}/>
+ </RecordDetail>:windows.isLoading?<LoadingState>Carregando manutenção…</LoadingState>:<EmptyState>Manutenção não encontrada.</EmptyState>:<section className="panel records-panel"><h2>Janelas de manutenção</h2>
+ <div className="record-list-filters"><label className="field"><span>Buscar manutenção</span><input type="search" value={search} onChange={e=>setSearch(e.target.value)} placeholder="Carrinho ou motivo"/></label><label className="field"><span>Situação</span><select value={status} onChange={e=>setStatus(e.target.value)}><option value="all">Todas</option><option value="current">Vigentes</option><option value="future">Programadas</option><option value="past">Período concluído</option><option value="closed">Encerradas</option></select></label></div>
+ {windows.isLoading||carts.isLoading?<LoadingState>Carregando manutenção…</LoadingState>:windows.error||carts.error?<Feedback kind="error">{errorMessage(windows.error||carts.error)}</Feedback>:!filtered.length?<EmptyState>{windows.data?.length?'Nenhuma manutenção neste recorte.':'Nenhuma manutenção cadastrada.'}</EmptyState>:<div className="item-list">{filtered.map(m=><article className="item records-item" key={m.id}><div><strong>{cartName(m.cart_id)} · {label(m)}</strong><span>{showDate(m.start_date)} até {showDate(m.end_date)} · {m.shifts.map(s=>shiftLabel[s]).join(', ')}</span></div><button type="button" className="secondary" onClick={()=>{setSelected(m.id);setNotice(null)}}>Ver detalhes</button></article>)}</div>}
+ </section>}
  </div>;
 }

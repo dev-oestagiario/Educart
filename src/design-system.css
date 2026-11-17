@@ -88,3 +88,17 @@
  .ds-choice-group button{flex:1 1 140px}
  :root .theme-toggle{min-width:44px;min-height:44px}
 }
+
+/* F4.2 — stable list/detail/form navigation. */
+.record-trail{display:flex;align-items:center;flex-wrap:wrap;gap:6px;margin:0 0 16px;color:var(--educart-muted);font-size:13px;overflow-wrap:anywhere}
+.record-trail .text-button{min-height:36px;padding:4px 0;text-align:left}
+.record-trail svg{flex:none}
+.record-trail [aria-current=page]{color:var(--educart-text);font-weight:650}
+.record-detail h2:focus{outline:none}
+.record-detail-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 24px;margin:0 0 20px}
+.record-detail-fields>div{padding:12px 0;border-bottom:1px solid var(--educart-divider);min-width:0}
+.record-detail-fields dt{font-size:12px;font-weight:650;color:var(--educart-muted);margin-bottom:5px}
+.record-detail-fields dd{margin:0;color:var(--educart-text);font-size:14px;line-height:1.55;white-space:pre-wrap;overflow-wrap:anywhere}
+.record-row-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.record-list-filters{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,220px);gap:12px;margin-bottom:18px}
+@media(max-width:690px){.record-detail-fields,.record-list-filters{grid-template-columns:minmax(0,1fr)}.record-trail .text-button{min-height:44px}.record-row-actions{width:100%}.record-row-actions button{flex:1}}

@@ -1749,12 +1749,13 @@ test('Manutenção — TI programa janela e encerra com justificativa',async({pa
   await page.getByLabel('Motivo interno').fill('Revisão preventiva');
   await page.getByRole('button',{name:'Programar manutenção',exact:true}).click();
   await expect(page.getByRole('status')).toContainText('Manutenção programada');
+  await page.getByRole('button',{name:'Ver detalhes',exact:true}).click();
   await expect(page.getByText('Revisão preventiva',{exact:true})).toBeVisible();
   await page.getByRole('button',{name:'Encerrar',exact:true}).click();
   await page.getByLabel('Motivo do encerramento').fill('Revisão concluída');
   await page.getByRole('button',{name:'Confirmar encerramento'}).click();
   await expect(page.getByRole('status')).toContainText('Manutenção encerrada');
-  await expect(page.getByText('Encerramento: Revisão concluída')).toBeVisible();
+  await expect(page.locator('.record-detail')).toContainText('Revisão concluída');
   await expect(page.getByRole('button',{name:'Encerrar',exact:true})).toHaveCount(0);
 });
 
@@ -1787,12 +1788,14 @@ test('Movimentações — retirada com códigos e devolução integral com ressa
  });
  await login(page);
  await page.getByRole('button',{name:'Retirada e devolução',exact:true}).click();
+ await page.getByRole('button',{name:'Ver detalhes',exact:true}).click();
  await page.getByRole('button',{name:'Registrar retirada',exact:true}).click();
  await page.getByLabel('Quantidade entregue').fill('2');
  await page.getByRole('checkbox',{name:'NB-MOV-01'}).check();
  await page.getByLabel('Responsável que recebeu').fill('Responsável teste');
  await page.getByRole('button',{name:'Confirmar retirada'}).click();
  await expect(page.getByRole('status')).toContainText('Retirada registrada');
+ await page.getByRole('button',{name:'Ver detalhes',exact:true}).click();
  await expect(page.getByText('1 sem código registrado')).toBeVisible();
  await page.getByRole('button',{name:'Registrar devolução'}).click();
  await page.getByLabel('Responsável que devolveu').fill('Responsável devolução');
@@ -1801,7 +1804,8 @@ test('Movimentações — retirada com códigos e devolução integral com ressa
  await page.getByLabel('Observação (obrigatória)').fill('Conferência registrada');
  await page.getByRole('button',{name:'Confirmar devolução'}).click();
  await expect(page.getByRole('status')).toContainText('Devolução registrada');
- await expect(page.getByText('Observação da devolução: Conferência registrada')).toBeVisible();
+ await page.getByRole('button',{name:'Ver detalhes',exact:true}).click();
+ await expect(page.locator('.record-detail')).toContainText('Conferência registrada');
  await expect(page.getByRole('button',{name:'Registrar devolução'})).toHaveCount(0);
  expect(pickups).toBe(1);expect(returns).toBe(1);
 });
@@ -2027,4 +2031,45 @@ test('F4.1 — controles e feedback compartilham tokens nos dois temas',async({p
    expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),theme+' '+width).toBe(true);
   }
  }
+});
+
+
+test('F4.2 — localizações com busca, detalhe, formulário separado e vínculo de guarda',async({page})=>{
+ const db=await useFakeSupabase(page),campus=crypto.randomUUID(),block=crypto.randomUUID(),room=crypto.randomUUID(),cart=crypto.randomUUID();
+ db.campuses.push({id:campus,name:'Campus sintético',active:true},{id:crypto.randomUUID(),name:'Campus desativado',active:false});
+ db.campus_blocks.push({id:block,campus_id:campus,name:'Bloco A',active:true});
+ db.campus_rooms.push({id:room,block_id:block,name:'Sala teste',active:true});
+ db.carts.push({id:cart,code:'LOC-A',name:'Carrinho sintético',capacity:10,active:true});
+ const headers={'access-control-allow-origin':'*','access-control-allow-headers':'*','access-control-allow-methods':'POST, OPTIONS'};
+ await page.route('https://educart-e2e.supabase.co/rest/v1/cart_storage_locations',async route=>{
+  if(route.request().method()==='OPTIONS'){await route.fulfill({status:204,headers});return;}
+  if(route.request().method()!=='POST'){await route.fallback();return;}
+  expect(route.request().postDataJSON()).toMatchObject({cart_id:cart,room_id:room});
+  db.cart_storage_locations.push({cart_id:cart,room_id:room});await route.fulfill({status:201,headers,json:[]});
+ });
+ await login(page);
+ await page.getByRole('navigation',{name:'Menu principal'}).getByRole('button',{name:'Localizações'}).click();
+ await page.getByLabel('Buscar registro').fill('sintético');
+ await expect(page.getByRole('button',{name:'Ver detalhes'})).toHaveCount(1);
+ await page.getByRole('button',{name:'Ver detalhes'}).click();
+ await expect(page.getByRole('heading',{name:'Detalhes da localização'})).toBeVisible();
+ await expect(page.getByRole('navigation',{name:'Caminho de navegação'})).toContainText('Campus');
+ await page.getByRole('button',{name:'Editar',exact:true}).click();
+ await expect(page.getByRole('group',{name:'Tipo de localização'})).toHaveCount(0);
+ await page.getByLabel('Nome',{exact:true}).fill('Nome descartado');
+ await page.getByRole('button',{name:'Cancelar',exact:true}).click();
+ await expect(page.locator('.record-detail')).toContainText('Campus sintético');
+ expect(db.campuses[0].name).toBe('Campus sintético');
+ await page.getByRole('button',{name:'Voltar à listagem'}).click();
+ await expect(page.getByLabel('Buscar registro')).toHaveValue('sintético');
+ await page.getByRole('button',{name:'Local de guarda',exact:true}).click();
+ await expect(page.getByText('LOC-A · Não informada')).toBeVisible();
+ await page.getByRole('button',{name:'Ver detalhes'}).click();
+ await page.getByRole('button',{name:'Alterar local de guarda'}).click();
+ await page.getByRole('combobox',{name:'Sala de guarda'}).selectOption(room);
+ await page.getByRole('button',{name:'Salvar localização'}).click();
+ await expect(page.getByRole('status')).toContainText('Localização salva');
+ await expect(page.locator('.record-detail')).toContainText('Campus sintético / Bloco A / Sala teste');
+ for(const width of [320,390,768,1440]){await page.setViewportSize({width,height:800});expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);}
+ expect(db.cart_storage_locations).toHaveLength(1);
 });
