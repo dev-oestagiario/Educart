@@ -1,0 +1,90 @@
+/* F4.1 — shared design primitives. Loaded last, after legacy feature styles.
+ * Keep brand palette and feature-specific layouts; new modules use these tokens.
+ */
+:root{
+ --ds-space-1:4px;--ds-space-2:8px;--ds-space-3:12px;--ds-space-4:16px;--ds-space-5:20px;--ds-space-6:24px;
+ --ds-radius-control:10px;--ds-radius-panel:14px;
+ --ds-control-height:44px;--ds-font-body:14px;--ds-font-small:13px;
+ --ds-input-bg:#191522;--ds-input-border:#827196;--ds-input-hover:#a88af5;
+ --ds-primary-bg:#7147b7;--ds-primary-hover:#6840ad;--ds-primary-text:#fff;
+ --ds-secondary-bg:#3b2c55;--ds-secondary-hover:#493466;--ds-secondary-border:#827196;--ds-secondary-text:#ecdefe;
+ --ds-ghost-text:#ded2ed;--ds-ghost-hover:#32273e;--ds-focus:#c6b6ff;
+ --ds-success-bg:#244237;--ds-success-text:#a7f5d0;--ds-success-border:#527d69;
+ --ds-error-bg:#4b2739;--ds-error-text:#ffc6d1;--ds-error-border:#9a596d;
+ --ds-warning-bg:#433323;--ds-warning-text:#ffdda8;--ds-warning-border:#967344;
+ --ds-neutral-bg:var(--educart-elevated);--ds-neutral-text:var(--educart-muted);--ds-neutral-border:var(--educart-border);
+}
+:root[data-theme="light"]{
+ --ds-input-bg:#fff;--ds-input-border:#88769e;--ds-input-hover:#653ca7;
+ --ds-primary-bg:#7144b8;--ds-primary-hover:#5d339f;
+ --ds-secondary-bg:#eee7fa;--ds-secondary-hover:#e5d8f7;--ds-secondary-border:#9b86b5;--ds-secondary-text:#4f2b80;
+ --ds-ghost-text:#4b3567;--ds-ghost-hover:#eae1f5;--ds-focus:#7447b0;
+ --ds-success-bg:#ecfaf2;--ds-success-text:#136141;--ds-success-border:#81b69a;
+ --ds-error-bg:#fff0f2;--ds-error-text:#9b203b;--ds-error-border:#c48294;
+ --ds-warning-bg:#fff6e8;--ds-warning-text:#70440d;--ds-warning-border:#bda06d;
+}
+/* One shared contract for existing action classes. */
+:root :is(.primary,.secondary,.ghost){
+ display:inline-flex;align-items:center;justify-content:center;gap:var(--ds-space-2);
+ min-height:var(--ds-control-height);max-width:100%;padding:10px 16px;
+ border-radius:var(--ds-radius-control);font-size:var(--ds-font-small);line-height:1.4;font-weight:650;
+ text-align:center;white-space:normal;overflow-wrap:anywhere;
+}
+:root .primary{background:var(--ds-primary-bg);color:var(--ds-primary-text);border:1px solid var(--ds-primary-bg)}
+:root .primary:hover:not(:disabled){background:var(--ds-primary-hover);border-color:var(--ds-primary-hover)}
+:root .secondary{background:var(--ds-secondary-bg);color:var(--ds-secondary-text);border:1px solid var(--ds-secondary-border)}
+:root .secondary:hover:not(:disabled){background:var(--ds-secondary-hover);border-color:var(--ds-secondary-border)}
+:root .ghost{color:var(--ds-ghost-text);background:transparent;border:1px solid transparent}
+:root .ghost:hover:not(:disabled){background:var(--ds-ghost-hover)}
+:root :is(.primary,.secondary,.ghost):disabled{cursor:not-allowed;opacity:.55}
+:root :is(button,a,input,select,textarea,summary,[tabindex]):focus-visible{outline:3px solid var(--ds-focus);outline-offset:2px}
+:root :is(.field input:not([type=checkbox]):not([type=radio]):not([type=file]),.field select,.field textarea,.records-search input,.records-filters select){
+ min-width:0;max-width:100%;min-height:var(--ds-control-height);
+ border:1px solid var(--ds-input-border);border-radius:var(--ds-radius-control);
+ background:var(--ds-input-bg);color:var(--educart-text);
+ font-size:var(--ds-font-body);line-height:1.45;padding:10px 12px;
+}
+:root :is(.field input:not([type=checkbox]):not([type=radio]):not([type=file]),.field select,.field textarea):hover:not(:disabled){border-color:var(--ds-input-hover)}
+:root .field textarea{min-height:112px;resize:vertical}
+:root .field :is(input,select,textarea)[aria-invalid=true]{border-color:var(--ds-error-border)}
+:root .field{min-width:0;gap:var(--ds-space-2);color:var(--educart-text)}
+/* Legacy reservation fieldset previously applied checkbox dimensions to dates. */
+:root .reservation-fieldset :is(input[type=date],input[type=number],input[type=text]){width:100%;height:auto;min-height:var(--ds-control-height)}
+:root :is(input[type=checkbox],input[type=radio]){accent-color:var(--educart-purple);width:18px;height:18px;flex:0 0 auto}
+:root :is(.panel,.stat){min-width:0;border-radius:var(--ds-radius-panel)}
+:root .panel h2{line-height:1.4;overflow-wrap:anywhere}
+:root .page-header h1{font-size:clamp(24px,2.4vw,30px);line-height:1.25;overflow-wrap:anywhere}
+:root :is(.item,.booking-item,.notification-item,.dashboard-item){min-width:0}
+:root .item>div{min-width:0;overflow-wrap:anywhere}
+:root .page-header p{line-height:1.55}
+:root .notice{border:1px solid var(--ds-neutral-border);background:var(--ds-neutral-bg);color:var(--ds-neutral-text);border-radius:var(--ds-radius-control);padding:var(--ds-space-3);line-height:1.55;overflow-wrap:anywhere}
+:root .notice.error{background:var(--ds-error-bg);color:var(--ds-error-text);border-color:var(--ds-error-border)}
+:root .notice.success{background:var(--ds-success-bg);color:var(--ds-success-text);border-color:var(--ds-success-border)}
+:root .notice.warning{background:var(--ds-warning-bg);color:var(--ds-warning-text);border-color:var(--ds-warning-border)}
+:root .empty{border:1px dashed var(--educart-divider);color:var(--educart-muted);line-height:1.55;padding:var(--ds-space-5);overflow-wrap:anywhere}
+:root .booking-confirm{background:var(--ds-warning-bg);color:var(--ds-warning-text);border-color:var(--ds-warning-border)}
+:root .booking-confirm p{color:var(--ds-warning-text)}
+:root .reservation-date-popover{background:var(--educart-elevated);border-color:var(--ds-input-border);border-radius:var(--ds-radius-panel)}
+:root .teacher-status:not(.aprovada):not(.rejeitada):not(.desistencia){background:var(--ds-secondary-bg);color:var(--ds-secondary-text)}
+:root .teacher-status.aprovada{background:var(--ds-success-bg);color:var(--ds-success-text)}
+:root :is(.teacher-status.rejeitada,.teacher-status.desistencia){background:var(--ds-error-bg);color:var(--ds-error-text)}
+:root .public-agenda-cart{border-color:var(--educart-divider)}
+:root .public-agenda-full{border-inline-start-color:var(--ds-error-border)}
+.ds-choice-group{display:flex;align-items:center;flex-wrap:wrap;gap:var(--ds-space-2)}
+.ds-choice-group button{flex:0 1 auto}
+.ds-fieldset{min-width:0;border:1px solid var(--educart-border);border-radius:var(--ds-radius-control);margin:0;padding:var(--ds-space-3);color:var(--educart-text)}
+.ds-fieldset legend{font-size:var(--ds-font-small);font-weight:650;padding:0 6px}
+.ds-check-list{display:grid;gap:var(--ds-space-1)}
+.ds-check-list.is-scrollable{max-height:240px;overflow:auto;overscroll-behavior:contain}
+.ds-check-list label{display:flex;align-items:center;gap:var(--ds-space-2);min-height:44px;padding:6px 8px;border-radius:8px;overflow-wrap:anywhere;cursor:pointer}
+.ds-check-list label:hover{background:var(--educart-surface-hover)}
+.ds-inline-status{display:flex;align-items:center;gap:var(--ds-space-2);color:var(--educart-muted);min-height:44px;line-height:1.5}
+.ds-inline-status svg{flex:none}
+.ds-inline-status .ds-spinner{animation:ds-spin .9s linear infinite}
+@keyframes ds-spin{to{transform:rotate(360deg)}}
+@media(prefers-reduced-motion:reduce){.ds-inline-status .ds-spinner{animation:none}}
+@media(max-width:690px){
+ :root :is(.field input:not([type=checkbox]):not([type=radio]):not([type=file]),.field select,.field textarea){font-size:16px}
+ .ds-choice-group button{flex:1 1 140px}
+ :root .theme-toggle{min-width:44px;min-height:44px}
+}

@@ -1,3 +1,4 @@
+import {LoadingState,EmptyState,Feedback} from '../components/Feedback';
 import {useState,useEffect,type ReactNode} from 'react';
 import {useQuery} from '@tanstack/react-query';
 import {CalendarDays,PackageMinus,PackageCheck,Clock,ClipboardCheck,Wrench,RefreshCw,Boxes,Laptop,UserRound,ArrowRight} from 'lucide-react';
@@ -31,7 +32,7 @@ function Section({title,count,action,onAction,empty,children}:{title:string;coun
  const [expanded,setExpanded]=useState(false);
  const rows=Array.isArray(children)?children:[children];
  return <section className="panel dashboard-section"><div className="dashboard-section-heading"><h2>{title} <span className="dashboard-count">{count}</span></h2><button type="button" className="secondary" onClick={onAction}>{action} <ArrowRight size={14} aria-hidden="true"/></button></div>
-  {count===0?<p className="empty">{empty}</p>:<div className="item-list">{expanded?rows:rows.slice(0,5)}</div>}
+  {count===0?<EmptyState>{empty}</EmptyState>:<div className="item-list">{expanded?rows:rows.slice(0,5)}</div>}
   {count>5&&<button type="button" className="ghost dashboard-more" aria-expanded={expanded} onClick={()=>setExpanded(v=>!v)}>{expanded?'Mostrar menos':'Exibir todos ('+count+')'}</button>}
  </section>;
 }
@@ -52,8 +53,8 @@ export default function DashboardPage({onNavigate}:{onNavigate:(target:Target)=>
    <label className="field" htmlFor="dashboard-days"><span>Próximos dias</span><select id="dashboard-days" value={filter.days} onChange={e=>setFilter(f=>({...f,days:Number(e.target.value) as DashboardFilter['days']}))}><option value={7}>7 dias</option><option value={14}>14 dias</option><option value={30}>30 dias</option></select></label>
    <button className="ghost" onClick={()=>setFilter(initial)}>Limpar filtros</button>
   </section>
-  {query.error?<p className="notice error" role="alert">Não foi possível carregar o painel operacional. {data?'Exibindo a última consulta; atualize antes de tomar decisões.':'Tente atualizar. Nenhum indicador foi presumido.'}</p>:null}
-  {query.isLoading&&<p role="status" className="center-status">Carregando painel operacional…</p>}
+  {query.error?<Feedback kind="error">Não foi possível carregar o painel operacional. {data?'Exibindo a última consulta; atualize antes de tomar decisões.':'Tente atualizar. Nenhum indicador foi presumido.'}</Feedback>:null}
+  {query.isLoading&&<LoadingState>Carregando painel operacional…</LoadingState>}
   {s&&<>
     <div className="dashboard-updated">Última atualização: {new Intl.DateTimeFormat('pt-BR',{timeStyle:'short',timeZone:'America/Sao_Paulo'}).format(new Date(query.dataUpdatedAt))} · horários de Brasília</div>
     <div className="stats dashboard-metrics">
