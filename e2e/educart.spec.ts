@@ -1857,3 +1857,92 @@ test('Dashboard operacional — falha de consulta não vira indicador zero',asyn
  await page.getByRole('button',{name:'Atualizar painel'}).click();
  await expect(page.locator('.dashboard-metrics .stat')).toHaveCount(6);
 });
+
+
+function futureMondays(){
+ const d=new Date(Date.now()+14*86400000);while(d.getUTCDay()!==1)d.setUTCDate(d.getUTCDate()+1);
+ return [0,7,14].map(n=>{const e=new Date(d);e.setUTCDate(e.getUTCDate()+n);return e.toISOString().slice(0,10)});
+}
+function brDate(d:string){return d.split('-').reverse().join('/');}
+async function setWeekly(page:Page,prefix:string,dates:string[]){
+ await page.locator('#'+prefix+'-start').fill(dates[0]);
+ await page.locator('#'+prefix+'-end').fill(dates[2]);
+ const group=page.getByRole('group',{name:'Dias da semana'});
+ await group.getByRole('checkbox',{name:'Segunda-feira'}).check();
+ for(const day of ['Terça-feira','Quarta-feira','Quinta-feira','Sexta-feira'])await group.getByRole('checkbox',{name:day}).uncheck();
+ await page.getByRole('button',{name:/Revisar datas e exceções/}).click();
+}
+test('F3.5 — TI revisa recorrência, exclui conflito e confirma um agrupamento',async({page})=>{
+ const db=await useFakeSupabase(page);
+ const cart=crypto.randomUUID(),teacher=crypto.randomUUID(),dates=futureMondays();
+ db.carts.push({id:cart,code:'REC-A',name:'Carrinho recorrência',capacity:10,active:true});
+ db.requesters.push({id:teacher,name:'Professor recorrência',active:true});
+ db.reservation_periods.push({id:crypto.randomUUID(),reservation_id:crypto.randomUUID(),cart_id:cart,usage_date:dates[1],shift:'MATUTINO',quantity:10,active:true});
+ await login(page);
+ await page.getByRole('button',{name:'Reservas',exact:true}).click();
+ await page.getByRole('button',{name:'Nova reserva'}).click();
+ await page.locator('#reservation-cart').selectOption(cart);
+ await page.locator('#reservation-requester').selectOption(teacher);
+ await page.getByRole('button',{name:'Repetir semanalmente'}).click();
+ await setWeekly(page,'reservation-weekly',dates);
+ await expect(page.locator('.weekly-summary')).toContainText('3 ocorrência(s)');
+ await expect(page.getByRole('button',{name:'Confirmar reserva'})).toBeDisabled();
+ await expect(page.getByText('Conflito',{exact:true})).toBeVisible();
+ const skip=page.getByRole('checkbox',{name:'Incluir '+brDate(dates[1])});
+ await skip.uncheck();
+ await expect(page.locator('.weekly-summary')).toContainText('2 ocorrência(s)');
+ await expect(page.getByRole('button',{name:'Confirmar reserva'})).toBeEnabled();
+ await skip.check();
+ await expect(page.getByRole('button',{name:'Confirmar reserva'})).toBeDisabled();
+ await skip.uncheck();
+ await page.getByRole('button',{name:'Confirmar reserva'}).click();
+ await expect(page.getByText('Reserva confirmada para todos os períodos selecionados.')).toBeVisible();
+ expect(db.reservations).toHaveLength(1);
+ const reservationId=db.reservations[0].id;
+ expect(db.reservation_periods.filter(p=>p.reservation_id===reservationId).map(p=>p.usage_date)).toEqual([dates[0],dates[2]]);
+ await page.getByRole('button',{name:'Editar',exact:true}).click();
+ await expect(page.getByRole('heading',{name:'Editar reserva'})).toBeVisible();
+ await expect(page.locator('#reservation-date-trigger')).toContainText('2 dias selecionados');
+ await page.getByRole('button',{name:'Salvar alterações'}).click();
+ await expect(page.getByText('Reserva editada e alteração registrada no histórico.')).toBeVisible();
+ expect(db.reservation_periods.filter(p=>p.reservation_id===reservationId&&p.active).map(p=>p.usage_date)).toEqual([dates[0],dates[2]]);
+});
+
+test('F3.5 — professor solicita série semanal pelo celular sem ocupar capacidade',async({page})=>{
+ const db=await useFakeSupabase(page,false);
+ const cart=crypto.randomUUID(),teacher=crypto.randomUUID(),dates=futureMondays();
+ db.carts.push({id:cart,code:'REC-B',name:'Série professor',capacity:10,active:true});
+ db.requesters.push({id:teacher,name:'Professor sintético',active:true});
+ db.teacher_account_links.push({user_id:ADMIN_ID,requester_id:teacher,active:true});
+ await page.setViewportSize({width:320,height:780});
+ await login(page);
+ await page.getByRole('button',{name:'Nova solicitação'}).click();
+ await page.locator('#teacher-cart').selectOption(cart);
+ await page.locator('#teacher-date-mode').selectOption('weekly');
+ await setWeekly(page,'teacher-weekly',dates);
+ await page.getByRole('checkbox',{name:'Incluir '+brDate(dates[1])}).uncheck();
+ await expect(page.locator('.weekly-summary')).toContainText('2 ocorrência(s)');
+ await expect(page.getByText(/2 de 2 períodos possuem saldo estimado/)).toBeVisible();
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth<=document.documentElement.clientWidth+1)).toBe(true);
+ await page.getByRole('button',{name:'Enviar solicitação para aprovação'}).click();
+ await expect(page.getByText(/Solicitação enviada à TI/)).toBeVisible();
+ expect(db.reservation_requests).toHaveLength(1);
+ expect(db.reservation_requests[0].dates).toEqual([dates[0],dates[2]]);
+ expect(db.reservation_requests[0].status).toBe('PENDENTE');
+ expect(db.reservation_periods).toHaveLength(0);
+});
+
+
+test('F3.5 — edição não recria um turno cancelado de uma série',async({page})=>{
+ const db=await useFakeSupabase(page),cart=crypto.randomUUID(),teacher=crypto.randomUUID(),booking=crypto.randomUUID(),dates=futureMondays();
+ db.carts.push({id:cart,code:'REC-C',name:'Carrinho exceção',capacity:10,active:true});
+ db.requesters.push({id:teacher,name:'Professor exceção',active:true});
+ db.reservations.push({id:booking,cart_id:cart,requester_id:teacher,mode:'PARCIAL',quantity:2,needs_mouse:false,notes:null,status:'CONFIRMADA',created_at:new Date().toISOString()});
+ for(const day of dates.slice(0,2))for(const shift of ['MATUTINO','VESPERTINO'])db.reservation_periods.push({id:crypto.randomUUID(),reservation_id:booking,cart_id:cart,usage_date:day,shift,quantity:2,active:!(day===dates[1]&&shift==='VESPERTINO')});
+ await login(page);
+ await page.getByRole('button',{name:'Reservas',exact:true}).click();
+ await page.getByRole('button',{name:'Editar',exact:true}).click();
+ await expect(page.getByText(/Este agrupamento possui exceções por turno/)).toBeVisible();
+ await expect(page.getByRole('heading',{name:'Editar reserva'})).toHaveCount(0);
+ expect(db.reservation_periods.filter(p=>p.active)).toHaveLength(3);
+});
