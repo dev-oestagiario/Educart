@@ -6,7 +6,7 @@ import {showDate,shiftLabel,type Shift} from '../lib/reservations';
 
 export type Booking={
   id:string; requester_id:string;cart_id:string;mode:'COMPLETA'|'PARCIAL';
-  quantity:number;needs_mouse:boolean;notes:string|null;status:string;created_at:string
+  quantity:number;needs_mouse:boolean;notes:string|null;status:string;created_at:string;destination_room_id?:string|null;destination_label?:string|null
 };
 export type BookingPeriod={
   id:string;reservation_id:string;usage_date:string;shift:Shift;quantity:number;active:boolean
@@ -45,7 +45,7 @@ export default function ReservationManager({carts,requesters,onEdit,onChanged}:P
     queryFn:async({pageParam}):Promise<Booking[]>=>{
       const from=pageParam*pageSize;
       const {data,error}=await supabase.from('reservations')
-        .select('id,requester_id,cart_id,mode,quantity,needs_mouse,notes,status,created_at')
+        .select('id,requester_id,cart_id,mode,quantity,needs_mouse,notes,status,created_at,destination_room_id,destination_label')
         .order('created_at',{ascending:false}).range(from,from+pageSize-1);
       if(error)throw error;
       return (data??[]) as Booking[];
