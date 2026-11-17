@@ -32,3 +32,6 @@ A CI adiciona esta etapa após as suítes F1.4/F2.1, mantendo os testes unitári
 - Testes anteriores continuam aprovados.
 - Merge condicionado à CI. Se houver falha, investigar e corrigir em branch antes da integração.
 - Próxima fase: F2.3 — professores, TI e notificações.
+
+## Evidência final
+CI 44126463029 (job 134191508645): 33 pares aprovados, sem sobre-reserva ou gravação parcial. Verificação unitária e E2E aprovadas no run 44126463075. PR #40 integrado em main (16d290b).
