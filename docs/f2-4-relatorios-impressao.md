@@ -30,3 +30,6 @@ A CI de homologação inclui scripts/homologacao-relatorios.mjs após as suítes
 ## Limites
 A paginação de consultas não é um snapshot transacional: mudanças concorrentes no período de geração podem alterar o recorte; não equivale a um relatório contábil imutável. Verificação de coordenadas em PDF e renderização automática não substituem inspeção visual humana de todas as páginas nem teste físico de impressora. Não foi obtida nova planta arquitetônica ou informação de sala.
 CI e merge condicionados à aprovação. Próxima fase F2.5: homologação em dispositivos móveis.
+
+## Evidência final
+CI 44132142857, job 134211817515: 1.135 períodos ativos, exportação CSV completa, PDF de 17 páginas A4 com texto, rodapés e área imprimível verificados. Relatório vazio e filtros aprovados. CI regular 44132142789 aprovada. PR #42 integrado na main (913d35c). Impressão física e revisão visual humana pendentes.
