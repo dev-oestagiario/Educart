@@ -88,7 +88,7 @@ As fases F0–F2 são o caminho crítico para estabilizar a operação atual. O 
 
 Especificação técnica e plano de tarefas: [educart-3d-v2.md](educart-3d-v2.md). O requisito central é começar pela cena com **todos os carrinhos visíveis**, incluindo os não posicionados, sem seletor obrigatório de carrinho. Inspecionar cada equipamento pela cena ou lista acessível. O clique abre status e informações; entrar em inspeção revela o interior detalhado.
 - [ ] F5.0 [Protótipo implementado e orçamento inicial](f5-0-prototipo-ambiente-3d.md); referências/medidas autorizadas e aceite visual ainda pendentes.
-- [ ] F5.1 Modelo espacial persistente e contratos de leitura seguros.
+- [x] F5.1 [Modelo espacial persistente e contratos de leitura seguros](f5-1-fundacao-espacial.md). Validados localmente; stack Supabase completa e promoção pendentes.
 - [ ] F5.2 Cena completa multi-carrinhos, seleção, câmera, estados e painel de detalhes.
 - [ ] F5.3 Modelos detalhados GLB: ambiente, carrinhos, portas, prateleiras, rodas, cabos e notebooks, conforme referências reais; assets com autoria/licença.
 - [ ] F5.4 Inspeção interativa: foco, portas, hotspots, slots, códigos e reservas; dados e cena sincronizados.

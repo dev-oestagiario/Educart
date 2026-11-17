@@ -20,3 +20,7 @@
 .dt-cart small,.dt-cart span{color:var(--educart-muted)}
 @media(max-width:1050px){.dt-toolbar{grid-template-columns:repeat(2,minmax(0,1fr))}.dt-layout{grid-template-columns:1fr}}
 @media(max-width:520px){.dt-toolbar{grid-template-columns:1fr}.dt-stage{height:320px}.dt-list{grid-template-columns:1fr}}
+.dt-editor-form{margin-top:16px;display:grid;gap:12px}
+.dt-editor-fields{border:0;padding:0;margin:0;display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(min(100%,210px),1fr));align-items:end;min-width:0}
+.dt-editor-fields:disabled{opacity:.7}
+.dt-editor-fields .field input,.dt-editor-fields .field select{width:100%;min-width:0}

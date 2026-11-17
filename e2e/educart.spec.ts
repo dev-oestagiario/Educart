@@ -24,7 +24,7 @@ const token = [
 
 async function useFakeSupabase(page: Page, authorized = true) {
   const database: Record<string, Row[]> = {
-    carts: [], campuses: [], campus_blocks: [], campus_rooms: [], cart_storage_locations: [], maintenance_windows: [], equipment_movements: [], requesters: [], notebook_codes: [], reservations: [], reservation_periods: [], reservation_notebooks: [], reservation_events: [], teacher_account_links: [], reservation_requests: [], reservation_request_events: [], user_notifications: []
+    asset_models: [], spatial_scenes: [], cart_scene_placements: [], cart_model_slots: [], notebook_slot_links: [], carts: [], campuses: [], campus_blocks: [], campus_rooms: [], cart_storage_locations: [], maintenance_windows: [], equipment_movements: [], requesters: [], notebook_codes: [], reservations: [], reservation_periods: [], reservation_notebooks: [], reservation_events: [], teacher_account_links: [], reservation_requests: [], reservation_request_events: [], user_notifications: []
   };
   await page.route('https://educart-e2e.supabase.co/**', async route => {
     const req = route.request();
@@ -2364,4 +2364,47 @@ test.describe('F5.0 — protótipo de ambiente 3D',()=>{
     await expect(page.getByRole('heading',{name:'Conta criada, aguardando autorização'})).toBeVisible();
     await expect(page.getByRole('button',{name:'Protótipo 3D'})).toHaveCount(0);
   });
+});
+
+test.describe('F5.1 — configuração espacial',()=>{
+ test('admin consulta e cadastra metadados, com resumo sem posição e detalhe sob demanda',async({page})=>{
+  const db=await useFakeSupabase(page);
+  const cartId='00000000-0000-4000-8000-000000000051';
+  const roomId='00000000-0000-4000-8000-000000000052';
+  const blockId='00000000-0000-4000-8000-000000000053';
+  const campusId='00000000-0000-4000-8000-000000000054';
+  db.carts.push({id:cartId,code:'F51',name:'Carrinho teste',capacity:10,active:true});
+  db.campuses.push({id:campusId,name:'Campus',active:true});
+  db.campus_blocks.push({id:blockId,campus_id:campusId,name:'Bloco',active:true});
+  db.campus_rooms.push({id:roomId,block_id:blockId,name:'Sala',active:true});
+  const summary={cart_id:cartId,code:'F51',name:'Carrinho teste',active:true,storage_room_id:null,scene_id:null,model_id:null,position_x:null,position_y:null,position_z:null,yaw:null,placement_version:null,nominal_capacity:10,effective_capacity:10,reserved:3,available:7,maintenance_count:0,availability_status:'PARTIAL',snapshot_at:new Date().toISOString()};
+  const headers={'access-control-allow-origin':'*','access-control-allow-headers':'*','access-control-allow-methods':'GET,POST,OPTIONS,PATCH,DELETE'};
+  let details=0;
+  await page.route('**/rest/v1/rpc/spatial_cart_summary*',r=>r.fulfill({headers,json:r.request().method()==='OPTIONS'?{}:[summary]}));
+  await page.route('**/rest/v1/rpc/spatial_cart_details*',r=>{if(r.request().method()!=='OPTIONS')details++;return r.fulfill({headers,json:{summary,reservations:[],confirmed_slots:[]}});});
+  await page.goto('/?spatial3d=1');
+  await page.getByLabel('E-mail').fill('test-admin@educart.example');
+  await page.getByLabel('Senha').fill('senha-de-teste-sem-uso-real');
+  await page.getByRole('button',{name:'Entrar no Educart'}).click();
+  await page.getByRole('button',{name:'Configuração espacial'}).click();
+  await expect(page.getByRole('heading',{name:'Configuração espacial · F5.1'})).toBeVisible();
+  await expect(page.getByRole('button',{name:/F51 — Carrinho teste/})).toContainText('7/10 disponíveis');
+  expect(details).toBe(0);
+  await page.getByLabel('Nome do modelo').fill('Modelo sintético');
+  await page.getByLabel('Autoria').fill('Equipe TI');
+  await page.getByLabel('Licença').fill('Interno');
+  await page.getByRole('button',{name:'Salvar modelo'}).click();
+  await expect(page.getByText('Modelo salvo.',{exact:true})).toBeVisible();
+  expect(db.asset_models).toHaveLength(1);
+  await page.getByLabel('Nome do ambiente').fill('Ambiente sintético');
+  await page.getByLabel('Sala de referência').selectOption(roomId);
+  await page.getByRole('button',{name:'Salvar ambiente'}).click();
+  await expect(page.getByText('Ambiente salvo.',{exact:true})).toBeVisible();
+  expect(db.spatial_scenes).toHaveLength(1);
+  await page.getByRole('button',{name:/F51 — Carrinho teste/}).click();
+  await expect(page.getByText('0 reservas confirmadas · 0 vínculos físicos ativos')).toBeVisible();
+  expect(details).toBeGreaterThan(0);
+  await page.setViewportSize({width:390,height:844});
+  await expect.poll(()=>page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)).toBe(true);
+ });
 });
