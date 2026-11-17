@@ -124,6 +124,10 @@ try{
   assert.equal((await notices(ti,rb.id)).filter(x=>x.kind==='NOVO_PEDIDO').length,1);
   assert.deepEqual(await requests(a,cartA.id).then(x=>x.map(y=>y.id)),[ra.id]);
   assert.deepEqual(await requests(b,cartA.id).then(x=>x.map(y=>y.id)),[rb.id]);
+  for(const [who,own,other] of [[a,ra,rb],[b,rb,ra]]){
+    const events=ok(await who.client.from('reservation_request_events').select('request_id,event_type').in('request_id',[own.id,other.id]),'Eventos próprios');
+    assert.deepEqual(events,[{request_id:own.id,event_type:'CRIACAO'}]);
+  }
   denied(await b.client.rpc('withdraw_teacher_request',{p_request_id:ra.id}),'B não retira pedido de A');
   denied(await a.client.rpc('review_teacher_request',{p_request_id:ra.id,p_approve:true}),'Professor não aprova');
   console.log('PASS F2.3-VINCULO: contas confirmadas, vínculo pela TI, portal próprio, prévia e pedidos pendentes.');
@@ -189,6 +193,9 @@ try{
   assert.equal((await requests(b,cartB.id))[0].status,'DESISTENCIA');
   assert.equal(await publicBalance(cartB.id),10);
   assert.equal((await notices(ti,withdrawn.id)).filter(x=>x.kind==='PEDIDO_RETIRADO').length,1);
+  assert.deepEqual(await requests(a,cartB.id),[]);
+  await pa.reload();
+  await expect(pa.locator('.teacher-status')).toHaveText('Aprovada');
   await expect(pa.getByText(otherName,{exact:true})).toHaveCount(0);
   await admin.reload();
   await expect(admin.getByRole('heading',{name:'Visão geral'})).toBeVisible();
