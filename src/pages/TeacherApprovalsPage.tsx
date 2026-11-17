@@ -1,4 +1,5 @@
 import {useState,type FormEvent} from 'react';
+import {useLocations,roomOptions} from '../lib/locations';
 import {useMutation,useQuery,useQueryClient} from '@tanstack/react-query';
 import {ClipboardCheck,Link2,ShieldCheck,UserMinus} from 'lucide-react';
 import RecordsHeader from '../components/RecordsHeader';
@@ -24,6 +25,9 @@ export default function TeacherApprovalsPage(){
   const [requesterId,setRequesterId]=useState('');
   const [email,setEmail]=useState('');
   const [message,setMessage]=useState<{kind:'error'|'success';text:string}|null>(null);
+  const locations=useLocations();
+  const rooms=roomOptions(locations.data);
+  const [reviewRooms,setReviewRooms]=useState<Record<string,string>>({});
   const [reviewNotes,setReviewNotes]=useState<Record<string,string>>({});
   const [filter,setFilter]=useState<'PENDENTE'|'TODAS'>('PENDENTE');
   const [confirmRevoke,setConfirmRevoke]=useState<string|null>(null);
@@ -72,9 +76,10 @@ export default function TeacherApprovalsPage(){
   });
   const review=useMutation({
     mutationFn:async({id,approve}:{id:string;approve:boolean})=>{
-      const {error}=await supabase.rpc('review_teacher_request',{
-        p_request_id:id,p_approve:approve,p_review_notes:reviewNotes[id]?.trim()||null
-      });
+      const args={p_request_id:id,p_approve:approve,p_review_notes:reviewNotes[id]?.trim()||null};
+      const {error}=approve&&reviewRooms[id]
+        ?await supabase.rpc('review_teacher_request_with_room',{...args,p_room_id:reviewRooms[id]})
+        :await supabase.rpc('review_teacher_request',args);
       if(error)throw error;
       return approve;
     },
@@ -144,6 +149,10 @@ export default function TeacherApprovalsPage(){
           {req.notes&&<p className="form-hint"><strong>Observações:</strong> {req.notes}</p>}
           {req.review_notes&&<p className="form-hint"><strong>Justificativa da TI:</strong> {req.review_notes}</p>}
           {req.status==='PENDENTE'&&<div className="form-stack approval-actions">
+            <label className="field" htmlFor={'review-room-'+req.id}><span>Sala de utilização (opcional)</span>
+              <select id={'review-room-'+req.id} value={reviewRooms[req.id]??''} disabled={locations.isLoading||!!locations.error} onChange={e=>setReviewRooms(old=>({...old,[req.id]:e.target.value}))}>
+                <option value="">Não informada</option>{rooms.map(r=><option key={r.id} value={r.id}>{r.label}</option>)}
+              </select></label>
             <label className="field" htmlFor={'review-note-'+req.id}><span>Resposta ou justificativa (opcional)</span>
               <textarea id={'review-note-'+req.id} rows={2} maxLength={1000}
                 value={reviewNotes[req.id]??''} onChange={e=>setReviewNotes(old=>({...old,[req.id]:e.target.value}))}/>

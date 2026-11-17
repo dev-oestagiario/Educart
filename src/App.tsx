@@ -1,7 +1,7 @@
 import { lazy, Suspense, useEffect, useRef, useState, useSyncExternalStore, type FormEvent } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { BarChart3, BookOpen, Boxes, CalendarDays, ClipboardList, Laptop, LogOut, ClipboardCheck, Bell, Menu, ShieldCheck, UserRound, UserRoundPlus, X } from 'lucide-react';
+import { BarChart3, BookOpen, Boxes, CalendarDays, ClipboardList, Laptop, LogOut, ClipboardCheck, Bell, Menu, ShieldCheck, UserRound, UserRoundPlus, MapPin, X } from 'lucide-react';
 import { create } from 'zustand';
 import { supabase, isConfigured, getRecoveryState, subscribeRecovery, rejectDirectRecovery, clearRecovery, type Cart, type Requester, type Notebook } from './lib/supabase';
 import {errorMessage} from './lib/validation';
@@ -12,6 +12,7 @@ import ThemeToggle from './components/ThemeToggle';
 import PasswordResetPage from './pages/PasswordResetPage';
 import {recoveryRedirect,recoveryMessage,newPasswordError} from './lib/passwordRecovery';
 
+const LocationsPage=lazy(()=>import('./pages/LocationsPage'));
 const CartsPage = lazy(()=>import('./pages/CartsPage'));
 const RequestersPage = lazy(()=>import('./pages/RequestersPage'));
 const NotebooksPage = lazy(()=>import('./pages/NotebooksPage'));
@@ -23,7 +24,7 @@ const TeacherPortal = lazy(()=>import('./pages/TeacherPortal'));
 const TeacherApprovalsPage = lazy(()=>import('./pages/TeacherApprovalsPage'));
 const NotificationsPage = lazy(()=>import('./pages/NotificationsPage'));
 
-type Page = 'overview' | 'carts' | 'requesters' | 'notebooks' | 'reservations' | 'calendar' | 'visual3d' | 'approvals' | 'notifications';
+type Page = 'locations' | 'overview' | 'carts' | 'requesters' | 'notebooks' | 'reservations' | 'calendar' | 'visual3d' | 'approvals' | 'notifications';
 const useUi = create<{page:Page; setPage:(page:Page)=>void}>()(
   set => ({page:'overview',setPage:page=>set({page})})
 );
@@ -248,7 +249,7 @@ export default function App() {
       <button className="secondary" onClick={()=>{void qc.invalidateQueries({queryKey:['admin']});void qc.invalidateQueries({queryKey:['teacher-account']})}}>Verificar autorização</button>
       <button className="ghost" onClick={()=>void supabase.auth.signOut()}>Sair desta conta</button></div>;
   }
-  const nav:[Page,string,typeof Boxes][]=[['overview','Visão geral',ClipboardList],['carts','Carrinhos',Boxes],['requesters','Professores',UserRoundPlus],['notebooks','Notebooks',Laptop],['reservations','Reservas',CalendarDays],['calendar','Calendário',BarChart3],['approvals','Solicitações',ClipboardCheck],['notifications','Notificações',Bell]];
+  const nav:[Page,string,typeof Boxes][]=[['overview','Visão geral',ClipboardList],['carts','Carrinhos',Boxes],['locations','Localizações',MapPin],['requesters','Professores',UserRoundPlus],['notebooks','Notebooks',Laptop],['reservations','Reservas',CalendarDays],['calendar','Calendário',BarChart3],['approvals','Solicitações',ClipboardCheck],['notifications','Notificações',Bell]];
   return <div className="app-shell">
     <a className="skip-link" href="#main-content">Pular para o conteúdo</a>
     {menuOpen&&<button type="button" tabIndex={-1} className="mobile-menu-backdrop" aria-label="Fechar navegação" onClick={closeMobileMenu}/>}
@@ -278,7 +279,7 @@ export default function App() {
           <NotificationBell userId={session.user.id} onOpen={()=>navigateTo('notifications')}/></div>
       </header>
       <div className="content">
-        {page==='overview'?<Overview/>:page==='carts'?<Suspense fallback={<p role="status">Carregando carrinhos…</p>}><CartsPage/></Suspense>:page==='requesters'?<Suspense fallback={<p role="status">Carregando professores…</p>}><RequestersPage/></Suspense>:page==='notebooks'?<Suspense fallback={<p role="status">Carregando notebooks…</p>}><NotebooksPage/></Suspense>:page==='reservations'?<Suspense fallback={<p role="status">Carregando reservas…</p>}><ReservationsPage/></Suspense>:page==='calendar'?<Suspense fallback={<p role="status">Carregando calendário…</p>}><CalendarReportsPage/></Suspense>:page==='visual3d'?<Suspense fallback={<p role="status">Carregando visualização 3D…</p>}><Visual3DPage/></Suspense>:page==='approvals'?<Suspense fallback={<p role="status">Carregando solicitações…</p>}><TeacherApprovalsPage/></Suspense>:<Suspense fallback={<p role="status">Carregando notificações…</p>}><NotificationsPage userId={session.user.id} audience="admin" onReturn={()=>navigateTo('overview')} onViewRequests={()=>navigateTo('approvals')}/></Suspense>}
+        {page==='overview'?<Overview/>:page==='locations'?<Suspense fallback={<p role="status">Carregando localizações…</p>}><LocationsPage/></Suspense>:page==='carts'?<Suspense fallback={<p role="status">Carregando carrinhos…</p>}><CartsPage/></Suspense>:page==='requesters'?<Suspense fallback={<p role="status">Carregando professores…</p>}><RequestersPage/></Suspense>:page==='notebooks'?<Suspense fallback={<p role="status">Carregando notebooks…</p>}><NotebooksPage/></Suspense>:page==='reservations'?<Suspense fallback={<p role="status">Carregando reservas…</p>}><ReservationsPage/></Suspense>:page==='calendar'?<Suspense fallback={<p role="status">Carregando calendário…</p>}><CalendarReportsPage/></Suspense>:page==='visual3d'?<Suspense fallback={<p role="status">Carregando visualização 3D…</p>}><Visual3DPage/></Suspense>:page==='approvals'?<Suspense fallback={<p role="status">Carregando solicitações…</p>}><TeacherApprovalsPage/></Suspense>:<Suspense fallback={<p role="status">Carregando notificações…</p>}><NotificationsPage userId={session.user.id} audience="admin" onReturn={()=>navigateTo('overview')} onViewRequests={()=>navigateTo('approvals')}/></Suspense>}
       </div>
     </main>
   </div>;
