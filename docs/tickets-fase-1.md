@@ -1,6 +1,6 @@
 # Educart — Fase 1: tarefas para implementação
 
-**Estado:** plano publicado, **sem implementação iniciada**. O desenvolvimento depende de autorização explícita.
+**Estado:** implementação autorizada pelo responsável e em andamento na branch `feat/fase-1-fundacao`, PR #10 (rascunho).
 **Fonte:** [Issue de especificação #1](https://github.com/dev-oestagiario/Educart/issues/1) e [especificação detalhada](spec-fase-1.md).
 **Método:** `to-spec` para especificar, `to-tickets` para criar fatias verificáveis com relações de bloqueio.
 
@@ -41,12 +41,12 @@ O ticket #9 também depende do encerramento de #2 e #3, conforme sua issue. A ge
 - UI responsiva e acessível, com testes de componentes, integração de permissões e jornada E2E.
 - Não estão incluídos reservas, cancelamentos, relatórios e 3D nesta primeira fase, conforme [planejamento geral](stack-mvp.md).
 
-## Antes de programar
+## Pendências para encerrar a fase
 
 - Revisar se a divisão e as dependências fazem sentido.
 - Confirmar o projeto Supabase e o método de provisionamento dos dois administradores.
 - Definir formato de planilha de importação.
 - Confirmar, se necessário, se “Stage” se refere a Zustand.
-- Obter autorização explícita para iniciar a implementação.
+- Autorização concedida em 15/11/2026; manter a branch isolada até validação final.
 
-**Nenhum arquivo de código, dependência ou migração do Supabase foi criado por este planejamento.**
+**Implementação em progresso:** a branch possui base React, Supabase Auth, cadastros e migração aplicada. CI inicial passou; testes E2E e provisionamento dos dois administradores ainda pendentes.

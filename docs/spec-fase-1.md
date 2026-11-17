@@ -1,6 +1,6 @@
 # Educart — Especificação para implementação da Fase 1
 
-**Estado:** planejado, pendente de autorização para codificar.
+**Estado:** autorizado e em implementação na branch `feat/fase-1-fundacao` / PR #10.
 **Método:** síntese das entrevistas segundo a skill Matt Pocock `to-spec`.
 **Referências:** [stack e fases](stack-mvp.md), [especificação funcional](especificacao-funcional.md), [modelo de dados](modelo-de-dados.md), [fluxos de tela](fluxos-de-tela.md) e [ADR de capacidade](adr/0004-capacidade-configurada-e-disponibilidade.md).
 
@@ -46,7 +46,7 @@ A Fase 1 **não** disponibiliza agendamento nem desconta saldos por reservas: en
 - **Solicitantes:** registro separado das contas administrativas. Campos adicionais não acordados não serão obrigatórios.
 - **3D e reservas:** expressamente fora da Fase 1; Three.js e React Three Fiber previstos para fase posterior, conforme stack documentada.
 - **Alteração de capacidade:** permitir configuração inicial; política de redução quando existirem reservas será detalhada na Fase 2.
-- **Autorização do desenvolvimento:** este documento e tickets não autorizam instalação, criação de schema, deploy ou código.
+- **Autorização do desenvolvimento:** concedida em 15/11/2026. Manter as alterações no PR #10 até os critérios de aceite e testes serem cumpridos.
 
 ## Testing Decisions
 
@@ -77,4 +77,4 @@ Criação, edição e cancelamento de reservas; controle de conflito por turno; 
 
 Pontos pendentes para resolver **antes do respectivo ticket de implementação**: projeto Supabase a utilizar, forma segura de provisionar os dois administradores, escolha CSV/XLSX na importação, confirmação de “Zustand” como biblioteca mencionada oralmente, e detalhes de manutenção de notebooks. Pendências não autorizam suposições que comprometam dados ou segurança.
 
-A publicação desta especificação e das tarefas constitui **somente planejamento**.
+A documentação original orientou o planejamento. A implementação da Fase 1 foi posteriormente autorizada; a conclusão depende de testes integrados, provisionamento seguro e revisão.
