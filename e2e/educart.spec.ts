@@ -21,7 +21,7 @@ const token = [
 
 async function useFakeSupabase(page: Page, authorized = true) {
   const database: Record<string, Row[]> = {
-    carts: [], requesters: [], notebook_codes: [], reservations: [], reservation_periods: [], reservation_notebooks: [], reservation_events: [], teacher_account_links: [], reservation_requests: [], reservation_request_events: [], user_notifications: []
+    carts: [], campuses: [], campus_blocks: [], campus_rooms: [], cart_storage_locations: [], maintenance_windows: [], requesters: [], notebook_codes: [], reservations: [], reservation_periods: [], reservation_notebooks: [], reservation_events: [], teacher_account_links: [], reservation_requests: [], reservation_request_events: [], user_notifications: []
   };
   await page.route('https://educart-e2e.supabase.co/**', async route => {
     const req = route.request();
@@ -1715,4 +1715,41 @@ test('Segurança Auth — cadastro exige senha mínima e não altera a regra de 
   await page.getByLabel('Senha',{exact:true}).fill('short');
   await page.getByRole('button',{name:'Entrar no Educart'}).click();
   await expect(page.getByRole('heading',{name:'Conta criada, aguardando autorização'})).toBeVisible();
+});
+
+
+test('Manutenção — TI programa janela e encerra com justificativa',async({page})=>{
+  const database=await useFakeSupabase(page);
+  const cart={id:'c1000000-0000-4000-8000-000000000001',code:'M-01',name:'Carrinho teste manutenção',capacity:10,active:true,created_at:'2026-11-15T10:00:00Z'};
+  database.carts.push(cart);
+  const id='c1000000-0000-4000-8000-000000000002';
+  await page.route('https://educart-e2e.supabase.co/rest/v1/rpc/schedule_maintenance',async route=>{
+    const headers={'access-control-allow-origin':'*','access-control-allow-headers':'*','access-control-allow-methods':'POST, OPTIONS'};
+    if(route.request().method()==='OPTIONS'){await route.fulfill({status:204,headers});return;}
+    const body=route.request().postDataJSON();
+    expect(body).toMatchObject({p_cart_id:cart.id,p_reason:'Revisão preventiva',p_shifts:['MATUTINO','VESPERTINO','NOTURNO']});
+    database.maintenance_windows.push({id,cart_id:cart.id,start_date:body.p_start,end_date:body.p_end,shifts:body.p_shifts,reason:body.p_reason,closed_at:null,close_reason:null});
+    await route.fulfill({status:200,headers,json:id});
+  });
+  await page.route('https://educart-e2e.supabase.co/rest/v1/rpc/close_maintenance',async route=>{
+    const headers={'access-control-allow-origin':'*','access-control-allow-headers':'*','access-control-allow-methods':'POST, OPTIONS'};
+    if(route.request().method()==='OPTIONS'){await route.fulfill({status:204,headers});return;}
+    expect(route.request().postDataJSON()).toEqual({p_id:id,p_reason:'Revisão concluída'});
+    Object.assign(database.maintenance_windows[0],{closed_at:'2026-11-17T12:00:00Z',close_reason:'Revisão concluída'});
+    await route.fulfill({status:200,headers,json:id});
+  });
+  await login(page);
+  await page.getByRole('button',{name:'Manutenção',exact:true}).click();
+  await page.getByRole('button',{name:'Nova manutenção'}).click();
+  await page.getByRole('combobox',{name:'Carrinho',exact:true}).selectOption(cart.id);
+  await page.getByLabel('Motivo interno').fill('Revisão preventiva');
+  await page.getByRole('button',{name:'Programar manutenção',exact:true}).click();
+  await expect(page.getByRole('status')).toContainText('Manutenção programada');
+  await expect(page.getByText('Revisão preventiva',{exact:true})).toBeVisible();
+  await page.getByRole('button',{name:'Encerrar',exact:true}).click();
+  await page.getByLabel('Motivo do encerramento').fill('Revisão concluída');
+  await page.getByRole('button',{name:'Confirmar encerramento'}).click();
+  await expect(page.getByRole('status')).toContainText('Manutenção encerrada');
+  await expect(page.getByText('Encerramento: Revisão concluída')).toBeVisible();
+  await expect(page.getByRole('button',{name:'Encerrar',exact:true})).toHaveCount(0);
 });
