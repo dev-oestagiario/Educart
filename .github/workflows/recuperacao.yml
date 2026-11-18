@@ -11,7 +11,7 @@ concurrency:
 
 jobs:
   recuperacao:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 25
     env:
       EDUCART_DISPOSABLE_RESTORE: educart-homologacao
@@ -25,7 +25,7 @@ jobs:
       - name: Iniciar banco local descartável
         run: |
           umask 077
-          npx --yes supabase@2.79.0 start > /tmp/educart-recovery-start.log 2>&1
+          npx --yes supabase@2.79.0 start > /tmp/educart-recovery-start.log 2>&1 || { echo 'Falha na inicialização do stack descartável; consulte estado dos containers.'; docker ps -a --format '{{.Names}} {{.Status}}'; exit 1; }
           npx --yes supabase@2.79.0 status -o json > .env.homologacao.status.local
       - name: Popular dados de homologação sintéticos
         run: |

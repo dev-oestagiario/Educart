@@ -1,7 +1,7 @@
 import {readFileSync,existsSync} from 'node:fs';
 import {spawnSync} from 'node:child_process';
 import {createClient} from '@supabase/supabase-js';
-import {validateLocalConfig,suitePlan,classifySuite} from './homologacao-preflight.mjs';
+import {validateLocalConfig,suitePlan,classifySuite,suiteFailureLocation} from './homologacao-preflight.mjs';
 
 async function main(){
  const mode=process.argv[2]??'full';
@@ -27,7 +27,7 @@ async function main(){
   const before=Date.now();
   const r=spawnSync(process.execPath,['scripts/'+suite+'.mjs'],{encoding:'utf8',timeout:300000,maxBuffer:4*1024*1024});
   const status=classifySuite(r);
-  report.push({suite,status,ms:Date.now()-before});
+  report.push({suite,status,ms:Date.now()-before,...(status!=='PASS'?{location:suiteFailureLocation(r,suite)}:{})});
   // Never print child stdout/stderr: assertion errors can include tokens or fixture details.
   console.log(status+' '+suite+' ('+report.at(-1).ms+' ms)');
   if(status!=='PASS')break;

@@ -14,7 +14,7 @@ concurrency:
 
 jobs:
   homologacao:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 45
     env:
       EDUCART_DISPOSABLE_HOMOLOGACAO: educart-homologacao
