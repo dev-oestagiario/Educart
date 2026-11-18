@@ -1,6 +1,7 @@
 import {useEffect,useRef,useState} from 'react';
 import * as THREE from 'three';
 import {OrbitControls} from 'three/examples/jsm/controls/OrbitControls.js';
+import {loadIllustrativeAssets,createRoomVisual,createCartVisual,disposeAssets,type AssetLibrary} from './illustrativeAssets';
 import {overviewStatuses,type OverviewLayout,type SceneCart} from './overviewLayout';
 
 type Props={layout:OverviewLayout;selectedId:string|null;focusId:string|null;reset:number;onPick:(id:string)=>void;quality:'low'|'high'};
@@ -23,24 +24,25 @@ function label(value:string,color:number,width:number){
 function cartMesh(cart:SceneCart){
  const root=new THREE.Group();root.position.set(cart.x,cart.y,cart.z);root.rotation.y=cart.yaw*Math.PI/180;
  root.userData.cartId=cart.id;
+ const visual=new THREE.Group();root.add(visual);
  const w=cart.width,d=cart.depth,h=1.7;
- box(root,w,h,d,0x46566b,0,h/2+.17,0,.35);
- box(root,w*.94,.075,d*.94,0x707e93,0,h+.18,0,.4);
- box(root,w*.94,h*.87,.04,0x354254,0,h/2+.17,d/2+.025,.25);
- for(let i=0;i<4;i++)box(root,w*.66,.025,.02,0x202937,0,h*.72-i*.095,d/2+.05);
- box(root,.07,.26,.07,0xb8c2d4,w*.36,h*.53,d/2+.06,.6);
+ box(visual,w,h,d,0x46566b,0,h/2+.17,0,.35);
+ box(visual,w*.94,.075,d*.94,0x707e93,0,h+.18,0,.4);
+ box(visual,w*.94,h*.87,.04,0x354254,0,h/2+.17,d/2+.025,.25);
+ for(let i=0;i<4;i++)box(visual,w*.66,.025,.02,0x202937,0,h*.72-i*.095,d/2+.05);
+ box(visual,.07,.26,.07,0xb8c2d4,w*.36,h*.53,d/2+.06,.6);
  const status=overviewStatuses[cart.status];
- box(root,w*.83,.08,.025,status.color,0,h+.06,d/2+.062);
+ box(root,w*.83,.08,.025,status.color,0,1.77,d/2+.09);
  for(const x of [-w*.36,w*.36])for(const z of [-d*.34,d*.34]){
   const wheel=new THREE.Mesh(new THREE.CylinderGeometry(.105,.105,.095,10),new THREE.MeshStandardMaterial({color:0x1e2430}));
-  wheel.rotation.z=Math.PI/2;wheel.position.set(x,.11,z);root.add(wheel);
+  wheel.rotation.z=Math.PI/2;wheel.position.set(x,.11,z);visual.add(wheel);
  }
  const tag=label(cart.code+' · '+status.label,status.color,Math.max(2.6,w*1.2));
  if(tag){tag.position.set(0,h+.58,0);root.add(tag);}
  const radius=Math.max(.75,Math.hypot(w,d)/2+.16);
  const ring=new THREE.Mesh(new THREE.RingGeometry(radius,radius+.095,32),new THREE.MeshBasicMaterial({color:0xd0b6ff,side:THREE.DoubleSide}));
  ring.rotation.x=-Math.PI/2;ring.position.y=.025;ring.visible=false;root.add(ring);
- return {root,ring,cart};
+ return {root,ring,cart,visual,detailed:null as ReturnType<typeof createCartVisual>|null};
 }
 
 export default function EnvironmentCanvas(props:Props){
@@ -48,6 +50,7 @@ export default function EnvironmentCanvas(props:Props){
  const synchronise=useRef<(()=>void)|null>(null);
  const cameraMemory=useRef<{position:THREE.Vector3;target:THREE.Vector3;zoom:number;focusId:string|null;reset:number}|null>(null);
  const [unavailable,setUnavailable]=useState(false);
+ const [assetState,setAssetState]=useState<'loading'|'detailed'|'fallback'|'economical'>('loading');
  useEffect(()=>{
   const host=mount.current;if(!host)return;
   let renderer:THREE.WebGLRenderer;
@@ -63,16 +66,20 @@ export default function EnvironmentCanvas(props:Props){
   controls.maxPolarAngle=Math.PI*.48;
   scene.add(new THREE.HemisphereLight(0xe5e7ff,0x766b80,2.1));
   const light=new THREE.DirectionalLight(0xfff1dc,2.1);light.position.set(span/2,span,span/2);scene.add(light);
+  const roomVisuals:{zone:OverviewLayout['zones'][number];root:THREE.Group;fallback:THREE.Group}[]=[];
   for(const zone of props.layout.zones){
-   box(scene,zone.width,.11,zone.depth,zone.unplaced?0x49485c:0x697483,zone.x,-.065,zone.z);
+   const roomRoot=new THREE.Group();roomRoot.position.set(zone.x,0,zone.z);scene.add(roomRoot);
+   const fallback=new THREE.Group();roomRoot.add(fallback);roomVisuals.push({zone,root:roomRoot,fallback});
+   box(fallback,zone.width,.11,zone.depth,zone.unplaced?0x49485c:0x697483,0,-.065,0);
    if(!zone.unplaced){
-    box(scene,zone.width,.55,.13,0x8994a8,zone.x,.27,zone.z-zone.depth/2);
-    box(scene,.13,.55,zone.depth,0x8994a8,zone.x-zone.width/2,.27,zone.z);
+    box(fallback,zone.width,.55,.13,0x8994a8,0,.27,-zone.depth/2);
+    box(fallback,.13,.55,zone.depth,0x8994a8,-zone.width/2,.27,0);
    }
    const name=label(zone.label,zone.unplaced?0xc7a3ff:0xa5b8cf,Math.min(Math.max(3.5,zone.width*.8),12));
    if(name){name.position.set(zone.x,.7,zone.z+zone.depth/2+.45);scene.add(name);}
   }
   const carts=props.layout.carts.map(cartMesh);for(const c of carts)scene.add(c.root);
+  const abort=new AbortController();let library:AssetLibrary|null=null;
   let lost=false,lastFocus:string|null|undefined=undefined,lastReset=-1;
   function render(){if(lost)return;renderer.render(scene,camera);canvas.dataset.drawCalls=String(renderer.info.render.calls);}
   function resize(){
@@ -87,7 +94,7 @@ export default function EnvironmentCanvas(props:Props){
   if(saved){camera.position.copy(saved.position);controls.target.copy(saved.target);camera.zoom=saved.zoom;lastFocus=saved.focusId;lastReset=saved.reset;}
   function update(){
    const state=latest.current,selected=carts.find(c=>c.cart.id===state.selectedId),focused=carts.find(c=>c.cart.id===state.focusId);
-   for(const c of carts)c.ring.visible=c===selected;
+   for(const c of carts){c.ring.visible=c===selected;c.detailed?.setCutaway(c===focused);}
    canvas.dataset.selectedCart=selected?.cart.id??'';
    const focus=focused?.cart.id??null;
    if(lastReset!==state.reset||lastFocus!==focus){
@@ -108,7 +115,8 @@ export default function EnvironmentCanvas(props:Props){
    const rect=canvas.getBoundingClientRect();if(!rect.width||!rect.height)return;
    pointer.set((e.clientX-rect.left)/rect.width*2-1,-(e.clientY-rect.top)/rect.height*2+1);
    ray.setFromCamera(pointer,camera);
-   const hit=ray.intersectObjects(carts.map(c=>c.root),true).find(h=>h.object instanceof THREE.Mesh&&h.object.visible);
+   const visible=(o:THREE.Object3D)=>{for(let n:THREE.Object3D|null=o;n;n=n.parent)if(!n.visible)return false;return true;};
+   const hit=ray.intersectObjects(carts.map(c=>c.root),true).find(h=>h.object instanceof THREE.Mesh&&visible(h.object));
    let obj:THREE.Object3D|null=hit?.object??null;
    while(obj&&!obj.userData.cartId)obj=obj.parent;
    if(obj)latest.current.onPick(obj.userData.cartId as string);
@@ -120,17 +128,35 @@ export default function EnvironmentCanvas(props:Props){
   canvas.addEventListener('webglcontextlost',contextLost);canvas.addEventListener('webglcontextrestored',restored);
   const change=()=>{saveCamera();render();};controls.addEventListener('change',change);
   const observer=new ResizeObserver(resize);observer.observe(host);synchronise.current=update;update();resize();
+  if(props.quality==='low'){setAssetState('economical');canvas.dataset.assetMode='economical';}
+  else {
+   setAssetState('loading');canvas.dataset.assetMode='loading';
+   void loadIllustrativeAssets(abort.signal).then(assets=>{
+    if(abort.signal.aborted){disposeAssets(Object.values(assets));return;}
+    library=assets;
+    for(const r of roomVisuals){if(r.zone.unplaced)continue;const detailed=createRoomVisual(assets,r.zone.width,r.zone.depth);r.root.add(detailed);r.fallback.visible=false;}
+    for(const c of carts){c.detailed=createCartVisual(assets,c.cart.width,c.cart.depth);c.root.add(c.detailed.root);c.visual.visible=false;}
+    setAssetState('detailed');canvas.dataset.assetMode='detailed';update();
+   }).catch(()=>{
+    if(abort.signal.aborted)return;
+    for(const r of roomVisuals){for(const child of [...r.root.children])if(child!==r.fallback)r.root.remove(child);r.fallback.visible=true;}
+    for(const c of carts){if(c.detailed)c.root.remove(c.detailed.root);c.detailed=null;c.visual.visible=true;}
+    if(library){disposeAssets(Object.values(library));library=null;}
+    setAssetState('fallback');canvas.dataset.assetMode='fallback';update();
+   });
+  }
   return ()=>{
-   saveCamera();synchronise.current=null;observer.disconnect();controls.removeEventListener('change',change);controls.dispose();
+   abort.abort();saveCamera();synchronise.current=null;observer.disconnect();controls.removeEventListener('change',change);controls.dispose();
    canvas.removeEventListener('pointerdown',down);canvas.removeEventListener('pointerup',up);canvas.removeEventListener('pointercancel',cancel);
    canvas.removeEventListener('webglcontextlost',contextLost);canvas.removeEventListener('webglcontextrestored',restored);
-   scene.traverse(obj=>{if(obj instanceof THREE.Mesh)obj.geometry.dispose();
-    if(obj instanceof THREE.Mesh||obj instanceof THREE.Sprite){const materials=Array.isArray(obj.material)?obj.material:[obj.material];
-     for(const material of materials){if(material instanceof THREE.SpriteMaterial)material.map?.dispose();material.dispose();}}});
+   // GLB geometry/materials are shared by clones; dispose each resource once.
+   if(library)disposeAssets([...Object.values(library),scene]);else disposeAssets([scene]);
+   scene.traverse(obj=>{if(obj instanceof THREE.Sprite){obj.material.map?.dispose();obj.material.dispose();}});
    renderer.dispose();canvas.remove();
   };
  },[props.layout,props.quality]);
  useEffect(()=>{synchronise.current?.();},[props.selectedId,props.focusId,props.reset]);
  return <div><div className="dt-stage dt-overview-stage" ref={mount} role="img" aria-label="Ambientes esquemáticos e carrinhos cadastrados. Use a lista para seleção por teclado."/>
-  {unavailable&&<p role="status" className="notice warning">WebGL indisponível. Todos os carrinhos continuam acessíveis pela lista.</p>}</div>;
+  {unavailable&&<p role="status" className="notice warning">WebGL indisponível. Todos os carrinhos continuam acessíveis pela lista.</p>}
+  {!unavailable&&<p className="form-hint" role="status">{assetState==='detailed'?'Modelos GLB ilustrativos verificados. O corte mostra exemplos, não equipamentos presentes.':assetState==='loading'?'Carregando modelos detalhados; geometria simples disponível.':assetState==='fallback'?'Modelos detalhados indisponíveis. Geometria simplificada preservada.':'Qualidade econômica: geometria simplificada.'}</p>}</div>;
 }
