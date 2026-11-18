@@ -56,9 +56,9 @@ export default function DigitalTwinPage({onNavigate}:{onNavigate:(target:'reserv
   <header className="page-header"><h1>Ambiente 3D</h1><p>Consulte todos os carrinhos cadastrados e a ocupação no período selecionado.</p></header>
   <p className="notice warning"><strong>F5.5 — ambiente de desenvolvimento.</strong> Modelos 3D ilustrativos; salas exibidas separadamente, sem planta real. Posições e movimentações registradas não comprovam localização física em tempo real.</p>
   <div className="panel dt-overview-toolbar">
+   <label className="field dt-search-field"><span>Buscar carrinho na lista</span><input type="search" value={search} onChange={e=>{setSearch(e.target.value);setListPage(0);}} placeholder="Código, nome ou local"/></label>
    <label className="field"><span>Data</span><input id="dt-date" type="date" value={date} onChange={e=>period(e.target.value,shift)}/></label>
    <label className="field"><span>Turno</span><select id="dt-shift" value={shift} onChange={e=>period(date,e.target.value as Shift)}>{SHIFTS.map(s=><option key={s} value={s}>{shiftLabel[s]}</option>)}</select></label>
-   <label className="field"><span>Buscar carrinho na lista</span><input type="search" value={search} onChange={e=>{setSearch(e.target.value);setListPage(0);}} placeholder="Código, nome ou local"/></label>
    <label className="field"><span>Qualidade visual</span><select value={qualityChoice} onChange={e=>setQualityChoice(e.target.value as QualityChoice)}><option value="auto">Automática</option><option value="high">Detalhada (GLB)</option><option value="low">Econômica</option></select></label>
    <label className="dt-toggle"><input type="checkbox" checked={show3d} onChange={e=>{setDoorOpen(false);setInspectionReady(false);setShow3d(e.target.checked);}}/> Exibir ambiente 3D</label>
    <p className="form-hint dt-quality-note">Qualidade em uso: {quality==='low'?'Econômica':'Detalhada'}. Em telas pequenas a lista abre primeiro; ative o 3D quando desejar.</p>

@@ -315,7 +315,7 @@ button{touch-action:manipulation}
 .reservation-list-toolbar{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:18px}
 .reservation-list-toolbar h2{margin:0!important}
 .reservation-history-toggle{display:flex;align-items:center;gap:9px;min-height:42px}
-.reservation-list-filters{display:grid;grid-template-columns:minmax(0,2fr) minmax(190px,1fr);gap:16px;margin-bottom:20px}
+.reservation-list-filters{display:grid;grid-template-columns:minmax(0,1fr);gap:16px;margin-bottom:20px}
 .reservation-list-filters .field{min-width:0}
 .reservation-load-more{display:block;margin:18px auto;min-height:44px}
 .reservation-history-panel{max-width:100%}
@@ -406,8 +406,8 @@ button{touch-action:manipulation}
 .records-list-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:18px}
 .records-list-heading h2{margin:0}
 .records-count{font-size:12px;padding:5px 10px;color:#496783;background:#f0f5fa;border-radius:20px}
-.records-search{max-width:580px;margin-bottom:18px}
-.records-filters{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin-bottom:18px}
+.records-search{width:100%;min-width:0;margin-bottom:18px}
+.records-filters{display:grid;grid-template-columns:minmax(0,1fr);gap:14px;margin-bottom:18px}
 .records-filters .field{min-width:0}
 .records-item>div:first-child{min-width:0;overflow-wrap:anywhere}
 .records-item .secondary{min-height:44px;flex-shrink:0}
@@ -535,7 +535,7 @@ html,body,#root{width:100%;height:100%;min-width:0;margin:0}
 .reservation-table-wrap,.teacher-availability-table-wrap{
   max-width:100%;overflow-x:auto;overscroll-behavior-x:contain
 }
-.calendar-filter-grid,.visual3d-filters,.reservation-list-filters{
+.calendar-filter-grid,.visual3d-filters{
   grid-template-columns:repeat(auto-fit,minmax(min(100%,205px),1fr))
 }
 .stats{gap:clamp(9px,1.4vw,16px)}
