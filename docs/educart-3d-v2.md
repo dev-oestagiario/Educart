@@ -145,10 +145,10 @@ Implementação e testes locais: [F5.1](f5-1-fundacao-espacial.md). Editor numé
 - [ ] DT-023 Perfil estrutural sintético de 120 carrinhos: 21.240 → 2.124 nós detalhados no limite de 12. GPU/FPS, memória real e homologação pendentes.
 
 ### F5.6 — Homologação e publicação
-- [ ] DT-024 Vitest de projeção, poses, status, vínculos e datas; testes SQL de acesso/RLS e consistência.
-- [ ] DT-025 Playwright: visão geral sem seletor, selecionar cada carrinho, inspeção interna, troca de período, móveis, tema, fallback. Testar cena por IDs/eventos determinísticos e complementar screenshots; não depender de coordenada arbitrária no teste.
+- [ ] DT-024 Vitest 124/124 e SQL/RLS local isolado aprovados; JWT/PostgREST e concorrência real pendentes.
+- [ ] DT-025 Cenários Playwright ampliados: quatro estados, inspeção, período, fallback, teclado e seis larguras; execução real e screenshots pendentes.
 - [ ] DT-026 Homologar com dados controlados reais e referências físicas, registrar matriz de aceite e falhas; validar modelo indicado como real/ilustrativo.
-- [ ] DT-027 Reativar menu 3D apenas com aprovação, integrar em main e atualizar manual, ADR 0003 e changelog; remover testes antigos obsoletos somente após cobertura equivalente, sem fingir que foram executados.
+- [ ] DT-027 Publicação bloqueada pelos gates de segurança/dependências, navegador e aceite. ADR 0003 atualizado; menu DEV preservado. Ver [matriz F5.6](f5-6-homologacao-3d.md).
  
 ## 8. Cenários essenciais de aceite
 
