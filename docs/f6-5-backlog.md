@@ -40,7 +40,7 @@ Prioridades P0 (bloqueadores da release); números referentes a issues criadas n
 | [#68](https://github.com/dev-oestagiario/Educart/issues/68) | Backup real aprovado, restore isolado, RPO/RTO e responsáveis | [Inventário e verificador](issue-68-backup-operacional.md) entregues; exportação, restore isolado e política autorizada pendentes |
 | [#69](https://github.com/dev-oestagiario/Educart/issues/69) | Monitor contínuo, alertas e política de privacidade | [Monitor e ensaio](issue-69-monitoramento-operacional.md) entregues; executor contínuo, canal, backup real e responsável TI pendentes |
 | [#70](https://github.com/dev-oestagiario/Educart/issues/70) | Aceite institucional, dispositivos físicos, impressão e acessibilidade; gate específico do 3D | [Matriz e regressão](issue-70-aceite-operacional.md) entregues; homologação real, dispositivos físicos e aceite TI pendentes |
-| [#71](https://github.com/dev-oestagiario/Educart/issues/71) | Integração, release, Pages, version.json e smoke com rollback | #66–#70 e aprovação explícita; CI disponível |
+| [#71](https://github.com/dev-oestagiario/Educart/issues/71) | Integração, release, Pages, version.json e smoke com rollback | [Pré-flight e plano de promoção](issue-71-publicacao.md) entregues; #66–#70, pipeline e aprovação explícita pendentes |
 
 ## Evolução futura
 - P2 [#72](https://github.com/dev-oestagiario/Educart/issues/72) — canal de e-mail opcional (provedor, custo, opt-in, adapter, scheduler e idempotência). Manter desligado; não bloquear versão operacional por recurso opcional desativado.
