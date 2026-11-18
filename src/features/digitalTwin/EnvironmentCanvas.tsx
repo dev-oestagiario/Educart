@@ -170,7 +170,7 @@ export default function EnvironmentCanvas(props:Props){
   canvas.addEventListener('webglcontextlost',contextLost);canvas.addEventListener('webglcontextrestored',restored);
   const change=()=>{saveCamera();render();};controls.addEventListener('change',change);
   const observer=new ResizeObserver(resize);observer.observe(host);synchronise.current=update;update();resize();
-  const intersection=new IntersectionObserver(entries=>{visible=entries[0]?.isIntersecting??true;if(visible)render();});intersection.observe(host);
+  const intersection=typeof IntersectionObserver==='undefined'?null:new IntersectionObserver(entries=>{visible=entries[0]?.isIntersecting??true;if(visible)render();});intersection?.observe(host);
   const visibility=()=>{if(!document.hidden)render();};document.addEventListener('visibilitychange',visibility);
   if(props.quality==='low'){setAssetState('economical');canvas.dataset.assetMode='economical';}
   else {
@@ -190,7 +190,7 @@ export default function EnvironmentCanvas(props:Props){
    });
   }
   return ()=>{
-   abort.abort();scheduler.dispose();intersection.disconnect();document.removeEventListener('visibilitychange',visibility);saveCamera();synchronise.current=null;observer.disconnect();controls.removeEventListener('change',change);controls.dispose();
+   abort.abort();scheduler.dispose();intersection?.disconnect();document.removeEventListener('visibilitychange',visibility);saveCamera();synchronise.current=null;observer.disconnect();controls.removeEventListener('change',change);controls.dispose();
    canvas.removeEventListener('pointerdown',down);canvas.removeEventListener('pointerup',up);canvas.removeEventListener('pointercancel',cancel);
    canvas.removeEventListener('webglcontextlost',contextLost);canvas.removeEventListener('webglcontextrestored',restored);
    // GLB geometry/materials are shared by clones; dispose each resource once.
