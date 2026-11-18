@@ -2410,7 +2410,7 @@ test.describe('F5.1 — configuração espacial',()=>{
 });
 
 test.describe('F5.2 — visão geral administrativa 3D',()=>{
- test('todos os carrinhos, detalhe sob demanda, turno, erro sem saldo, lista alternativa',async({page})=>{
+ test('todos os carrinhos, GLB e corte, detalhe sob demanda, turno, erro sem saldo, lista alternativa',async({page})=>{
   const db=await useFakeSupabase(page);
   const uid=(n:number)=>'00000000-0000-4000-8000-'+String(n).padStart(12,'0');
   const cartA=uid(521),cartB=uid(522),roomId=uid(523),blockId=uid(524),campusId=uid(525),sceneId=uid(526),modelId=uid(527);
@@ -2447,9 +2447,24 @@ test.describe('F5.2 — visão geral administrativa 3D',()=>{
   await expect(list.getByRole('button',{name:/F52A/})).toContainText('Sala 1');
   await expect(list.getByRole('button',{name:/F52B/})).toContainText('Sem localização definida');
   expect(detailCalls).toBe(0);
+  const canvas=page.locator('.dt-stage canvas');
+  await expect(canvas).toHaveAttribute('data-asset-mode','detailed',{timeout:15000});
+  await expect(canvas).toHaveAttribute('data-cart-count','2');
   await list.getByRole('button',{name:/F52A/}).click();
   await expect(page.getByText('Nenhuma reserva registrada neste período.',{exact:true})).toBeVisible();
   expect(detailCalls).toBeGreaterThan(0);
+  await page.getByRole('button',{name:'Focalizar carrinho'}).click();
+  await expect(canvas).toHaveAttribute('data-cutaway-cart',cartA);
+  await list.getByRole('button',{name:/F52B/}).click();
+  await expect(canvas).toHaveAttribute('data-cutaway-cart','');
+  await page.getByLabel('Qualidade visual').selectOption('low');
+  await expect(canvas).toHaveAttribute('data-asset-mode','economical');
+  await page.route('**/cart-illustrative-v1.glb*',r=>r.fulfill({status:503,body:'asset unavailable'}));
+  await page.getByLabel('Qualidade visual').selectOption('high');
+  await expect(canvas).toHaveAttribute('data-asset-mode','fallback',{timeout:15000});
+  await expect(list.getByRole('button')).toHaveCount(2);
+  await page.unroute('**/cart-illustrative-v1.glb*');
+  await list.getByRole('button',{name:/F52A/}).click();
   await page.getByLabel('Turno',{exact:true}).selectOption('VESPERTINO');
   await expect(list.getByRole('button',{name:/F52A/})).toContainText('2 disponíveis');
   await page.getByLabel('Buscar carrinho na lista').fill('F52B');
