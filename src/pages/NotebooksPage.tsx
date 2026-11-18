@@ -1,3 +1,4 @@
+import {Feedback} from '../components/Feedback';
 import {useState,type ChangeEvent,type FormEvent} from 'react';
 import {useMutation,useQuery,useQueryClient} from '@tanstack/react-query';
 import {FileSpreadsheet,Settings2} from 'lucide-react';
@@ -116,7 +117,7 @@ export default function NotebooksPage(){
     {screen==='list'?<>
       <RecordsHeader title="Notebooks" description="Consulte os códigos individuais de equipamentos, organizados por carrinho."
         actionLabel="Cadastrar notebooks" onAction={addNew}/>
-      {feedback&&<p className={'notice '+feedback.kind} role={feedback.kind==='error'?'alert':'status'}>{feedback.message}</p>}
+      {feedback&&<Feedback kind={feedback.kind}>{feedback.message}</Feedback>}
       <section className="panel records-panel" aria-labelledby="notebook-list-title">
         <div className="records-list-heading"><h2 id="notebook-list-title">Notebooks cadastrados</h2>
           <span className="records-count">{notebooks.isLoading?'…':registered.length} códigos</span>
@@ -141,7 +142,7 @@ export default function NotebooksPage(){
           <span>Sem código informado: <strong>{Math.max(0,filterCart.capacity-activeInFilter.length)}</strong></span>
         </div>}
         {notebooks.isLoading||carts.isLoading?<p role="status">Carregando notebooks…</p>:
-          notebooks.error||carts.error?<p role="alert" className="notice error">Não foi possível consultar os equipamentos cadastrados.</p>:
+          notebooks.error||carts.error?<Feedback kind="error">Não foi possível consultar os equipamentos cadastrados.</Feedback>:
           !registered.length?<p className="empty">Nenhum notebook identificado. Use “Cadastrar notebooks” para adicionar códigos. A capacidade dos carrinhos não depende desses códigos.</p>:
           !filtered.length?<p className="empty">Nenhum notebook corresponde ao carrinho ou à busca.</p>:
           <div className="item-list">{filtered.map(item=>{
@@ -196,7 +197,7 @@ export default function NotebooksPage(){
             <p className="form-hint">Use a primeira aba, com coluna “codigo”, “código” ou “code”. Para códigos com zeros à esquerda, formate a coluna como texto no Excel.</p>
           </div>
           {previewCount>0&&<p role="status" className="form-hint"><strong>Prévia: {previewCount} código(s).</strong> Revise os valores antes de cadastrar.</p>}
-          {feedback&&<p className={'notice '+feedback.kind} role={feedback.kind==='error'?'alert':'status'}>{feedback.message}</p>}
+          {feedback&&<Feedback kind={feedback.kind}>{feedback.message}</Feedback>}
           <div className="records-form-actions">
             <button type="submit" className="primary" disabled={save.isPending}>
               {save.isPending?'Salvando…':'Salvar códigos revisados'}

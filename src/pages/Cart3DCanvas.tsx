@@ -1,3 +1,4 @@
+import {Feedback} from '../components/Feedback';
 import {useEffect,useRef,useState} from 'react';
 import * as THREE from 'three';
 import {OrbitControls} from 'three/examples/jsm/controls/OrbitControls.js';
@@ -112,7 +113,7 @@ export default function Cart3DCanvas({slots,onPick}:{slots:CartSlot[];onPick:(po
   },[slots,onPick]);
   return <div className="cart-scene">
     <div ref={rootRef} className="cart-scene-canvas" role="img" aria-label="Representação 3D interativa do carrinho de notebooks; lista equivalente logo abaixo"/>
-    {error&&<p className="notice error" role="status">{error}</p>}
+    {error&&<Feedback kind="error">{error}</Feedback>}
     <p className="form-hint">Arraste para girar, use a roda do mouse ou gesto de pinça para aproximar e toque numa posição para consultar detalhes. A disposição é ilustrativa.</p>
   </div>;
 }

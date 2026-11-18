@@ -8,6 +8,7 @@ import {diagnostics} from './lib/observability';
 import {errorMessage} from './lib/validation';
 import NotificationBell from './components/NotificationBell';
 import BrandLogo from './components/BrandLogo';
+import {Feedback} from './components/Feedback';
 import ThemeToggle from './components/ThemeToggle';
 import PasswordResetPage from './pages/PasswordResetPage';
 import {recoveryRedirect,recoveryMessage,newPasswordError} from './lib/passwordRecovery';
@@ -37,7 +38,7 @@ const useUi = create<{page:Page; setPage:(page:Page)=>void}>()(
 );
 
 function Notice({message,kind='error'}:{message:string;kind?:'error'|'success'}) {
-  return <p role={kind==='error'?'alert':'status'} className={'notice '+kind}>{message}</p>;
+  return <Feedback kind={kind}>{message}</Feedback>;
 }
 function TextInput({label,id,value,onChange,required=false,type='text',min,autoComplete,disabled=false}:{label:string;id:string;value:string;onChange:(v:string)=>void;required?:boolean;type?:string;min?:number;autoComplete?:string;disabled?:boolean}) {
   return <label className="field" htmlFor={id}><span>{label}</span>

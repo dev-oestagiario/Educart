@@ -1,3 +1,4 @@
+import {Feedback} from '../components/Feedback';
 import {useState,type FormEvent} from 'react';
 import {useMutation,useQuery,useQueryClient} from '@tanstack/react-query';
 import RecordsHeader from '../components/RecordsHeader';
@@ -57,7 +58,7 @@ export default function CartsPage(){
     {screen==='list'?<>
       <RecordsHeader title="Carrinhos" description="Consulte os laboratórios móveis e suas capacidades configuradas."
         actionLabel="Cadastrar carrinho" onAction={addNew}/>
-      {feedback&&<p className={'notice '+feedback.kind} role={feedback.kind==='error'?'alert':'status'}>{feedback.message}</p>}
+      {feedback&&<Feedback kind={feedback.kind}>{feedback.message}</Feedback>}
       <section className="panel records-panel" aria-labelledby="carts-list-title">
         <div className="records-list-heading">
           <h2 id="carts-list-title">Carrinhos cadastrados</h2>
@@ -68,7 +69,7 @@ export default function CartsPage(){
             value={search} onChange={event=>setSearch(event.target.value)}/>
         </label>
         {carts.isLoading?<p role="status">Carregando carrinhos…</p>:
-          carts.error?<p role="alert" className="notice error">{errorMessage(carts.error)}</p>:
+          carts.error?<Feedback kind="error">{errorMessage(carts.error)}</Feedback>:
           !carts.data?.length?<div className="empty">Nenhum carrinho cadastrado. Use o botão “Cadastrar carrinho” para começar.</div>:
           !filtered.length?<p className="empty">Nenhum carrinho corresponde à busca.</p>:
           <div className="item-list">{filtered.map(item=><article className="item records-item" key={item.id}>
@@ -97,7 +98,7 @@ export default function CartsPage(){
               onChange={event=>setCapacity(event.target.value)}/>
           </label>
           <p className="form-hint">A capacidade informada determina a disponibilidade, mesmo que nem todos os notebooks possuam código cadastrado.</p>
-          {feedback&&<p className={'notice '+feedback.kind} role={feedback.kind==='error'?'alert':'status'}>{feedback.message}</p>}
+          {feedback&&<Feedback kind={feedback.kind}>{feedback.message}</Feedback>}
           <div className="records-form-actions">
             <button type="submit" className="primary" disabled={save.isPending}>
               {save.isPending?'Salvando…':editingId?'Salvar alterações':'Cadastrar carrinho'}

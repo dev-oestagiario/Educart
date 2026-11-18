@@ -1,3 +1,4 @@
+import {Feedback} from '../components/Feedback';
 import {useState} from 'react';
 import {useMutation,useQueryClient} from '@tanstack/react-query';
 import {ArrowLeft,Bell,CheckCheck,ClipboardList} from 'lucide-react';
@@ -58,7 +59,7 @@ export default function NotificationsPage({userId,onReturn,onViewRequests,audien
           <CheckCheck size={17} aria-hidden="true"/> {markAll.isPending?'Atualizando…':'Marcar todas como lidas'}
         </button>
       </div>
-      {notice&&<p className={'notice '+notice.kind} role={notice.kind==='error'?'alert':'status'}>{notice.message}</p>}
+      {notice&&<Feedback kind={notice.kind}>{notice.message}</Feedback>}
       {data.isLoading?<p role="status">Carregando notificações…</p>:
         data.isError?<div role="alert" className="notice error">Não foi possível consultar as notificações.
           <button type="button" className="text-button" onClick={()=>void data.refetch()}>Tentar novamente</button>

@@ -1,3 +1,4 @@
+import {Feedback} from '../components/Feedback';
 import {useState,type FormEvent} from 'react';
 import {useLocations,roomOptions} from '../lib/locations';
 import {useMutation,useQuery,useQueryClient} from '@tanstack/react-query';
@@ -92,7 +93,7 @@ export default function TeacherApprovalsPage(){
       <section className="panel records-form-panel" aria-labelledby="link-form-title">
         <h2 id="link-form-title">Dados do vínculo</h2>
         <p className="form-hint">O professor deve criar a conta e confirmar o e-mail antes. A TI escolhe o cadastro correspondente.</p>
-        {message&&<p role={message.kind==='error'?'alert':'status'} className={'notice '+message.kind}>{message.text}</p>}
+        {message&&<Feedback kind={message.kind}>{message.text}</Feedback>}
       <form className="teacher-link-form" onSubmit={submitLink}>
         <label className="field" htmlFor="teacher-link-requester"><span>Professor cadastrado</span>
           <select id="teacher-link-requester" required value={requesterId} onChange={e=>setRequesterId(e.target.value)}>
@@ -115,7 +116,7 @@ export default function TeacherApprovalsPage(){
     <div className="panel muted-panel"><ShieldCheck size={20} aria-hidden="true"/>
       <p>Pedidos pendentes <strong>não ocupam notebooks</strong>. A aprovação chama a função transacional de reserva e verifica a disponibilidade naquele momento.</p>
     </div>
-    {message&&<p role={message.kind==='error'?'alert':'status'} className={'notice '+message.kind}>{message.text}</p>}
+    {message&&<Feedback kind={message.kind}>{message.text}</Feedback>}
     <div className="stats teacher-approval-stats">
       <div className="stat"><span className="stat-label">Pedidos pendentes</span><strong>{requests.isLoading||requests.error?'—':pending}</strong></div>
       <div className="stat"><span className="stat-label">Solicitações registradas</span><strong>{requests.isLoading?'—':requests.data?.length??0}</strong></div>
@@ -130,7 +131,7 @@ export default function TeacherApprovalsPage(){
         </label>
       </div>
       {requests.isLoading?<p role="status">Carregando pedidos…</p>:
-        requests.error?<p className="notice error" role="alert">Não foi possível carregar os pedidos.</p>:
+        requests.error?<Feedback kind="error">Não foi possível carregar os pedidos.</Feedback>:
         displayed.length===0?<p className="empty">Nenhuma solicitação para este filtro.</p>:
         <div className="teacher-request-list">{displayed.slice(0,limit).map(req=><article className="booking-item" key={req.id}>
           <div className="teacher-request-heading"><strong>{teachers.data?.find(t=>t.id===req.requester_id)?.name??'Professor'}</strong>
@@ -172,7 +173,7 @@ export default function TeacherApprovalsPage(){
       <p className="form-hint">A TI vincula contas verificadas aos professores cadastrados. Nenhum professor recebe acesso automaticamente.</p>
       <h3 className="teacher-subheading">Contas vinculadas</h3>
       {links.isLoading?<p role="status">Carregando vínculos…</p>:
-        links.error?<p role="alert" className="notice error">Não foi possível consultar os vínculos.</p>:
+        links.error?<Feedback kind="error">Não foi possível consultar os vínculos.</Feedback>:
         !links.data?.length?<p className="empty">Nenhuma conta vinculada.</p>:
         <div className="item-list">{links.data.map(row=><div className="item" key={row.user_id}>
           <div><strong>{row.requester_name}</strong><span>{row.email} · {row.active?'Ativo':'Desativado'}</span></div>

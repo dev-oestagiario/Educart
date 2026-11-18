@@ -1,3 +1,4 @@
+import {Feedback} from '../components/Feedback';
 import {lazy,Suspense,useMemo,useState,type FormEvent} from 'react';
 import {useMutation,useQuery,useQueryClient} from '@tanstack/react-query';
 import {CalendarDays,ClipboardList,LogOut,Send,ShieldCheck} from 'lucide-react';
@@ -141,11 +142,11 @@ export default function TeacherPortal({requesterId,userId,email,onLogout}:Props)
         <RecordsHeader title="Pedidos de reserva"
           description="Consulte suas solicitações e acompanhe as decisões da equipe de TI."
           actionLabel="Nova solicitação" onAction={newRequest}/>
-        {message&&<p role={message.kind==='error'?'alert':'status'} className={'notice '+message.kind}>{message.text}</p>}
+        {message&&<Feedback kind={message.kind}>{message.text}</Feedback>}
         <section className="panel teacher-portal-list" aria-labelledby="teacher-requests-heading">
           <h2 id="teacher-requests-heading"><ClipboardList size={19} aria-hidden="true"/> Minhas solicitações</h2>
           {requests.isLoading?<p role="status">Carregando solicitações…</p>:
-            requests.error?<p role="alert" className="notice error">Não foi possível consultar suas solicitações.</p>:
+            requests.error?<Feedback kind="error">Não foi possível consultar suas solicitações.</Feedback>:
             !requests.data?.length?<p className="empty">Você ainda não enviou solicitações.</p>:
             <div className="teacher-request-list">{requests.data.slice(0,limit).map(req=>
               <article className="booking-item" key={req.id}>
@@ -176,7 +177,7 @@ export default function TeacherPortal({requesterId,userId,email,onLogout}:Props)
         <div className="panel muted-panel teacher-portal-note"><ShieldCheck size={20} aria-hidden="true"/>
           <p><strong>Solicitação não é reserva.</strong> Pedidos pendentes não ocupam notebooks; a TI revalida a disponibilidade antes de aprovar.</p>
         </div>
-        {message&&<p role={message.kind==='error'?'alert':'status'} className={'notice '+message.kind}>{message.text}</p>}
+        {message&&<Feedback kind={message.kind}>{message.text}</Feedback>}
         <section className="panel teacher-portal-form" aria-labelledby="request-form-heading">
           <h2 id="request-form-heading"><Send size={19} aria-hidden="true"/> Nova solicitação</h2>
           <form className="form-stack" onSubmit={send}>
@@ -186,7 +187,7 @@ export default function TeacherPortal({requesterId,userId,email,onLogout}:Props)
                 {(carts.data??[]).map(c=><option key={c.id} value={c.id}>{c.name} — {c.capacity} notebooks</option>)}
               </select>
             </label>
-            {carts.error&&<p role="alert" className="notice error">Não foi possível consultar os carrinhos.</p>}
+            {carts.error&&<Feedback kind="error">Não foi possível consultar os carrinhos.</Feedback>}
             <fieldset className="reservation-fieldset">
               <legend>Modalidade</legend>
               <label><input type="radio" name="teacher-mode" checked={mode==='PARCIAL'}

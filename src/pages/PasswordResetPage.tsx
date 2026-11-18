@@ -1,3 +1,4 @@
+import {Feedback} from '../components/Feedback';
 import {useState,type FormEvent} from 'react';
 import BrandLogo from '../components/BrandLogo';
 import ThemeToggle from '../components/ThemeToggle';
@@ -40,10 +41,10 @@ export default function PasswordResetPage({state,onFinish}:Props){
     <div className="auth-theme-bar"><BrandLogo tone="light"/><ThemeToggle/></div>
     <div className="auth-intro"><span className="eyebrow">SEGURANÇA DA CONTA</span><h1>Redefinir senha</h1>
       <p>Crie uma senha exclusiva para sua conta Educart.</p></div>
-    {changed?<><p role="status" className="notice success">Senha alterada. Encerre a sessão para entrar novamente.</p>
+    {changed?<><Feedback kind="success">Senha alterada. Encerre a sessão para entrar novamente.</Feedback>
       <button type="button" className="primary" disabled={busy} onClick={()=>void leave(true)}>Voltar ao login</button></>:
     state==='pending'?<p role="status">Validando link de recuperação…</p>:
-    state==='invalid'?<><p role="alert" className="notice error">Link inválido, expirado ou já utilizado. Solicite uma nova recuperação de senha.</p>
+    state==='invalid'?<><Feedback kind="error">Link inválido, expirado ou já utilizado. Solicite uma nova recuperação de senha.</Feedback>
       <button type="button" className="primary" disabled={busy} onClick={()=>void leave(false)}>Voltar ao login</button></>:
     <form className="form-stack" onSubmit={handleSubmit}>
       <label className="field" htmlFor="new-password"><span>Nova senha</span>
@@ -56,6 +57,6 @@ export default function PasswordResetPage({state,onFinish}:Props){
       <button type="submit" className="primary" disabled={busy}>{busy?'Salvando…':'Salvar nova senha'}</button>
       <button type="button" className="auth-switch" disabled={busy} onClick={()=>void leave(false)}>Cancelar e voltar ao login</button>
     </form>}
-    {error&&<p role="alert" className="notice error">{error}</p>}
+    {error&&<Feedback kind="error">{error}</Feedback>}
   </section></div>;
 }
