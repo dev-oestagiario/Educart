@@ -1,5 +1,5 @@
 import {LoadingState,EmptyState,Feedback} from '../components/Feedback';
-import {useState,useEffect,type ReactNode} from 'react';
+import {useState,useEffect,useSyncExternalStore,type ReactNode} from 'react';
 import {useQuery} from '@tanstack/react-query';
 import {CalendarDays,PackageMinus,PackageCheck,Clock,ClipboardCheck,Wrench,RefreshCw,Boxes,Laptop,UserRound,ArrowRight} from 'lucide-react';
 import {supabase,type Cart,type Requester,type Notebook} from '../lib/supabase';
@@ -28,23 +28,41 @@ const initial:DashboardFilter={cartId:'',shift:'all',days:7};
 function Metric({label,value,icon}: {label:string;value:string|number;icon:ReactNode}){
  return <div className="stat"><span className="stat-icon">{icon}</span><span className="stat-label">{label}</span><strong>{value}</strong></div>;
 }
-function Section({title,count,action,onAction,empty,children}:{title:string;count:number;action:string;onAction:()=>void;empty:string;children:ReactNode}){
- const [expanded,setExpanded]=useState(false);
+function Section({title,count,action,onAction,empty,children,expanded,onToggle}:{title:string;count:number;action:string;onAction:()=>void;empty:string;children:ReactNode;expanded:boolean;onToggle:()=>void}){
  const rows=Array.isArray(children)?children:[children];
  return <section className="panel dashboard-section"><div className="dashboard-section-heading"><h2>{title} <span className="dashboard-count">{count}</span></h2><button type="button" className="secondary" onClick={onAction}>{action} <ArrowRight size={14} aria-hidden="true"/></button></div>
   {count===0?<EmptyState>{empty}</EmptyState>:<div className="item-list">{expanded?rows:rows.slice(0,5)}</div>}
-  {count>5&&<button type="button" className="ghost dashboard-more" aria-expanded={expanded} onClick={()=>setExpanded(v=>!v)}>{expanded?'Mostrar menos':'Exibir todos ('+count+')'}</button>}
+  {count>5&&<button type="button" className="ghost dashboard-more" aria-expanded={expanded} onClick={onToggle}>{expanded?'Mostrar menos':'Exibir todos ('+count+')'}</button>}
  </section>;
 }
+// Keep the DOM reading/focus order aligned with the visual layout at each breakpoint.
+const dashboardMediaQuery='(max-width: 1000px)';
+function subscribeDashboardLayout(notify:()=>void){
+ const media=window.matchMedia(dashboardMediaQuery);
+ media.addEventListener('change',notify);
+ return ()=>media.removeEventListener('change',notify);
+}
+const isDesktopDashboard=()=>!window.matchMedia(dashboardMediaQuery).matches;
 export default function DashboardPage({onNavigate}:{onNavigate:(target:Target)=>void}){
  const [today,setToday]=useState(todayInSaoPaulo),[filter,setFilter]=useState<DashboardFilter>(initial);
  useEffect(()=>{const sync=()=>setToday(todayInSaoPaulo());const id=window.setInterval(sync,30000);window.addEventListener('focus',sync);return()=>{window.clearInterval(id);window.removeEventListener('focus',sync)};},[]);
+ const desktop=useSyncExternalStore(subscribeDashboardLayout,isDesktopDashboard,()=>false);
+ const [expandedSections,setExpandedSections]=useState<Record<string,boolean>>({});
+ const controls=(id:string)=>({expanded:!!expandedSections[id],onToggle:()=>setExpandedSections(previous=>({...previous,[id]:!previous[id]}))});
  const query=useQuery({queryKey:['operational-dashboard',today],queryFn:()=>load(today),staleTime:15000,refetchInterval:60000,retry:false});
  const data=query.data;
  const s=data?dashboardSummary(data,today,filter):null;
  const cartName=(id:string)=>data?.carts.find(c=>c.id===id)?.name??'Carrinho';
  const professor=(id:string)=>data?.requesters.find(p=>p.id===id)?.name??'Solicitante';
  const agenda=(p:DashboardPeriod)=> <article key={p.id} className="item dashboard-item"><div><strong>{cartName(p.cart_id)}</strong><span>{professor(p.reservations!.requester_id)} · {showDate(p.usage_date)} · {shiftLabel[p.shift]}</span><span>{p.quantity} notebook(s){p.reservations?.destination_label?' · '+p.reservations.destination_label:''}</span></div>{p.usage_date===today&&<span className="dashboard-status">{s!.status(p)}</span>}</article>;
+ const sections=s?[
+  <Section key="today" {...controls('today')} title="Agenda de hoje" count={s.todayPeriods.length} action="Abrir reservas" onAction={()=>onNavigate('reservations')} empty="Nenhum período confirmado para hoje.">{s.todayPeriods.map(agenda)}</Section>,
+  <Section key="returns" {...controls('returns')} title="Devoluções pendentes" count={s.pendingReturns.length} action="Abrir movimentações" onAction={()=>onNavigate('movements')} empty="Nenhum equipamento pendente de devolução.">{s.pendingReturns.map(m=><article key={m.id} className="item dashboard-item"><div><strong>{cartName(m.cart_id)}</strong><span>{professor(m.requester_id)} · {showDate(m.usage_date)} · {shiftLabel[m.shift]}</span><span>{m.quantity} notebook(s) sob custódia registrada</span></div><span className="dashboard-status">{m.usage_date<today?'De data anterior':'Pendente'}</span></article>)}</Section>,
+  <Section key="upcoming" {...controls('upcoming')} title="Próximas utilizações" count={s.upcoming.length} action="Abrir calendário" onAction={()=>onNavigate('calendar')} empty="Nenhum período confirmado no intervalo.">{s.upcoming.map(agenda)}</Section>,
+  <Section key="maintenance" {...controls('maintenance')} title="Manutenções" count={s.maintenance.length} action="Abrir manutenção" onAction={()=>onNavigate('maintenance')} empty="Nenhuma janela de manutenção neste intervalo.">{s.maintenance.map(m=><article key={m.id} className="item dashboard-item"><div><strong>{cartName(m.cart_id)}</strong><span>{showDate(m.start_date)} a {showDate(m.end_date)} · {m.shifts.map(sh=>shiftLabel[sh]).join(', ')}</span></div><span className="dashboard-status">{m.start_date<=today?'Janela vigente':'Programada'}</span></article>)}</Section>,
+  <Section key="requests" {...controls('requests')} title="Solicitações aguardando análise" count={s.pendingRequests.length} action="Abrir solicitações" onAction={()=>onNavigate('approvals')} empty="Nenhuma solicitação pendente.">{s.pendingRequests.map(r=><article key={r.id} className="item dashboard-item"><div><strong>{professor(r.requester_id)}</strong><span>{cartName(r.cart_id)} · {r.quantity} notebook(s) · {r.dates.length} data(s)</span><span>{r.shifts.map(sh=>shiftLabel[sh]).join(', ')}</span></div><span className="dashboard-status">Pendente</span></article>)}</Section>,
+  <section key="catalog" className="panel dashboard-section"><h2>Cadastros e capacidade nominal</h2><p className="form-hint">Capacidade cadastrada não representa equipamentos fisicamente disponíveis. Pendências de devolução: {s.pendingQuantity} notebook(s), {s.overdueReturns} registro(s) de datas anteriores.</p><div className="dashboard-catalog"><Metric label="Carrinhos cadastrados" value={s.cartCount} icon={<Boxes/>}/><Metric label="Capacidade cadastrada" value={s.capacity} icon={<Laptop/>}/><Metric label="Professores (total)" value={s.teacherCount} icon={<UserRound/>}/><Metric label="Notebooks identificados" value={s.identified} icon={<Laptop/>}/></div><div className="actions"><button className="secondary" onClick={()=>onNavigate('carts')}>Gerenciar carrinhos</button><button className="secondary" onClick={()=>onNavigate('requesters')}>Gerenciar professores</button><button className="secondary" onClick={()=>onNavigate('notebooks')}>Gerenciar notebooks</button></div></section>
+ ]:[];
  return <div className="dashboard-page">
   <header className="page-header dashboard-header"><div><h1>Visão geral</h1><p>Operação dos laboratórios · {showDate(today)}</p></div><button className="secondary" disabled={query.isFetching} onClick={()=>void query.refetch()}><RefreshCw size={16} aria-hidden="true"/> {query.isFetching?'Atualizando…':'Atualizar painel'}</button></header>
   <section className="panel dashboard-filters" aria-label="Filtros do dashboard">
@@ -66,12 +84,7 @@ export default function DashboardPage({onNavigate}:{onNavigate:(target:Target)=>
      <Metric label="Solicitações pendentes" value={s.pendingRequests.length} icon={<ClipboardCheck/>}/>
     </div>
     <div className="dashboard-grid">
-     <Section title="Agenda de hoje" count={s.todayPeriods.length} action="Abrir reservas" onAction={()=>onNavigate('reservations')} empty="Nenhum período confirmado para hoje.">{s.todayPeriods.map(agenda)}</Section>
-     <Section title="Devoluções pendentes" count={s.pendingReturns.length} action="Abrir movimentações" onAction={()=>onNavigate('movements')} empty="Nenhum equipamento pendente de devolução.">{s.pendingReturns.map(m=><article key={m.id} className="item dashboard-item"><div><strong>{cartName(m.cart_id)}</strong><span>{professor(m.requester_id)} · {showDate(m.usage_date)} · {shiftLabel[m.shift]}</span><span>{m.quantity} notebook(s) sob custódia registrada</span></div><span className="dashboard-status">{m.usage_date<today?'De data anterior':'Pendente'}</span></article>)}</Section>
-     <Section title="Próximas utilizações" count={s.upcoming.length} action="Abrir calendário" onAction={()=>onNavigate('calendar')} empty="Nenhum período confirmado no intervalo.">{s.upcoming.map(agenda)}</Section>
-     <Section title="Manutenções" count={s.maintenance.length} action="Abrir manutenção" onAction={()=>onNavigate('maintenance')} empty="Nenhuma janela de manutenção neste intervalo.">{s.maintenance.map(m=><article key={m.id} className="item dashboard-item"><div><strong>{cartName(m.cart_id)}</strong><span>{showDate(m.start_date)} a {showDate(m.end_date)} · {m.shifts.map(sh=>shiftLabel[sh]).join(', ')}</span></div><span className="dashboard-status">{m.start_date<=today?'Janela vigente':'Programada'}</span></article>)}</Section>
-     <Section title="Solicitações aguardando análise" count={s.pendingRequests.length} action="Abrir solicitações" onAction={()=>onNavigate('approvals')} empty="Nenhuma solicitação pendente.">{s.pendingRequests.map(r=><article key={r.id} className="item dashboard-item"><div><strong>{professor(r.requester_id)}</strong><span>{cartName(r.cart_id)} · {r.quantity} notebook(s) · {r.dates.length} data(s)</span><span>{r.shifts.map(sh=>shiftLabel[sh]).join(', ')}</span></div><span className="dashboard-status">Pendente</span></article>)}</Section>
-     <section className="panel dashboard-section"><h2>Cadastros e capacidade nominal</h2><p className="form-hint">Capacidade cadastrada não representa equipamentos fisicamente disponíveis. Pendências de devolução: {s.pendingQuantity} notebook(s), {s.overdueReturns} registro(s) de datas anteriores.</p><div className="dashboard-catalog"><Metric label="Carrinhos cadastrados" value={s.cartCount} icon={<Boxes/>}/><Metric label="Capacidade cadastrada" value={s.capacity} icon={<Laptop/>}/><Metric label="Professores (total)" value={s.teacherCount} icon={<UserRound/>}/><Metric label="Notebooks identificados" value={s.identified} icon={<Laptop/>}/></div><div className="actions"><button className="secondary" onClick={()=>onNavigate('carts')}>Gerenciar carrinhos</button><button className="secondary" onClick={()=>onNavigate('requesters')}>Gerenciar professores</button><button className="secondary" onClick={()=>onNavigate('notebooks')}>Gerenciar notebooks</button></div></section>
+     {desktop?<><div className="dashboard-column">{[sections[0],sections[2],sections[4]]}</div><div className="dashboard-column">{[sections[1],sections[3],sections[5]]}</div></>:sections}
     </div>
     <p className="form-hint">O horizonte de dias limita próximas utilizações e manutenções. Devoluções e solicitações pendentes não expiram com esse filtro. O painel não representa rastreamento em tempo real.</p>
   </>}
