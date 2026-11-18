@@ -99,8 +99,8 @@ function Login({onLogin,resetSuccess=false}:{onLogin:()=>void;resetSuccess?:bool
     <button type="button" className="auth-switch" disabled={busy} onClick={()=>{setMode(mode==='login'?'signup':'login');setError('');setMessage('');setPassword('')}}>
       {mode==='recover'?'Voltar ao login':mode==='login'?'Ainda não tem conta? Criar conta':'Já tem conta? Fazer login'}
     </button>
-    <a className="auth-switch" href="#/consulta-publica">Consultar disponibilidade sem login</a>
     <p className="auth-footer"><ShieldCheck size={16}/> Criar conta não concede acesso automático ao sistema.</p>
+    <a className="auth-public-link" href="#/consulta-publica">Consultar disponibilidade sem login</a>
   </section></div>;
 }
 export default function App() {

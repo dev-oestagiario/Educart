@@ -2624,3 +2624,32 @@ test('Issue #70 — carga 3D de 120 carrinhos, limite de detalhe e render sob de
  await expect(canvas).toHaveCount(0);
  await expect(list.getByRole('button',{name:/LOAD-120/})).toBeVisible();
 });
+
+test('Login — consulta pública discreta, centralizada e acessível no rodapé',async({page})=>{
+  await useFakeSupabase(page,false);
+  await page.goto('/');
+  await expect(page.getByRole('heading',{name:'Acesso ao Educart'})).toBeVisible();
+  const link=page.getByRole('link',{name:'Consultar disponibilidade sem login'});
+  const panel=page.locator('.auth-panel');
+  const before=page.locator('.auth-footer');
+  await expect(link).toHaveAttribute('href','#/consulta-publica');
+  for(const theme of ['dark','light']){
+    if(theme==='light')await page.getByRole('button',{name:'Ativar modo claro'}).click();
+    await expect(page.locator('html')).toHaveAttribute('data-theme',theme);
+    for(const width of [1440,390,320]){
+      await page.setViewportSize({width,height:900});
+      await expect(link).toBeVisible();
+      await expect(link).toHaveCSS('font-size','12px');
+      await expect(link).toHaveCSS('font-weight','400');
+      await expect(link).toHaveCSS('text-align','center');
+      const box=await link.boundingBox(), shell=await panel.boundingBox(), footer=await before.boundingBox();
+      expect(box&&shell&&footer).toBeTruthy();
+      expect(Math.abs(box!.x+box!.width/2-(shell!.x+shell!.width/2))).toBeLessThanOrEqual(2);
+      expect(box!.y).toBeGreaterThanOrEqual(footer!.y+footer!.height);
+      expect(box!.height).toBeGreaterThanOrEqual(44);
+      expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
+    }
+  }
+  await link.focus();await expect(link).toBeFocused();await page.keyboard.press('Enter');
+  await expect(page.getByRole('heading',{name:'Disponibilidade dos carrinhos'})).toBeVisible();
+});
