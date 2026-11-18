@@ -28,7 +28,7 @@ describe('dashboard operacional',()=>{
   expect(dashboardSummary(data,today,{...initial,end:'2026-12-01'}).upcoming.map(p=>p.id)).toEqual(['up','outside']);
  });
  it('filtra carrinho e turno e ignora janelas encerradas',()=>{
-  const s=dashboardSummary(data,today,{cartId:'a',shift:'NOTURNO',days:7});
+  const s=dashboardSummary(data,today,{...initial,cartId:'a',shift:'NOTURNO'});
   expect(s.todayPeriods.map(p=>p.id)).toEqual(['today-await']);expect(s.pendingReturns).toEqual([]);
   expect(s.maintenance.map(m=>m.id)).toEqual(['maint']);expect(s.maintenanceToday).toBe(1);expect(s.pendingRequests).toEqual([]);
  });
