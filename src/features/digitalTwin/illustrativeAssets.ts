@@ -10,11 +10,16 @@ export type AssetLibrary=Record<AssetKind,THREE.Group>;
 const urls:Record<AssetKind,string>={cart:cartUrl,room:roomUrl,notebook:notebookUrl};
 const kinds:AssetKind[]=['cart','room','notebook'];
 /** Only bundled, content-bound examples. Never consume database storage paths or URLs. */
-export async function readBundledAsset(kind:AssetKind,signal:AbortSignal):Promise<THREE.Group>{
+// Bounded to three immutable bundle assets; never cache private records or GPU resources.
+const verifiedBytes=new Map<AssetKind,ArrayBuffer>();
+export function clearIllustrativeByteCache(){verifiedBytes.clear();}
+export async function readBundledAsset(kind:AssetKind,signal:AbortSignal,useCache=false):Promise<THREE.Group>{
  const expected=manifest.assets[kind];
- const response=await fetch(urls[kind],{signal,credentials:'same-origin'});
+ if(signal.aborted)throw Error('Carga interrompida.');
+ let raw=useCache?verifiedBytes.get(kind)?.slice(0):undefined;
+ if(!raw){const response=await fetch(urls[kind],{signal,credentials:'same-origin'});
  if(!response.ok)throw Error('Asset indisponível.');
- const raw=await response.arrayBuffer();
+ raw=await response.arrayBuffer();}
  if(raw.byteLength!==expected.bytes||raw.byteLength>256*1024)throw Error('Tamanho inválido.');
  if(!globalThis.crypto?.subtle)throw Error('Verificação de integridade indisponível.');
  const hash=Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',raw)),v=>v.toString(16).padStart(2,'0')).join('');
@@ -29,6 +34,7 @@ export async function readBundledAsset(kind:AssetKind,signal:AbortSignal):Promis
  const gltf=await new GLTFLoader().parseAsync(raw,'');
  if(signal.aborted){disposeAssets([gltf.scene]);throw Error('Carga interrompida.');}
  if(expected.hotspots.some(name=>!gltf.scene.getObjectByName(name))){disposeAssets([gltf.scene]);throw Error('Manifesto incompatível.');}
+ if(useCache&&!verifiedBytes.has(kind))verifiedBytes.set(kind,raw.slice(0));
  return gltf.scene;
 }
 export function disposeAssets(roots:THREE.Object3D[]){
@@ -38,8 +44,8 @@ export function disposeAssets(roots:THREE.Object3D[]){
  });
  geometries.forEach(g=>g.dispose());materials.forEach(m=>m.dispose());
 }
-export async function loadIllustrativeAssets(signal:AbortSignal):Promise<AssetLibrary>{
- const results=await Promise.allSettled(kinds.map(k=>readBundledAsset(k,signal)));
+export async function loadIllustrativeAssets(signal:AbortSignal,useCache=false):Promise<AssetLibrary>{
+ const results=await Promise.allSettled(kinds.map(k=>readBundledAsset(k,signal,useCache)));
  const loaded=results.flatMap(r=>r.status==='fulfilled'?[r.value]:[]);
  if(signal.aborted||loaded.length!==kinds.length){disposeAssets(loaded);throw Error('Modelos detalhados indisponíveis.');}
  return Object.fromEntries(kinds.map((k,i)=>[k,loaded[i]])) as AssetLibrary;
