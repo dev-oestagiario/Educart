@@ -54,6 +54,9 @@ jobs:
       - name: Registrar versão publicada
         run: |
           node -e "require('fs').writeFileSync('dist/version.json',JSON.stringify({commit:process.env.GITHUB_SHA,ref:process.env.GITHUB_REF_NAME,build:new Date().toISOString()},null,2))"
+      - name: Validar metadados e arquivos do candidato
+        run: node scripts/verificar-artefato-release.mjs dist "$GITHUB_SHA" "$GITHUB_REF_NAME"
+
       - name: Configurar GitHub Pages
         uses: actions/configure-pages@v5
 
