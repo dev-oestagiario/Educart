@@ -1,3 +1,4 @@
+import {reportFailure} from './sentry';
 /** Local aggregate diagnostics. No identifiers, messages, URLs, payloads or persistence. */
 export const SERVICES=['auth','rest','rpc','functions','frontend','operation'] as const;
 export type Service=typeof SERVICES[number];
@@ -66,14 +67,15 @@ export function observedFetch(delegate:typeof fetch,baseUrl:string,store=diagnos
  const origin=new URL(baseUrl).origin;
  return async(input,init)=>{
   const service=serviceForRequest(input,origin),epoch=store.generation(),start=monotonic();
-  const record=(outcome:Outcome)=>{if(service)try{store.record(service,outcome,monotonic()-start,epoch);}catch{/* fail open */}};
+  const record=(outcome:Outcome)=>{if(service)try{store.record(service,outcome,monotonic()-start,epoch);if((service==='auth'||service==='rest'||service==='rpc'||service==='functions')&&(outcome==='network'||outcome==='server'||outcome==='limited'))reportFailure(service);}catch{/* fail open */}};
   try{const response=await delegate(input,init);record(outcomeForStatus(response.status));return response;}
   catch(error){const signal=init?.signal??(typeof Request!=='undefined'&&input instanceof Request?input.signal:null);
    record(signal?.aborted||(error instanceof DOMException&&error.name==='AbortError')?'cancelled':'network');throw error;}
  };
 }
 export function observeBrowserFailures(target:Window,store=diagnostics){
- const report=()=>store.record('frontend','failure',0);
- target.addEventListener('error',report);target.addEventListener('unhandledrejection',report);
- return()=>{target.removeEventListener('error',report);target.removeEventListener('unhandledrejection',report);};
+ const reportError=()=>{store.record('frontend','failure',0);reportFailure('browser');};
+ const reportRejection=()=>{store.record('frontend','failure',0);reportFailure('rejection');};
+ target.addEventListener('error',reportError);target.addEventListener('unhandledrejection',reportRejection);
+ return()=>{target.removeEventListener('error',reportError);target.removeEventListener('unhandledrejection',reportRejection);};
 }

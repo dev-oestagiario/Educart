@@ -23,28 +23,29 @@
     "release:preflight": "node scripts/preflight-release.mjs"
   },
   "dependencies": {
+    "@sentry/react": "11.14.0",
     "@supabase/supabase-js": "2.80.0",
     "@tanstack/react-query": "5.90.2",
+    "jspdf": "4.2.1",
     "lucide-react": "0.468.0",
     "react": "19.2.0",
     "react-dom": "19.2.0",
-    "zod": "4.6.7",
-    "zustand": "5.0.8",
     "read-excel-file": "9.3.14",
-    "jspdf": "4.2.1",
-    "three": "0.180.0"
+    "three": "0.180.0",
+    "zod": "4.6.7",
+    "zustand": "5.0.8"
   },
   "devDependencies": {
+    "@playwright/test": "1.65.1",
     "@tailwindcss/vite": "4.1.14",
     "@types/node": "24.8.1",
     "@types/react": "19.2.2",
     "@types/react-dom": "19.2.2",
+    "@types/three": "0.180.0",
     "@vitejs/plugin-react": "4.7.0",
     "tailwindcss": "4.1.14",
     "typescript": "5.9.3",
     "vite": "7.3.8",
-    "vitest": "5.1.0",
-    "@playwright/test": "1.65.1",
-    "@types/three": "0.180.0"
+    "vitest": "5.1.0"
   }
 }
