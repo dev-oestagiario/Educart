@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import {observedFetch} from './observability';
 import {recoveryEntry} from './passwordRecovery';
 
 type RecoveryState='none'|'pending'|'ready'|'invalid';
@@ -30,7 +31,8 @@ const localUrl=typeof url==='string'&&/^http:\/\/(127\.0\.0\.1|localhost):54321\
 export const isConfigured = Boolean(url && key && !key.includes('substitua_') && (!isHomologacao||localUrl));
 export const supabase = createClient(
   isConfigured ? url : 'https://invalid.supabase.co',
-  isConfigured ? key : 'not-configured'
+  isConfigured ? key : 'not-configured',
+  {global:{fetch:observedFetch(globalThis.fetch.bind(globalThis),isConfigured?url:'https://invalid.supabase.co')}}
 );
 export type Cart = { id:string; code:string; name:string; capacity:number; active:boolean; created_at:string };
 export type Requester = { id:string; name:string; reference_code:string|null; active:boolean; created_at:string };

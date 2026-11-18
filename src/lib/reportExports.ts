@@ -2,7 +2,7 @@ import {showDate} from './reservations';
 
 export type ReportRow={
   date:string;shift:string;cart:string;requester:string;mode:string;
-  quantity:number;needsMouse:boolean;status:string;createdBy:string;notes:string
+  quantity:number;needsMouse:boolean;status:string;createdBy:string;notes:string;room?:string
 };
 export function safeSpreadsheetCell(value:unknown):string{
   const valueAsText=String(value??'');
@@ -10,10 +10,10 @@ export function safeSpreadsheetCell(value:unknown):string{
 }
 export function toCsv(rows:ReportRow[]):string {
   const header=['Data','Turno','Carrinho','Solicitante','Tipo','Notebooks',
-    'Precisa mouse','Situação','Registrado por','Observações'];
+    'Precisa mouse','Situação','Registrado por','Observações','Sala'];
   const values=rows.map(r=>[
     r.date,r.shift,r.cart,r.requester,r.mode,r.quantity,r.needsMouse?'Sim':'Não',
-    r.status,r.createdBy,r.notes
+    r.status,r.createdBy,r.notes,r.room??''
   ]);
   const quote=(v:unknown)=>'"'+safeSpreadsheetCell(v).replace(/"/g,'""')+'"';
   return '\uFEFF'+[header,...values].map(row=>row.map(quote).join(';')).join('\r\n')+'\r\n';
@@ -78,12 +78,12 @@ export function buildAgendaReport(rows:readonly ReportRow[],dates:readonly strin
       const cancelled=row.status.toLocaleLowerCase('pt-BR')==='cancelada';
       const equipment=row.cart+suffix+(row.notes?' - '+row.notes:'')+(cancelled?' [Cancelada]':'');
       const base:AgendaEntry={
-        shift:row.shift,requester:row.requester,equipment,room:'Não informada',cancelled
+        shift:row.shift,requester:row.requester,equipment,room:row.room||'Não informada',cancelled
       };
       return row.needsMouse?[base,{
         shift:row.shift,requester:row.requester,
         equipment:'Mouses - '+row.cart+(cancelled?' [Cancelada]':''),
-        room:'Não informada',cancelled
+        room:row.room||'Não informada',cancelled
       }]:[base];
     });
     return {iso,dateLabel:showDate(iso),weekday,entries};

@@ -7,19 +7,22 @@ import {requestStatusLabel,validateTeacherRequest,type TeacherRequest} from '../
 import NotificationBell from '../components/NotificationBell';
 import BrandLogo from '../components/BrandLogo';
 import ThemeToggle from '../components/ThemeToggle';
+import {collectPages} from '../lib/queryRefresh';
+import {fetchCatalogRows} from '../lib/catalog';
 import RecordsHeader from '../components/RecordsHeader';
+import WeeklyRecurrence from '../components/WeeklyRecurrence';
+import {defaultWeeklyPattern,expandWeeklyPattern} from '../lib/recurrence';
 import TeacherAvailabilityPreview from '../components/TeacherAvailabilityPreview';
 const NotificationsPage = lazy(()=>import('./NotificationsPage'));
 
 
 type Props={requesterId:string;userId:string;email:string;onLogout:()=>void};
-const today=todayInSaoPaulo();
-function firstWeekday(){
+function firstWeekday(today:string){
   let day=today;
   while(!isWeekday(day))day=addCalendarDays(day,1);
   return day;
 }
-const firstDay=firstWeekday();
+
 const explain=(error:unknown)=>{
   if(error instanceof Error)return error.message;
   if(error && typeof error==='object' && 'message' in error && typeof error.message==='string')return error.message;
@@ -28,12 +31,15 @@ const explain=(error:unknown)=>{
 
 export default function TeacherPortal({requesterId,userId,email,onLogout}:Props){
   const qc=useQueryClient();
+  const today=todayInSaoPaulo(),firstDay=firstWeekday(today);
+  const [limit,setLimit]=useState(50);
   const [showNotifications,setShowNotifications]=useState(false);
   const [screen,setScreen]=useState<'list'|'form'>('list');
   const [cartId,setCartId]=useState('');
   const [mode,setMode]=useState<'PARCIAL'|'COMPLETA'>('PARCIAL');
   const [quantity,setQuantity]=useState('1');
-  const [dateMode,setDateMode]=useState<'intervalo'|'avulsas'>('intervalo');
+  const [dateMode,setDateMode]=useState<'intervalo'|'avulsas'|'weekly'>('intervalo');
+  const [pattern,setPattern]=useState(()=>defaultWeeklyPattern(firstDay));
   const [start,setStart]=useState(firstDay),[end,setEnd]=useState(firstDay);
   const [individualDate,setIndividualDate]=useState(firstDay);
   const [individualDates,setIndividualDates]=useState<string[]>([]);
@@ -44,10 +50,7 @@ export default function TeacherPortal({requesterId,userId,email,onLogout}:Props)
   const [withdrawId,setWithdrawId]=useState<string|null>(null);
   const carts=useQuery({
     queryKey:['teacher-active-carts'],queryFn:async()=>{
-      const {data,error}=await supabase.from('carts').select('id,code,name,capacity,active,created_at')
-        .eq('active',true).order('name');
-      if(error)throw error;
-      return (data??[]) as Cart[];
+      return fetchCatalogRows<Cart>('carts',true);
     }
   });
   const teacher=useQuery({
@@ -58,22 +61,20 @@ export default function TeacherPortal({requesterId,userId,email,onLogout}:Props)
   });
   const requests=useQuery({
     queryKey:['teacher-requests'],queryFn:async()=>{
-      const {data,error}=await supabase.from('reservation_requests')
+      return collectPages<TeacherRequest>((a,b)=>supabase.from('reservation_requests')
         .select('id,requester_id,requested_by,cart_id,mode,quantity,dates,shifts,needs_mouse,notes,status,review_notes,reservation_id,created_at,reviewed_at')
-        .order('created_at',{ascending:false}).limit(100);
-      if(error)throw error;
-      return (data??[]) as TeacherRequest[];
+        .order('created_at',{ascending:false}).order('id').range(a,b));
     }
   });
   const cart=carts.data?.find(x=>x.id===cartId);
   const requestedQuantity=mode==='COMPLETA'?(cart?.capacity??0):Number(quantity);
   const days=useMemo(()=>{
-    try {return expandReservationDates(dateMode,start,end,individualDates,today);}
+    try {return dateMode==='weekly'?expandWeeklyPattern(pattern,todayInSaoPaulo()):expandReservationDates(dateMode,start,end,individualDates,todayInSaoPaulo());}
     catch{return [];}
-  },[dateMode,start,end,individualDates]);
+  },[dateMode,pattern,start,end,individualDates,today]);
   const create=useMutation({
     mutationFn:async()=>{
-      const selected=expandReservationDates(dateMode,start,end,individualDates,today);
+      const selected=dateMode==='weekly'?expandWeeklyPattern(pattern,todayInSaoPaulo()):expandReservationDates(dateMode,start,end,individualDates,todayInSaoPaulo());
       const input=validateTeacherRequest({
         cart_id:cartId,mode,quantity:requestedQuantity,dates:selected,
         shifts,needs_mouse:needsMouse,notes:notes.trim()
@@ -106,12 +107,12 @@ export default function TeacherPortal({requesterId,userId,email,onLogout}:Props)
   });
   function newRequest(){
     setCartId('');setMode('PARCIAL');setQuantity('1');
-    setDateMode('intervalo');setStart(firstDay);setEnd(firstDay);
+    setDateMode('intervalo');setPattern(defaultWeeklyPattern(firstDay));setStart(firstDay);setEnd(firstDay);
     setIndividualDate(firstDay);setIndividualDates([]);setShifts(['MATUTINO']);
     setNeedsMouse(false);setNotes('');setMessage(null);setScreen('form');
   }
   function returnToList(){if(create.isPending)return;setScreen('list');setMessage(null);}
-  function send(e:FormEvent){e.preventDefault();setMessage(null);create.mutate();}
+  function send(e:FormEvent){e.preventDefault();if(create.isPending)return;setMessage(null);create.mutate();}
   function toggleShift(value:Shift,checked:boolean){
     setShifts(old=>checked?[...new Set([...old,value])]:old.filter(x=>x!==value));
   }
@@ -123,7 +124,7 @@ export default function TeacherPortal({requesterId,userId,email,onLogout}:Props)
     setMessage(null);
   }
   return <div className="teacher-shell">
-    <a href="#teacher-main" className="skip-link">Ir ao conteúdo</a>
+    <a href="#teacher-main" className="skip-link" onClick={e=>{e.preventDefault();document.getElementById("teacher-main")?.focus();}}>Ir ao conteúdo</a>
     <header className="teacher-topbar">
       <BrandLogo tone="light"/>
       <div className="teacher-account"><ThemeToggle/><span title={email}>{teacher.data?.name??'Portal do professor'}</span>
@@ -146,7 +147,7 @@ export default function TeacherPortal({requesterId,userId,email,onLogout}:Props)
           {requests.isLoading?<p role="status">Carregando solicitações…</p>:
             requests.error?<p role="alert" className="notice error">Não foi possível consultar suas solicitações.</p>:
             !requests.data?.length?<p className="empty">Você ainda não enviou solicitações.</p>:
-            <div className="teacher-request-list">{requests.data.map(req=>
+            <div className="teacher-request-list">{requests.data.slice(0,limit).map(req=>
               <article className="booking-item" key={req.id}>
                 <div className="teacher-request-heading"><strong>{carts.data?.find(c=>c.id===req.cart_id)?.name??'Carrinho'}</strong>
                   <span className={'teacher-status '+req.status.toLowerCase()}>{requestStatusLabel[req.status]}</span></div>
@@ -164,13 +165,14 @@ export default function TeacherPortal({requesterId,userId,email,onLogout}:Props)
                   </div>:
                   <button type="button" className="text-button" onClick={()=>setWithdrawId(req.id)}>Retirar pedido pendente</button>)}
               </article>)}</div>}
+          {(requests.data?.length??0)>limit&&<button className="secondary" onClick={()=>setLimit(n=>n+50)}>Carregar mais solicitações</button>}
         </section>
 
         <p className="teacher-footer"><CalendarDays size={17} aria-hidden="true"/> Para alterações em reservas já confirmadas, procure a equipe de TI.</p>
       </>:<>
         <RecordsHeader editing title="Solicitar laboratório móvel"
           description="Informe o carrinho, as datas e os turnos. A TI confirmará a reserva após verificar a disponibilidade."
-          actionLabel="Voltar para solicitações" onAction={returnToList}/>
+          actionLabel="Voltar para solicitações" busy={create.isPending} onAction={returnToList}/>
         <div className="panel muted-panel teacher-portal-note"><ShieldCheck size={20} aria-hidden="true"/>
           <p><strong>Solicitação não é reserva.</strong> Pedidos pendentes não ocupam notebooks; a TI revalida a disponibilidade antes de aprovar.</p>
         </div>
@@ -207,12 +209,14 @@ export default function TeacherPortal({requesterId,userId,email,onLogout}:Props)
             </fieldset>
             <label className="field" htmlFor="teacher-date-mode"><span>Datas da solicitação</span>
               <select id="teacher-date-mode" value={dateMode}
-                onChange={e=>setDateMode(e.target.value as 'intervalo'|'avulsas')}>
+                onChange={e=>setDateMode(e.target.value as 'intervalo'|'avulsas'|'weekly')}>
                 <option value="intervalo">Período (somente dias úteis)</option>
                 <option value="avulsas">Datas avulsas</option>
+                <option value="weekly">Recorrência semanal</option>
               </select>
             </label>
-            {dateMode==='intervalo'?
+            {dateMode==='weekly'?<WeeklyRecurrence id="teacher-weekly" value={pattern} today={todayInSaoPaulo()} shifts={shifts.length} disabled={create.isPending} onChange={setPattern}/>:
+            dateMode==='intervalo'?
               <div className="reservation-dates">
                 <label className="field" htmlFor="teacher-start"><span>De</span><input id="teacher-start" type="date" min={today} value={start} onChange={e=>setStart(e.target.value)}/></label>
                 <label className="field" htmlFor="teacher-end"><span>Até</span><input id="teacher-end" type="date" min={today} value={end} onChange={e=>setEnd(e.target.value)}/></label>
@@ -233,7 +237,7 @@ export default function TeacherPortal({requesterId,userId,email,onLogout}:Props)
               <textarea id="teacher-notes" rows={3} maxLength={1000} value={notes}
                 onChange={e=>setNotes(e.target.value)} placeholder="Informações para a equipe de TI"/>
             </label>
-            <button className="primary" type="submit" disabled={create.isPending||!!carts.error||!cart||!days.length||!shifts.length}>
+            <button className="primary" type="submit" disabled={create.isPending||!!carts.error||!cart||!days.length||!shifts.length||!Number.isInteger(requestedQuantity)||requestedQuantity<1||requestedQuantity>cart.capacity}>
               {create.isPending?'Enviando…':'Enviar solicitação para aprovação'}</button>
           </form>
         </section>

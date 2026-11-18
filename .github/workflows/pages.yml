@@ -1,9 +1,12 @@
 name: Publicar Educart — produção
 
 on:
-  push:
-    branches: [main]
   workflow_dispatch:
+    inputs:
+      approved_sha:
+        description: 'SHA completo da main aprovado após #66–#70'
+        required: true
+        type: string
 
 permissions:
   contents: read
@@ -22,6 +25,16 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
+      - name: Exigir autorização da promoção deste SHA
+        env:
+          REQUESTED_SHA: ${{ inputs.approved_sha }}
+          APPROVED_SHA: ${{ vars.EDUCART_APPROVED_RELEASE_SHA }}
+        run: |
+          if [[ ! "$GITHUB_SHA" =~ ^[a-f0-9]{40}$ || "$REQUESTED_SHA" != "$GITHUB_SHA" || "$APPROVED_SHA" != "$GITHUB_SHA" ]]; then
+            echo 'Publicação bloqueada: aprovação institucional do SHA ausente ou divergente.'
+            exit 1
+          fi
+
       - name: Baixar codigo
         uses: actions/checkout@v4
 
@@ -37,6 +50,12 @@ jobs:
         run: npm run audit
       - name: Executar testes
         run: npm run test
+
+      - name: Validar scripts operacionais
+        run: node --test scripts/verificar-f5-2-layout.mjs scripts/email-worker.test.mjs scripts/verificar-saude-deploy.test.mjs scripts/verificar-artefato-release.test.mjs scripts/homologacao-preflight.test.mjs scripts/verificar-backup-operacional.test.mjs scripts/monitorar-operacao.test.mjs
+
+      - name: Preparar acessibilidade automatizada
+        run: npm install --prefix .local-sql-test --ignore-scripts --save-exact axe-core@4.11.1 --no-audit --no-fund
 
       - name: Preparar Chromium para testes de navegador
         run: npx playwright install --with-deps chromium
@@ -54,6 +73,9 @@ jobs:
       - name: Registrar versão publicada
         run: |
           node -e "require('fs').writeFileSync('dist/version.json',JSON.stringify({commit:process.env.GITHUB_SHA,ref:process.env.GITHUB_REF_NAME,build:new Date().toISOString()},null,2))"
+      - name: Validar metadados e arquivos do candidato
+        run: node scripts/verificar-artefato-release.mjs dist "$GITHUB_SHA" "$GITHUB_REF_NAME"
+
       - name: Configurar GitHub Pages
         uses: actions/configure-pages@v5
 

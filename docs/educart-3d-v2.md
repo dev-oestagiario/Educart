@@ -1,6 +1,6 @@
 # Educart 3D V2 — Especificação e plano técnico do gêmeo digital
 
-**Estado:** especificação planejada, não implementada. **Fase:** F5 do [roadmap consolidado](roadmap-finalizacao-educart.md).
+**Estado:** protótipo F5.0 e fundação F5.1 implementados em desenvolvimento; referências reais, homologação visual e Supabase completo pendentes. Veja [registro F5.0](f5-0-prototipo-ambiente-3d.md). **Fase:** F5 do [roadmap consolidado](roadmap-finalizacao-educart.md).
 **Objetivo:** transformar a visualização isolada de um carrinho em um ambiente virtual detalhado e interativo, com todos os carrinhos simultaneamente, inspeção de notebooks e informações operacionais.
 
 ## 1. Problema e baseline
@@ -109,45 +109,46 @@ Acessibilidade: texto acompanha cor; foco visível, botões rotulados, sequênci
 ## 7. Tarefas de implementação
 
 ### F5.0 — Constitution / Specify / protótipo
-- [ ] DT-001 Confirmar escopo administrativo, fontes, permissões, inventário e modos de visualização.
+- [x] DT-001 Confirmar escopo administrativo, fontes, permissões, inventário e modos de visualização.
 - [ ] DT-002 Coletar apenas fotos e dimensões autorizadas (sala, mobiliário, carrinhos, notebooks); inventário de modelos e licença, sem dados pessoais em imagens.
-- [ ] DT-003 Wireframe da tela ampla e mobile, storyboard de clique/inspeção; protótipo de sala ilustrativa com 3+ carrinhos. Definir padrão visual e orçamento técnico; aprovar antes da modelagem detalhada.
+- [ ] DT-003 Wireframe da tela ampla e mobile, storyboard de clique/inspeção; protótipo de sala ilustrativa com 3+ carrinhos. Definir padrão visual e orçamento técnico; aprovar antes da modelagem detalhada. Protótipo e orçamento inicial implementados; aceite visual pendente.
 
 ### F5.1 — Fundação de dados (depende F3.1/F3.2)
-- [ ] DT-004 Revisar schema/migrations/RLS existentes e elaborar ADR do modelo espacial; migrar tabelas aditivamente, índices e policies.
-- [ ] DT-005 CRUD de ambientes e posicionamento; área sem localização; importação/edição de medidas e poses com validação e versão/registro.
-- [ ] DT-006 RPC agregada por data/turno, contratos de detalhe e autorização negativa (anon/professor/conta sem vínculo).
-- [ ] DT-007 Mapeamento opcional slot/notebook físico; preservar capacidade sem código e impedir associação falsa/duplicada.
+Implementação e testes locais: [F5.1](f5-1-fundacao-espacial.md). Editor numérico; importação em lote e drag 3D ficam para depois; Auth real e aceite da TI pendentes.
+- [x] DT-004 Revisar schema/migrations/RLS existentes e elaborar ADR do modelo espacial; migrar tabelas aditivamente, índices e policies.
+- [x] DT-005 CRUD de ambientes e posicionamento; área sem localização; importação/edição de medidas e poses com validação e versão/registro.
+- [x] DT-006 RPC agregada por data/turno, contratos de detalhe e autorização negativa (anon/professor/conta sem vínculo).
+- [x] DT-007 Mapeamento opcional slot/notebook físico; preservar capacidade sem código e impedir associação falsa/duplicada.
 
 ### F5.2 — Experiência de visão geral
-- [ ] DT-008 Criar layout canvas + toolbar + painel, carregar todos sem seleção; manter lazy load e dados acessíveis.
-- [ ] DT-009 Cena com salas/ambientes e carrinhos, seleção por raycast/ID, destaque, camada de etiquetas, câmera e navegar todos.
-- [ ] DT-010 Painel de status/ocupação/reservas e localização registrada, atualização de data/turno e tratamento de erro; busca opcional.
+- [x] DT-008 Criar layout canvas + toolbar + painel, carregar todos sem seleção; manter lazy load e dados acessíveis.
+- [x] DT-009 Cena com salas/ambientes e carrinhos, seleção por raycast/ID, destaque, camada de etiquetas, câmera e navegar todos.
+- [x] DT-010 Painel de status/ocupação/reservas e localização registrada, atualização de data/turno e tratamento de erro; busca opcional.
 - [ ] DT-011 Testar carrinhos sem posição, 0/1/N ativos, estados mistos, dados defasados, troca de turno e filtros.
 
 ### F5.3 — Assets detalhados
-- [ ] DT-012 Pipeline de Blender/GLB e manifesto de escala, licença e hotspots; materiais, iluminação e LOD.
-- [ ] DT-013 Ambiente modelado com paredes, piso, portas, corredores e mobiliário conforme material disponibilizado; modo ilustrativo se ausente.
-- [ ] DT-014 Modelos de carrinho exterior/interior detalhados, dobradiças, ventilação, compartimentos, rodas, cabos/conectores, etiquetas; dimensões conforme modelo real.
-- [ ] DT-015 Modelo detalhado de notebooks e posições repetíveis, associação aos tipos de carrinho sem inventar códigos; tratamento de asset ausente.
-- [ ] DT-016 Revisão visual das referências e aprovação do realismo/modelagem antes de declarar réplica.
+- [x] DT-012 Pipeline GLB original reproduzível, manifesto de escala, direitos e hotspots; materiais PBR e modo econômico. Blender não obrigatório para os assets procedurais; LOD de distância fica na F5.5.
+- [x] DT-013 Modelo ilustrativo com paredes em corte, piso, porta e mobiliário genérico (mobiliário não posicionado na cena registrada). Corredores reais e revisão visual aguardam referências.
+- [x] DT-014 Modelo ilustrativo exterior/interior com dobradiças, ventilação, compartimentos, rodas, cabos/conectores e etiqueta; cabe no footprint cadastrado, altura ilustrativa.
+- [x] DT-015 Modelo genérico de notebook, posições de exemplo repetíveis, sem equivalência com slots físicos; fallback e modo econômico preservam dados. Associação por tipo real e vínculos na F5.4, condicionados a referências.
+- [ ] DT-016 Revisão visual das referências e aprovação do realismo/modelagem antes de declarar réplica. Chromium/WebGL ainda pendentes.
 
 ### F5.4 — Inspeção e interação
-- [ ] DT-017 Foco/sair, rotação/zoom, abrir portas e explorar interior com hotspots e controles de teclado.
-- [ ] DT-018 Clique no notebook mostra dados confirmados; posição ilustrativa informa apenas ocupação agregada quando não houver vínculo.
-- [ ] DT-019 Fluxo de abrir reservas/detalhes/histórico via páginas existentes, com RBAC e sem mutação direta de mesh.
-- [ ] DT-020 Sincronização cache após alterações, polling e timestamps; consistência com dashboard, relatórios e consulta pública.
+- [x] DT-017 Foco/sair, rotação/zoom, porta virtual articulada e hotspots por raycast e controles de teclado; validação visual pendente.
+- [x] DT-018 Inspeção de exemplares ilustrativos sem atribuir dados reais. Lista textual separada de vínculos confirmados, reserva e histórico individual por UUID. Mapeamento físico sobre a geometria depende de referência aprovada.
+- [x] DT-019 Navegação para cadastros, reservas, manutenção e histórico por páginas existentes, sem mutação de dados por interação 3D.
+- [ ] DT-020 Invalidação espacial, polling e timestamps implementados; comprovação integral de consistência com dashboard, relatórios e consulta pública pendente na homologação.
 
 ### F5.5 — Otimização e fallback
-- [ ] DT-021 LOD/instancing, lazy loader, cache/descarte, compressão de assets, modo adaptativo de qualidade e render sob demanda.
-- [ ] DT-022 Teclado/lista textual e layout mobile; teste em rede limitada, falhas de GLB/WebGL, zoom 200%, reduced-motion e contraste.
-- [ ] DT-023 Medir performance em escala de referência, comparar perfil antes/depois, corrigir gargalos e documentar limites reais.
+- [ ] DT-021 LOD, instancing, lazy loader, cache/descarte, modo adaptativo e render sob demanda implementados. GLB já compactos (46.360 bytes); compressão adicional não adotada sem medição de benefício.
+- [ ] DT-022 Lista paginada, controles mobile, modo automático e reduced-motion implementados; teste real de navegador, contraste, rede e zoom pendentes.
+- [ ] DT-023 Perfil estrutural sintético de 120 carrinhos: 21.240 → 2.124 nós detalhados no limite de 12. GPU/FPS, memória real e homologação pendentes.
 
 ### F5.6 — Homologação e publicação
-- [ ] DT-024 Vitest de projeção, poses, status, vínculos e datas; testes SQL de acesso/RLS e consistência.
-- [ ] DT-025 Playwright: visão geral sem seletor, selecionar cada carrinho, inspeção interna, troca de período, móveis, tema, fallback. Testar cena por IDs/eventos determinísticos e complementar screenshots; não depender de coordenada arbitrária no teste.
+- [ ] DT-024 Vitest 124/124 e SQL/RLS local isolado aprovados; JWT/PostgREST e concorrência real pendentes.
+- [ ] DT-025 Cenários Playwright ampliados: quatro estados, inspeção, período, fallback, teclado e seis larguras; execução real e screenshots pendentes.
 - [ ] DT-026 Homologar com dados controlados reais e referências físicas, registrar matriz de aceite e falhas; validar modelo indicado como real/ilustrativo.
-- [ ] DT-027 Reativar menu 3D apenas com aprovação, integrar em main e atualizar manual, ADR 0003 e changelog; remover testes antigos obsoletos somente após cobertura equivalente, sem fingir que foram executados.
+- [ ] DT-027 Publicação bloqueada pelos gates de segurança/dependências, navegador e aceite. ADR 0003 atualizado; menu DEV preservado. Ver [matriz F5.6](f5-6-homologacao-3d.md).
  
 ## 8. Cenários essenciais de aceite
 

@@ -132,7 +132,7 @@ export default function PublicCartAvailabilityPage(){
                     <strong>{slots[0].cart_name}</strong>
                     {slots.map(slot=><div key={slot.shift} className={'calendar-event '+(slot.available===0?'public-agenda-full':'')}>
                       <strong>{shiftLabel[slot.shift]}</strong>
-                      <span>{slot.reserved===0?'Livre':slot.available===0?'Totalmente reservado':'Parcialmente reservado'}</span>
+                      <span>{slot.capacity===0?'Indisponível':slot.reserved===0?'Livre':slot.available===0?'Totalmente reservado':'Parcialmente reservado'}</span>
                       <span>{slot.reserved} de {slot.capacity} notebooks reservados · {slot.available} disponíveis</span>
                     </div>)}
                   </div>

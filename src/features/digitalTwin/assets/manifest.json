@@ -1,0 +1,69 @@
+{
+  "schema": "educart-illustrative-assets-v1",
+  "source": "Original procedural geometry; no external assets or real site reference",
+  "author": "Educart project (original generated geometry)",
+  "rights": "Original project assets; distribution subject to project owner approval. No third-party model license asserted.",
+  "units": "m",
+  "up": "Y",
+  "assets": {
+    "cart": {
+      "file": "cart-illustrative-v1.glb",
+      "version": 1,
+      "sha256": "6b3d7b66916a2b095c684c6007fb734e622df91276eb5be655a22a498c9894c8",
+      "bytes": 27596,
+      "illustrative": true,
+      "nominalDimensions": [
+        1.24,
+        1.86,
+        0.83
+      ],
+      "hotspots": [
+        "door-hinge",
+        "handle",
+        "shelf-0",
+        "shelf-1",
+        "shelf-2",
+        "charging-rail-0",
+        "illustrative-slot-01",
+        "illustrative-slot-30"
+      ],
+      "illustrativeSlotCount": 30
+    },
+    "room": {
+      "file": "room-illustrative-v1.glb",
+      "version": 1,
+      "sha256": "bcce4a523b4185d75dc58d33b746bf6529ab14b7c1ae81eecc17d06c2c768b13",
+      "bytes": 10560,
+      "illustrative": true,
+      "nominalDimensions": [
+        8,
+        0.68,
+        6
+      ],
+      "hotspots": [
+        "illustrative-door-frame",
+        "illustrative-furniture-unplaced"
+      ],
+      "illustrativeSlotCount": 0
+    },
+    "notebook": {
+      "file": "notebook-illustrative-v1.glb",
+      "version": 1,
+      "sha256": "bb3ea46ba066c013b92e005fd1a34e4a8a222f7171bf4422dfa6978d398a6621",
+      "bytes": 8204,
+      "illustrative": true,
+      "nominalDimensions": [
+        0.08,
+        0.316,
+        0.49
+      ],
+      "hotspots": [
+        "keyboard",
+        "trackpad",
+        "display-panel",
+        "hinge"
+      ],
+      "illustrativeSlotCount": 0
+    }
+  }
+}

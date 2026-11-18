@@ -1,12 +1,13 @@
-import {useState} from 'react';
+import {useMemo,useState} from 'react';
 import {useInfiniteQuery,useMutation,useQuery,useQueryClient} from '@tanstack/react-query';
 import {ClipboardCheck, History, Pencil, XCircle} from 'lucide-react';
 import {supabase, type Cart, type Requester} from '../lib/supabase';
-import {showDate,shiftLabel,type Shift} from '../lib/reservations';
+import {collectPages,invalidateReservationViews} from '../lib/queryRefresh';
+import {showDate,shiftLabel,todayInSaoPaulo,type Shift} from '../lib/reservations';
 
 export type Booking={
   id:string; requester_id:string;cart_id:string;mode:'COMPLETA'|'PARCIAL';
-  quantity:number;needs_mouse:boolean;notes:string|null;status:string;created_at:string
+  quantity:number;needs_mouse:boolean;notes:string|null;status:string;created_at:string;destination_room_id?:string|null;destination_label?:string|null
 };
 export type BookingPeriod={
   id:string;reservation_id:string;usage_date:string;shift:Shift;quantity:number;active:boolean
@@ -24,13 +25,8 @@ type Props={
   onChanged:()=>void
 };
 type CancelSelection={bookingId:string;periodId?:string}|null;
-const today=new Intl.DateTimeFormat('en-US',{timeZone:'America/Sao_Paulo',
-  year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date());
-const currentDay=[today.find(x=>x.type==='year')?.value,today.find(x=>x.type==='month')?.value,
-  today.find(x=>x.type==='day')?.value].join('-');
-
 export default function ReservationManager({carts,requesters,onEdit,onChanged}:Props){
-  const qc=useQueryClient();
+  const qc=useQueryClient(),currentDay=todayInSaoPaulo();
   const [selectedCancel,setSelectedCancel]=useState<CancelSelection>(null);
   const [notice,setNotice]=useState('');
   const [loadingEdit,setLoadingEdit]=useState<string|null>(null);
@@ -45,14 +41,15 @@ export default function ReservationManager({carts,requesters,onEdit,onChanged}:P
     queryFn:async({pageParam}):Promise<Booking[]>=>{
       const from=pageParam*pageSize;
       const {data,error}=await supabase.from('reservations')
-        .select('id,requester_id,cart_id,mode,quantity,needs_mouse,notes,status,created_at')
-        .order('created_at',{ascending:false}).range(from,from+pageSize-1);
+        .select('id,requester_id,cart_id,mode,quantity,needs_mouse,notes,status,created_at,destination_room_id,destination_label')
+        .order('created_at',{ascending:false}).order('id').range(from,from+pageSize-1);
       if(error)throw error;
       return (data??[]) as Booking[];
     },
     getNextPageParam:(lastPage,allPages)=>lastPage.length===pageSize?allPages.length:undefined
   });
-  const bookings=reservations.data?.pages.flatMap(page=>page)??[];
+  const bookings=useMemo(()=>reservations.data?.pages.flatMap(page=>page)??[],[reservations.data]);
+  const bookingIds=useMemo(()=>bookings.map(b=>b.id),[bookings]);
   const filter=search.trim().toLocaleLowerCase('pt-BR');
   const filteredBookings=bookings.filter(booking=>{
     if(statusFilter!=='all'&&booking.status!==statusFilter)return false;
@@ -63,15 +60,19 @@ export default function ReservationManager({carts,requesters,onEdit,onChanged}:P
       .toLocaleLowerCase('pt-BR').includes(filter);
   });
   const periods=useQuery({
-    queryKey:['booking-periods'],
+    queryKey:['booking-periods',bookingIds],
+    enabled:bookingIds.length>0&&!showHistory,
     queryFn:async()=>{
-      const {data,error}=await supabase.from('reservation_periods')
-        .select('id,reservation_id,usage_date,shift,quantity,active')
-        .order('usage_date',{ascending:true}).limit(1000);
-      if(error)throw error;
-      return (data??[]) as BookingPeriod[];
+      const rows:BookingPeriod[]=[];
+      for(let i=0;i<bookingIds.length;i+=50){
+        rows.push(...await collectPages<BookingPeriod>((a,b)=>supabase.from('reservation_periods')
+          .select('id,reservation_id,usage_date,shift,quantity,active').in('reservation_id',bookingIds.slice(i,i+50))
+          .order('usage_date').order('id').range(a,b)));
+      }
+      return rows;
     }
   });
+  const activeByBooking=useMemo(()=>{const map=new Map<string,BookingPeriod[]>();for(const p of periods.data??[]){if(!p.active)continue;const list=map.get(p.reservation_id)??[];list.push(p);map.set(p.reservation_id,list);}return map;},[periods.data]);
   const events=useQuery({
     queryKey:['reservation-events'],
     enabled:showHistory,
@@ -103,30 +104,38 @@ export default function ReservationManager({carts,requesters,onEdit,onChanged}:P
       setNotice('Cancelamento registrado. O saldo dos períodos afetados foi liberado.');
       setSelectedCancel(null);
       onChanged();
-      void qc.invalidateQueries({queryKey:['reservations']});
-      void qc.invalidateQueries({queryKey:['booking-periods']});
-      void qc.invalidateQueries({queryKey:['reservation-events']});
+      void invalidateReservationViews(qc);
     },
     onError:error=>setNotice(error instanceof Error?error.message:'Falha ao cancelar.')
   });
   async function startEdit(booking:Booking) {
-    const active=(periods.data??[]).filter(p=>p.reservation_id===booking.id&&p.active);
+    const active=activeByBooking.get(booking.id)??[];
+    if(periods.isFetching||periods.error||cancel.isPending||loadingEdit)return;
     if(!active.length){setNotice('Esta reserva não possui períodos ativos.');return;}
     if(active.some(p=>p.usage_date<currentDay)){
       setNotice('Reservas com utilização já transcorrida não podem ser editadas nesta versão.');return;
     }
+    const dates=[...new Set(active.map(p=>p.usage_date))].sort();
+    const shifts=[...new Set(active.map(p=>p.shift))];
+    if(active.length!==dates.length*shifts.length){
+      setNotice('Este agrupamento possui exceções por turno. A edição conjunta poderia recriar um período cancelado; cancele os períodos desejados ou cadastre uma nova reserva.');return;
+    }
     setLoadingEdit(booking.id);setNotice('');
     try {
       const ids=active.map(p=>p.id);
-      const {data,error}=await supabase.from('reservation_notebooks')
-        .select('notebook_id').in('period_id',ids).eq('active',true);
-      if(error)throw error;
-      onEdit({
-        booking,
-        dates:[...new Set(active.map(p=>p.usage_date))].sort(),
-        shifts:[...new Set(active.map(p=>p.shift))],
-        notebookIds:[...new Set((data??[]).map(n=>n.notebook_id))]
-      });
+      const notebookIds=new Set<string>();
+      for(let i=0;i<ids.length;i+=50){
+        for(let offset=0;;offset+=250){
+          const {data,error}=await supabase.from('reservation_notebooks')
+            .select('notebook_id,period_id').in('period_id',ids.slice(i,i+50)).eq('active',true)
+            .order('period_id').order('notebook_id').range(offset,offset+249);
+          if(error)throw error;
+          const page=data??[];
+          for(const row of page)notebookIds.add(row.notebook_id);
+          if(page.length<250)break;
+        }
+      }
+      onEdit({booking,dates,shifts,notebookIds:[...notebookIds]});
     } catch(error){
       setNotice(error instanceof Error?error.message:'Não foi possível preparar a edição.');
     } finally {setLoadingEdit(null);}
@@ -163,7 +172,7 @@ export default function ReservationManager({carts,requesters,onEdit,onChanged}:P
         !bookings.length?<p className="empty">Nenhuma reserva registrada. Use “Nova reserva” para criar a primeira.</p>:
         !filteredBookings.length?<p className="empty">Nenhuma reserva corresponde à busca ou ao filtro.</p>:
         <div className="booking-list">{filteredBookings.map(booking=>{
-          const active=(periods.data??[]).filter(p=>p.reservation_id===booking.id&&p.active);
+          const active=activeByBooking.get(booking.id)??[];
           const allFuture=active.length>0&&active.every(p=>p.usage_date>currentDay);
           const editable=active.length>0&&active.every(p=>p.usage_date>=currentDay);
           const requester=requesters.find(x=>x.id===booking.requester_id)?.name??'Professor';
@@ -172,22 +181,23 @@ export default function ReservationManager({carts,requesters,onEdit,onChanged}:P
           return <article className="booking-item" key={booking.id}>
             <div className="booking-info"><strong>{requester}</strong>
               <span>{cart} · {booking.quantity} notebooks · {booking.mode==='COMPLETA'?'Completa':'Parcial'}</span>
+              {booking.destination_label&&<span>Sala de utilização: {booking.destination_label}</span>}
               <span>{booking.needs_mouse?'Precisa de mouse · ':''}{booking.status}</span>
             </div>
             {active.length>0&&<div className="booking-periods">{active.map(p=><div key={p.id} className="booking-period">
               <span>{showDate(p.usage_date)} · {shiftLabel[p.shift]} · {p.quantity} notebooks</span>
-              <button type="button" className="text-button" disabled={p.usage_date<=currentDay||cancel.isPending}
+              <button type="button" className="text-button" disabled={p.usage_date<=currentDay||cancel.isPending||!!loadingEdit||periods.isFetching}
                 title={p.usage_date<=currentDay?'Cancelamento apenas até o dia anterior':undefined}
                 onClick={()=>setSelectedCancel({bookingId:booking.id,periodId:p.id})}>
                 Cancelar período
               </button>
             </div>)}</div>}
             {booking.status==='CONFIRMADA'&&<div className="reservation-actions">
-              <button type="button" className="secondary" disabled={!editable||!!loadingEdit}
+              <button type="button" className="secondary" disabled={!editable||!!loadingEdit||periods.isFetching||cancel.isPending}
                 onClick={()=>void startEdit(booking)}><Pencil size={15} aria-hidden="true"/>
                 {loadingEdit===booking.id?'Abrindo…':'Editar'}
               </button>
-              <button type="button" className="ghost" disabled={!allFuture||cancel.isPending}
+              <button type="button" className="ghost" disabled={!allFuture||cancel.isPending||!!loadingEdit||periods.isFetching}
                 onClick={()=>setSelectedCancel({bookingId:booking.id})}><XCircle size={16} aria-hidden="true"/> Cancelar reserva
               </button>
             </div>}
@@ -207,7 +217,7 @@ export default function ReservationManager({carts,requesters,onEdit,onChanged}:P
           disabled={reservations.isFetchingNextPage} onClick={()=>void reservations.fetchNextPage()}>
           {reservations.isFetchingNextPage?'Carregando…':'Carregar mais reservas'}
         </button>}
-        <p className="form-hint">Exibindo {bookings.length} reserva(s). Cancelamentos são permitidos até o dia anterior. Edições de períodos já transcorridos não são permitidas.</p>
+        <p className="form-hint">Exibindo {bookings.length} reserva(s) carregada(s). A busca considera as reservas carregadas; use Carregar mais reservas para ampliar o recorte. Cancelamentos são permitidos até o dia anterior. Edições de períodos já transcorridos não são permitidas.</p>
       </>}
       {showHistory&&<div className="reservation-history-panel">
         <h3 id="booking-history-title">Auditoria de reservas</h3>

@@ -13,3 +13,7 @@ test-results/
 supabase/.temp/
 supabase/.branches/
 !.env.homologacao.example
+
+# Local-only verification artifacts
+.local-sql-test/
+*.tsbuildinfo

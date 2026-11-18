@@ -76,3 +76,11 @@ describe('PDF agenda SENAI — divisão por dia e resumo',()=>{
     expect(report.total).toBe(3);
   });
 });
+
+it('exporta a sala de utilização nas linhas de equipamento e mouse',()=>{
+ const row={...item,date:'06/07/2026',room:'Campus fictício / Bloco A / Sala 1'};
+ const report=buildAgendaReport([row],['2026-07-06']);
+ expect(report.days[0].entries.map(x=>x.room)).toEqual([row.room,row.room]);
+ expect(toCsv([row])).toContain('"Sala"');
+ expect(toCsv([row])).toContain(row.room);
+});

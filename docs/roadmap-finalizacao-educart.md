@@ -87,23 +87,23 @@ As fases F0–F2 são o caminho crítico para estabilizar a operação atual. O 
 ### F5 — Gêmeo digital 3D V2
 
 Especificação técnica e plano de tarefas: [educart-3d-v2.md](educart-3d-v2.md). O requisito central é começar pela cena com **todos os carrinhos visíveis**, incluindo os não posicionados, sem seletor obrigatório de carrinho. Inspecionar cada equipamento pela cena ou lista acessível. O clique abre status e informações; entrar em inspeção revela o interior detalhado.
-- [ ] F5.0 Especificação visual, referências e medidas autorizadas; protótipo de cena e orçamento de performance com assets de teste.
-- [ ] F5.1 Modelo espacial persistente e contratos de leitura seguros.
-- [ ] F5.2 Cena completa multi-carrinhos, seleção, câmera, estados e painel de detalhes.
-- [ ] F5.3 Modelos detalhados GLB: ambiente, carrinhos, portas, prateleiras, rodas, cabos e notebooks, conforme referências reais; assets com autoria/licença.
-- [ ] F5.4 Inspeção interativa: foco, portas, hotspots, slots, códigos e reservas; dados e cena sincronizados.
-- [ ] F5.5 Otimização de carregamento, níveis de detalhe, qualidade adaptativa, mobile e alternativa 2D/textual.
-- [ ] F5.6 Testes, comparação com inventário físico, aceite visual da TI e reativação do menu somente quando aprovado.
+- [ ] F5.0 [Protótipo implementado e orçamento inicial](f5-0-prototipo-ambiente-3d.md); referências/medidas autorizadas e aceite visual ainda pendentes.
+- [x] F5.1 [Modelo espacial persistente e contratos de leitura seguros](f5-1-fundacao-espacial.md). Validados localmente; stack Supabase completa e promoção pendentes.
+- [ ] F5.2 [Visão geral multi-carrinhos implementada (validação parcial)](f5-2-visao-geral-3d.md); aguardando build e cenário E2E no PC conectado.
+- [ ] F5.3 [Modelos GLB ilustrativos integrados](f5-3-assets-detalhados.md); validação técnica parcial, referência física e aceite visual pendentes.
+- [ ] F5.4 [Inspeção interativa implementada](f5-4-inspecao-interativa.md); vínculos reais separados da geometria, validação visual e homologação pendentes.
+- [ ] F5.5 [Otimização e responsividade implementadas](f5-5-otimizacao-3d.md); validação visual e GPU pendentes.
+- [ ] F5.6 [Homologação técnica parcial e matriz de aceite](f5-6-homologacao-3d.md): contratos e SQL isolado aprovados; auditoria high, Chromium, Supabase real e aceite da TI bloqueiam publicação.
 
 **Aceite:** cena inicial com todos os carrinhos; cada um clicável; ambiente e interior detalhados; dados reais coerentes, posições fictícias identificadas; nenhuma reserva criada pelo renderizador; fallback acessível e desempenho medido.
 
 ### F6 — Prontidão de produção e v1.0.0
 
-- [ ] F6.1 Configurar backup/restore conforme plano Supabase; ensaiar recuperação isolada, documentar RPO/RTO com responsáveis.
-- [ ] F6.2 Observar erros frontend/RPC, saúde do deploy, desempenho e alertas operacionais; política de retenção/privacidade, não coletar segredos.
-- [ ] F6.3 Atualizar README, manual TI/professor, documentação funcional e arquitetura, guia de ambiente, migrations, suporte e checklist de operação.
-- [ ] F6.4 Executar regressão completa, validação de release, publicar Pages main, verificar rotas e banco, smoke tests; release/tag v1.0.0 e plano de rollback.
-- [ ] F6.5 Encerrar issues aceitas, registrar limitações conhecidas, manter backlog futuro.
+- [ ] F6.1 [Backup e recuperação — ensaio sintético aprovado](f6-1-backup-recuperacao.md). Metas RPO/RTO propostas; configuração de backups reais, responsáveis e aceite operacional pendentes.
+- [ ] F6.2 [Diagnóstico local e probe de deploy implementados](f6-2-operacao-monitoramento.md); monitor externo, alertas institucionais e homologação pendentes.
+- [x] F6.3 Documentação versionada: [README](../README.md), [professor](manual-professor.md), [administrador](manual-administrador.md), [acesso e suporte](guia-acesso-suporte.md), [arquitetura](arquitetura-operacional.md), [migrations](catalogo-migrations.md) e [checklist](checklist-publicacao.md). Uso exclusivamente web; configuração técnica separada para mantenedores. Aceite institucional e publicação pendentes.
+- [ ] F6.4 [Candidata consolidada e regressão local](f6-4-release.md): artefato e smoke HTTP local aprovados; Playwright desktop simulado aprovado (71/73, 2 skips legados); audit high e homologação operacional real bloqueiam release/tag v1.0.0 e Pages.
+- [x] F6.5 [Triagem e backlog](f6-5-backlog.md): 18 issues históricas revisadas, #30 encerrada pelo aceite técnico, #66–#71 gates P0, #72 evolução. #33 permanece aberta e v1.0.0 bloqueada.
 
 **Aceite:** versões e deploy rastreáveis; recuperação testada; aprovação de operação; release estável e documentação atual. Nenhum segredo, dado de professor ou planta interna publicado na rota pública.
 
@@ -117,4 +117,4 @@ Especificação técnica e plano de tarefas: [educart-3d-v2.md](educart-3d-v2.md
 
 ## 5. Próxima implementação
 
-Começar por F0.1. Antes de cada subfase: confirmar branch e baseline; especificar regras/aceite; planejar mudanças, escrever tarefas; implementar em PR; executar testes; revisar e registrar evidências. Não executar merges nem migrations a partir deste documento sem iniciar a fase.
+F0–F6 têm implementação acumulada e gates pendentes; a triagem F6.5 está registrada. Priorizar #66–#70 antes de #71. Verificar branch, evidências e autorização antes de promoção ou migrations. A publicação da v1.0.0 não ocorreu.

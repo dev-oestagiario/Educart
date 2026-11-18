@@ -4,6 +4,7 @@ import {Laptop2,MousePointer2,Rotate3D} from 'lucide-react';
 import {supabase,type Cart,type Notebook,type Requester} from '../lib/supabase';
 import {buildCartSlots,type SlotPeriod,type SlotAssignment} from '../lib/cartScene';
 import {isWeekday,showDate,todayInSaoPaulo,shiftLabel,SHIFTS,type Shift} from '../lib/reservations';
+import {useMaintenanceWindows,isMaintenanceBlocked} from '../lib/maintenance';
 import Cart3DCanvas from './Cart3DCanvas';
 
 type Period=SlotPeriod&{cart_id:string;usage_date:string;shift:Shift;active:boolean};
@@ -26,6 +27,8 @@ export default function Visual3DPage(){
   const teachers=useQuery({queryKey:['requesters','3d'],queryFn:()=>getActive<Requester>('requesters')});
   const notebooks=useQuery({queryKey:['notebooks','3d'],queryFn:()=>getActive<Notebook>('notebook_codes')});
   const cart=carts.data?.find(c=>c.id===cartId);
+  const maintenance=useMaintenanceWindows(cartId,date,date);
+  const blocked=isMaintenanceBlocked(maintenance.data??[],cartId,date,shift);
   const periods=useQuery({
     queryKey:['3d-periods',cartId,date,shift],
     enabled:!!cartId,
@@ -57,16 +60,16 @@ export default function Visual3DPage(){
       if(error)throw error;return (data??[]) as Booking[];
     }
   });
-  const slots=useMemo(()=>buildCartSlots(cart?.capacity??0,
+  const slots=useMemo(()=>buildCartSlots(blocked?0:cart?.capacity??0,
     (notebooks.data??[]).filter(n=>n.cart_id===cartId).map(n=>({id:n.id,code:n.code})),
     periods.data??[],assignments.data??[]
-  ),[cart?.capacity,cartId,notebooks.data,periods.data,assignments.data]);
+  ),[blocked,cart?.capacity,cartId,notebooks.data,periods.data,assignments.data]);
   const selected=slots.find(s=>s.position===selectedPosition);
   const booked=selected?.reservationId?bookings.data?.find(b=>b.id===selected.reservationId):null;
   const teacher=booked?teachers.data?.find(t=>t.id===booked.requester_id):null;
-  const loading=periods.isLoading||carts.isLoading||notebooks.isLoading||teachers.isLoading||
+  const loading=maintenance.isLoading||maintenance.isFetching||periods.isLoading||carts.isLoading||notebooks.isLoading||teachers.isLoading||
     (periodIds.length>0&&assignments.isLoading)||(bookingIds.length>0&&bookings.isLoading);
-  const hasError=periods.error||carts.error||notebooks.error||teachers.error||assignments.error||bookings.error;
+  const hasError=maintenance.error||periods.error||carts.error||notebooks.error||teachers.error||assignments.error||bookings.error;
   const ready=!loading&&!hasError;
   const reserved=slots.filter(s=>s.reserved).length;
   const remaining=slots.length-reserved;
@@ -116,7 +119,7 @@ export default function Visual3DPage(){
                 <input type="checkbox" checked={show3d} onChange={e=>setShow3d(e.target.checked)}/>
                 Exibir modelo 3D
               </label>
-              {show3d&&<Cart3DCanvas slots={slots} onPick={setSelectedPosition}/>}
+              {blocked?<p role="status" className="notice">Carrinho indisponível no período de manutenção.</p>:show3d&&<Cart3DCanvas slots={slots} onPick={setSelectedPosition}/>}
             </>}
         </section>
         <section className="panel">

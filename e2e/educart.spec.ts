@@ -1,6 +1,9 @@
 import { XLSX_FIXTURE_BASE64 } from './fixtures/workbook';
 import { mkdir, readFile } from 'node:fs/promises';
+import { existsSync } from 'node:fs';
 import { expect, test, type Page } from '@playwright/test';
+
+test.use({launchOptions:{args:['--enable-unsafe-swiftshader']}});
 
 type Row = Record<string, unknown>;
 const ADMIN_ID = 'ae246078-d0ed-4b32-a4f4-ce96e459c628';
@@ -21,7 +24,7 @@ const token = [
 
 async function useFakeSupabase(page: Page, authorized = true) {
   const database: Record<string, Row[]> = {
-    carts: [], requesters: [], notebook_codes: [], reservations: [], reservation_periods: [], reservation_notebooks: [], reservation_events: [], teacher_account_links: [], reservation_requests: [], reservation_request_events: [], user_notifications: []
+    asset_models: [], spatial_scenes: [], cart_scene_placements: [], cart_model_slots: [], notebook_slot_links: [], carts: [], campuses: [], campus_blocks: [], campus_rooms: [], cart_storage_locations: [], maintenance_windows: [], equipment_movements: [], requesters: [], notebook_codes: [], reservations: [], reservation_periods: [], reservation_notebooks: [], reservation_events: [], teacher_account_links: [], reservation_requests: [], reservation_request_events: [], user_notifications: []
   };
   await page.route('https://educart-e2e.supabase.co/**', async route => {
     const req = route.request();
@@ -145,6 +148,9 @@ async function useFakeSupabase(page: Page, authorized = true) {
       await respond(reservationId);return;
     }
 
+    if (url.pathname === '/rest/v1/rpc/get_email_preference') {
+      await respond({enabled:false,channel_enabled:false}); return;
+    }
     if (url.pathname === '/rest/v1/rpc/mark_notification_read') {
       const body=req.postDataJSON() as {p_notification_id:string};
       const item=database.user_notifications.find(x=>x.id===body.p_notification_id&&x.recipient_user_id===ADMIN_ID);
@@ -270,9 +276,17 @@ async function useFakeSupabase(page: Page, authorized = true) {
     const table = url.pathname.slice('/rest/v1/'.length);
     if (Object.prototype.hasOwnProperty.call(database, table)) {
       if (req.method() === 'GET') {
-        const rows=table==='user_notifications'?
+        let rows=table==='user_notifications'?
           database[table].filter(item=>item.recipient_user_id===ADMIN_ID):database[table];
-        await respond(rows); return;
+        // Model server-side pagination and ID batches for the large-data flows.
+        for(const field of ['id','reservation_id','period_id']){
+          const value=url.searchParams.get(field);
+          if(value?.startsWith('in.(')){const ids=value.slice(4,-1).split(',').map(x=>x.replace(/^"|"$/g,''));rows=rows.filter(r=>ids.includes(String(r[field])));}
+        }
+        if(table==='notebook_codes'&&url.searchParams.get('cart_id')?.startsWith('eq.'))rows=rows.filter(r=>r.cart_id===url.searchParams.get('cart_id')?.slice(3));
+        if(table==='reservation_periods'&&url.searchParams.get('select')?.includes('reservations('))rows=rows.map(r=>({...r,reservations:r.reservations??database.reservations.find(b=>b.id===r.reservation_id)??null}));
+        const offset=Number(url.searchParams.get('offset')??0),limit=url.searchParams.get('limit');
+        await respond(limit===null?rows.slice(offset):rows.slice(offset,offset+Number(limit))); return;
       }
       if (req.method() === 'POST') {
         const body = req.postDataJSON() as Row | Row[];
@@ -1333,6 +1347,7 @@ test('Identidade visual — menu hambúrguer usa tema violeta em todos os celula
     await opener.click();
     const closer=page.getByRole('button',{name:'Fechar menu lateral'});
     await expect(closer).toBeVisible();
+    await page.mouse.move(width-2,2);
     await expect(closer).toHaveCSS('background-color','rgb(52, 41, 67)');
     await expect(closer).toHaveCSS('border-top-left-radius','12px');
     await expect(page.getByRole('navigation',{name:'Menu principal'})).toBeVisible();
@@ -1715,4 +1730,897 @@ test('Segurança Auth — cadastro exige senha mínima e não altera a regra de 
   await page.getByLabel('Senha',{exact:true}).fill('short');
   await page.getByRole('button',{name:'Entrar no Educart'}).click();
   await expect(page.getByRole('heading',{name:'Conta criada, aguardando autorização'})).toBeVisible();
+});
+
+
+test('Manutenção — TI programa janela e encerra com justificativa',async({page})=>{
+  const database=await useFakeSupabase(page);
+  const cart={id:'c1000000-0000-4000-8000-000000000001',code:'M-01',name:'Carrinho teste manutenção',capacity:10,active:true,created_at:'2026-11-15T10:00:00Z'};
+  database.carts.push(cart);
+  const id='c1000000-0000-4000-8000-000000000002';
+  await page.route('https://educart-e2e.supabase.co/rest/v1/rpc/schedule_maintenance',async route=>{
+    const headers={'access-control-allow-origin':'*','access-control-allow-headers':'*','access-control-allow-methods':'POST, OPTIONS'};
+    if(route.request().method()==='OPTIONS'){await route.fulfill({status:204,headers});return;}
+    const body=route.request().postDataJSON();
+    expect(body).toMatchObject({p_cart_id:cart.id,p_reason:'Revisão preventiva',p_shifts:['MATUTINO','VESPERTINO','NOTURNO']});
+    database.maintenance_windows.push({id,cart_id:cart.id,start_date:body.p_start,end_date:body.p_end,shifts:body.p_shifts,reason:body.p_reason,closed_at:null,close_reason:null});
+    await route.fulfill({status:200,headers,json:id});
+  });
+  await page.route('https://educart-e2e.supabase.co/rest/v1/rpc/close_maintenance',async route=>{
+    const headers={'access-control-allow-origin':'*','access-control-allow-headers':'*','access-control-allow-methods':'POST, OPTIONS'};
+    if(route.request().method()==='OPTIONS'){await route.fulfill({status:204,headers});return;}
+    expect(route.request().postDataJSON()).toEqual({p_id:id,p_reason:'Revisão concluída'});
+    Object.assign(database.maintenance_windows[0],{closed_at:'2026-11-17T12:00:00Z',close_reason:'Revisão concluída'});
+    await route.fulfill({status:200,headers,json:id});
+  });
+  await login(page);
+  await page.getByRole('button',{name:'Manutenção',exact:true}).click();
+  await page.getByRole('button',{name:'Nova manutenção'}).click();
+  await page.getByRole('combobox',{name:'Carrinho',exact:true}).selectOption(cart.id);
+  await page.getByLabel('Motivo interno').fill('Revisão preventiva');
+  await page.getByRole('button',{name:'Programar manutenção',exact:true}).click();
+  await expect(page.getByRole('status')).toContainText('Manutenção programada');
+  await page.getByRole('button',{name:'Ver detalhes',exact:true}).click();
+  await expect(page.getByText('Revisão preventiva',{exact:true})).toBeVisible();
+  await page.getByRole('button',{name:'Encerrar',exact:true}).click();
+  await page.getByLabel('Motivo do encerramento').fill('Revisão concluída');
+  await page.getByRole('button',{name:'Confirmar encerramento'}).click();
+  await expect(page.getByRole('status')).toContainText('Manutenção encerrada');
+  await expect(page.locator('.record-detail')).toContainText('Revisão concluída');
+  await expect(page.getByRole('button',{name:'Encerrar',exact:true})).toHaveCount(0);
+});
+
+
+test('Movimentações — retirada com códigos e devolução integral com ressalva',async({page})=>{
+ const db=await useFakeSupabase(page);
+ const id='c2000000-0000-4000-8000-000000000001',rid='c2000000-0000-4000-8000-000000000002',pid='c2000000-0000-4000-8000-000000000003';
+ const teacher='c2000000-0000-4000-8000-000000000004',code='c2000000-0000-4000-8000-000000000005',mid='c2000000-0000-4000-8000-000000000006';
+ const parts=new Intl.DateTimeFormat('en-CA',{timeZone:'America/Sao_Paulo',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
+ db.carts.push({id,code:'MOV-1',name:'Carrinho movimentação',capacity:10,active:true});
+ db.requesters.push({id:teacher,name:'Professor de teste',active:true});
+ db.notebook_codes.push({id:code,code:'NB-MOV-01',cart_id:id,active:true});
+ db.reservation_periods.push({id:pid,reservation_id:rid,cart_id:id,usage_date:parts,shift:'MATUTINO',quantity:3,active:true,reservations:{requester_id:teacher,status:'CONFIRMADA',destination_label:null}});
+ const headers={'access-control-allow-origin':'*','access-control-allow-headers':'*','access-control-allow-methods':'POST, OPTIONS'};
+ let pickups=0,returns=0;
+ await page.route('https://educart-e2e.supabase.co/rest/v1/rpc/register_equipment_pickup',async route=>{
+  if(route.request().method()==='OPTIONS'){await route.fulfill({status:204,headers});return;}
+  const body=route.request().postDataJSON();
+  expect(body).toMatchObject({p_period_id:pid,p_quantity:2,p_notebook_ids:[code],p_responsible:'Responsável teste',p_condition:'BOA',p_notes:null});
+  expect(body.p_key).toMatch(/^[\da-f-]{36}$/);pickups++;
+  db.equipment_movements.push({id:mid,period_id:pid,reservation_id:rid,cart_id:id,requester_id:teacher,usage_date:parts,shift:'MATUTINO',quantity:2,notebook_ids:[code],notebook_codes:['NB-MOV-01'],pickup_at:new Date().toISOString(),pickup_responsible:body.p_responsible,pickup_condition:'BOA',pickup_notes:null,return_at:null,return_responsible:null,return_condition:null,return_notes:null});
+  await route.fulfill({status:200,headers,json:mid});
+ });
+ await page.route('https://educart-e2e.supabase.co/rest/v1/rpc/register_equipment_return',async route=>{
+  if(route.request().method()==='OPTIONS'){await route.fulfill({status:204,headers});return;}
+  const body=route.request().postDataJSON();
+  expect(body).toMatchObject({p_movement_id:mid,p_responsible:'Responsável devolução',p_condition:'RESSALVA',p_notes:'Conferência registrada'});
+  returns++;Object.assign(db.equipment_movements[0],{return_at:new Date().toISOString(),return_responsible:body.p_responsible,return_condition:body.p_condition,return_notes:body.p_notes});
+  await route.fulfill({status:200,headers,json:mid});
+ });
+ await login(page);
+ await page.getByRole('button',{name:'Retirada e devolução',exact:true}).click();
+ await page.getByRole('button',{name:'Ver detalhes',exact:true}).click();
+ await page.getByRole('button',{name:'Registrar retirada',exact:true}).click();
+ await page.getByLabel('Quantidade entregue').fill('2');
+ await page.getByRole('checkbox',{name:'NB-MOV-01'}).check();
+ await page.getByLabel('Responsável que recebeu').fill('Responsável teste');
+ await page.getByRole('button',{name:'Confirmar retirada'}).click();
+ await expect(page.getByRole('status')).toContainText('Retirada registrada');
+ await page.getByRole('button',{name:'Ver detalhes',exact:true}).click();
+ await expect(page.getByText('1 sem código registrado')).toBeVisible();
+ await page.getByRole('button',{name:'Registrar devolução'}).click();
+ await page.getByLabel('Responsável que devolveu').fill('Responsável devolução');
+ await page.getByLabel('Condição dos equipamentos').selectOption('RESSALVA');
+ await expect(page.getByRole('button',{name:'Confirmar devolução'})).toBeDisabled();
+ await page.getByLabel('Observação (obrigatória)').fill('Conferência registrada');
+ await page.getByRole('button',{name:'Confirmar devolução'}).click();
+ await expect(page.getByRole('status')).toContainText('Devolução registrada');
+ await page.getByRole('button',{name:'Ver detalhes',exact:true}).click();
+ await expect(page.locator('.record-detail')).toContainText('Conferência registrada');
+ await expect(page.getByRole('button',{name:'Registrar devolução'})).toHaveCount(0);
+ expect(pickups).toBe(1);expect(returns).toBe(1);
+});
+
+
+test('Dashboard operacional — recortes, pendências antigas, filtros e atalhos',async({page})=>{
+ const db=await useFakeSupabase(page);
+ const today=new Intl.DateTimeFormat('en-CA',{timeZone:'America/Sao_Paulo',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
+ const offset=(n:number)=>{const d=new Date(today+'T12:00:00Z');d.setUTCDate(d.getUTCDate()+n);return d.toISOString().slice(0,10)};
+ const c1='c3000000-0000-4000-8000-000000000001',c2='c3000000-0000-4000-8000-000000000002',p='c3000000-0000-4000-8000-000000000003';
+ db.carts.push({id:c1,name:'Carrinho Alfa',code:'D-A',capacity:10,active:true},{id:c2,name:'Carrinho Beta',code:'D-B',capacity:8,active:true});
+ db.requesters.push({id:p,name:'Professor sintético',active:true});
+ const row=(id:string,cart:string,date:string,shift:string,active=true)=>({id,reservation_id:id,cart_id:cart,usage_date:date,shift,quantity:2,active,reservations:{requester_id:p,status:'CONFIRMADA',destination_label:null}});
+ db.reservation_periods.push(row('p1',c1,today,'MATUTINO'),row('p2',c2,today,'VESPERTINO'),row('p3',c1,offset(12),'MATUTINO'),row('p4',c1,today,'NOTURNO',false));
+ db.equipment_movements.push({id:'m1',period_id:'old',cart_id:c1,requester_id:p,usage_date:offset(-12),shift:'MATUTINO',quantity:3,notebook_ids:[],notebook_codes:[],pickup_responsible:'Responsável sintético',pickup_condition:'BOA',pickup_notes:null,return_responsible:null,return_condition:null,return_notes:null,pickup_at:offset(-12)+'T10:00:00Z',return_at:null});
+ db.maintenance_windows.push({id:'m2',cart_id:c2,start_date:today,end_date:today,shifts:['NOTURNO'],closed_at:null});
+ db.reservation_requests.push({id:'r1',cart_id:c1,requester_id:p,dates:[offset(25)],shifts:['MATUTINO'],quantity:2,status:'PENDENTE',created_at:today});
+ await login(page);
+ const metric=(label:string)=>page.locator('.dashboard-metrics .stat').filter({has:page.getByText(label,{exact:true})}).locator('strong');
+ await expect(metric('Períodos de hoje')).toHaveText('2');
+ await expect(metric('Aguardando retirada')).toHaveText('2');
+ await expect(metric('Pendentes de devolução')).toHaveText('1');
+ await expect(metric('Manutenções de hoje')).toHaveText('1');
+ await expect(metric('Solicitações pendentes')).toHaveText('1');
+ await expect(page.getByText('De data anterior',{exact:true})).toBeVisible();
+ await expect(page.getByText('Nenhum período confirmado no intervalo.')).toBeVisible();
+ await page.getByLabel('Próximos dias').selectOption('14');
+ await expect(page.getByText('Nenhum período confirmado no intervalo.')).toHaveCount(0);
+ await page.getByRole('combobox',{name:'Carrinho',exact:true}).selectOption(c1);
+ await expect(metric('Períodos de hoje')).toHaveText('1');
+ await expect(metric('Manutenções de hoje')).toHaveText('0');
+ await page.getByRole('combobox',{name:'Turno',exact:true}).selectOption('VESPERTINO');
+ await expect(metric('Períodos de hoje')).toHaveText('0');
+ await expect(metric('Pendentes de devolução')).toHaveText('0');
+ await page.getByRole('button',{name:'Limpar filtros'}).click();
+ await expect(metric('Períodos de hoje')).toHaveText('2');
+ for(const width of [320,390,1280]){
+  await page.setViewportSize({width,height:800});
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth+1)).toBe(true);
+ }
+ await page.getByRole('button',{name:'Abrir movimentações'}).click();
+ await expect(page.getByRole('heading',{name:'Retirada e devolução',exact:true})).toBeVisible();
+});
+
+test('Dashboard operacional — falha de consulta não vira indicador zero',async({page})=>{
+ await useFakeSupabase(page);
+ await page.route('https://educart-e2e.supabase.co/rest/v1/equipment_movements?**',async route=>{
+  const headers={'access-control-allow-origin':'*','access-control-allow-headers':'*','access-control-allow-methods':'GET, OPTIONS'};
+  if(route.request().method()==='OPTIONS'){await route.fulfill({status:204,headers});return;}
+  await route.fulfill({status:503,headers,json:{message:'Serviço indisponível'}});
+ });
+ await login(page);
+ await expect(page.getByRole('alert')).toContainText('Não foi possível carregar o painel operacional');
+ await expect(page.locator('.dashboard-metrics .stat')).toHaveCount(0);
+ await page.unroute('https://educart-e2e.supabase.co/rest/v1/equipment_movements?**');
+ await page.getByRole('button',{name:'Atualizar painel'}).click();
+ await expect(page.locator('.dashboard-metrics .stat')).toHaveCount(6);
+});
+
+
+function futureMondays(){
+ const d=new Date(Date.now()+14*86400000);while(d.getUTCDay()!==1)d.setUTCDate(d.getUTCDate()+1);
+ return [0,7,14].map(n=>{const e=new Date(d);e.setUTCDate(e.getUTCDate()+n);return e.toISOString().slice(0,10)});
+}
+function brDate(d:string){return d.split('-').reverse().join('/');}
+async function setWeekly(page:Page,prefix:string,dates:string[]){
+ await page.locator('#'+prefix+'-start').fill(dates[0]);
+ await page.locator('#'+prefix+'-end').fill(dates[2]);
+ const group=page.getByRole('group',{name:'Dias da semana'});
+ await group.getByRole('checkbox',{name:'Segunda-feira'}).check();
+ for(const day of ['Terça-feira','Quarta-feira','Quinta-feira','Sexta-feira'])await group.getByRole('checkbox',{name:day}).uncheck();
+ await page.getByRole('button',{name:/Revisar datas e exceções/}).click();
+}
+test('F3.5 — TI revisa recorrência, exclui conflito e confirma um agrupamento',async({page})=>{
+ const db=await useFakeSupabase(page);
+ const cart=crypto.randomUUID(),teacher=crypto.randomUUID(),dates=futureMondays();
+ db.carts.push({id:cart,code:'REC-A',name:'Carrinho recorrência',capacity:10,active:true});
+ db.requesters.push({id:teacher,name:'Professor recorrência',active:true});
+ db.reservation_periods.push({id:crypto.randomUUID(),reservation_id:crypto.randomUUID(),cart_id:cart,usage_date:dates[1],shift:'MATUTINO',quantity:10,active:true});
+ await login(page);
+ await page.getByRole('button',{name:'Reservas',exact:true}).click();
+ await page.getByRole('button',{name:'Nova reserva'}).click();
+ await page.locator('#reservation-cart').selectOption(cart);
+ await page.locator('#reservation-requester').selectOption(teacher);
+ await page.getByRole('button',{name:'Repetir semanalmente'}).click();
+ await setWeekly(page,'reservation-weekly',dates);
+ await expect(page.locator('.weekly-summary')).toContainText('3 ocorrência(s)');
+ await expect(page.getByRole('button',{name:'Confirmar reserva'})).toBeDisabled();
+ await expect(page.getByText('Conflito',{exact:true})).toBeVisible();
+ const skip=page.getByRole('checkbox',{name:'Incluir '+brDate(dates[1])});
+ await skip.uncheck();
+ await expect(page.locator('.weekly-summary')).toContainText('2 ocorrência(s)');
+ await expect(page.getByRole('button',{name:'Confirmar reserva'})).toBeEnabled();
+ await skip.check();
+ await expect(page.getByRole('button',{name:'Confirmar reserva'})).toBeDisabled();
+ await skip.uncheck();
+ await page.getByRole('button',{name:'Confirmar reserva'}).click();
+ await expect(page.getByText('Reserva confirmada para todos os períodos selecionados.')).toBeVisible();
+ expect(db.reservations).toHaveLength(1);
+ const reservationId=db.reservations[0].id;
+ expect(db.reservation_periods.filter(p=>p.reservation_id===reservationId).map(p=>p.usage_date)).toEqual([dates[0],dates[2]]);
+ await page.getByRole('button',{name:'Editar',exact:true}).click();
+ await expect(page.getByRole('heading',{name:'Editar reserva'})).toBeVisible();
+ await expect(page.locator('#reservation-date-trigger')).toContainText('2 dias selecionados');
+ await page.getByRole('button',{name:'Salvar alterações'}).click();
+ await expect(page.getByText('Reserva editada e alteração registrada no histórico.')).toBeVisible();
+ expect(db.reservation_periods.filter(p=>p.reservation_id===reservationId&&p.active).map(p=>p.usage_date)).toEqual([dates[0],dates[2]]);
+});
+
+test('F3.5 — professor solicita série semanal pelo celular sem ocupar capacidade',async({page})=>{
+ const db=await useFakeSupabase(page,false);
+ const cart=crypto.randomUUID(),teacher=crypto.randomUUID(),dates=futureMondays();
+ db.carts.push({id:cart,code:'REC-B',name:'Série professor',capacity:10,active:true});
+ db.requesters.push({id:teacher,name:'Professor sintético',active:true});
+ db.teacher_account_links.push({user_id:ADMIN_ID,requester_id:teacher,active:true});
+ await page.setViewportSize({width:320,height:780});
+ await login(page);
+ await page.getByRole('button',{name:'Nova solicitação'}).click();
+ await page.locator('#teacher-cart').selectOption(cart);
+ await page.locator('#teacher-date-mode').selectOption('weekly');
+ await setWeekly(page,'teacher-weekly',dates);
+ await page.getByRole('checkbox',{name:'Incluir '+brDate(dates[1])}).uncheck();
+ await expect(page.locator('.weekly-summary')).toContainText('2 ocorrência(s)');
+ await expect(page.getByText(/2 de 2 períodos possuem saldo estimado/)).toBeVisible();
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth<=document.documentElement.clientWidth+1)).toBe(true);
+ await page.getByRole('button',{name:'Enviar solicitação para aprovação'}).click();
+ await expect(page.getByText(/Solicitação enviada à TI/)).toBeVisible();
+ expect(db.reservation_requests).toHaveLength(1);
+ expect(db.reservation_requests[0].dates).toEqual([dates[0],dates[2]]);
+ expect(db.reservation_requests[0].status).toBe('PENDENTE');
+ expect(db.reservation_periods).toHaveLength(0);
+});
+
+
+test('F3.5 — edição não recria um turno cancelado de uma série',async({page})=>{
+ const db=await useFakeSupabase(page),cart=crypto.randomUUID(),teacher=crypto.randomUUID(),booking=crypto.randomUUID(),dates=futureMondays();
+ db.carts.push({id:cart,code:'REC-C',name:'Carrinho exceção',capacity:10,active:true});
+ db.requesters.push({id:teacher,name:'Professor exceção',active:true});
+ db.reservations.push({id:booking,cart_id:cart,requester_id:teacher,mode:'PARCIAL',quantity:2,needs_mouse:false,notes:null,status:'CONFIRMADA',created_at:new Date().toISOString()});
+ for(const day of dates.slice(0,2))for(const shift of ['MATUTINO','VESPERTINO'])db.reservation_periods.push({id:crypto.randomUUID(),reservation_id:booking,cart_id:cart,usage_date:day,shift,quantity:2,active:!(day===dates[1]&&shift==='VESPERTINO')});
+ await login(page);
+ await page.getByRole('button',{name:'Reservas',exact:true}).click();
+ await page.getByRole('button',{name:'Editar',exact:true}).click();
+ await expect(page.getByText(/Este agrupamento possui exceções por turno/)).toBeVisible();
+ await expect(page.getByRole('heading',{name:'Editar reserva'})).toHaveCount(0);
+ expect(db.reservation_periods.filter(p=>p.active)).toHaveLength(3);
+});
+
+
+test('F3.6 — preferências de e-mail opcionais, canal desativado e avisos internos',async({page})=>{
+ const db=await useFakeSupabase(page,false);
+ const teacher=crypto.randomUUID();
+ db.requesters.push({id:teacher,name:'Professor sintético',active:true});
+ db.teacher_account_links.push({user_id:ADMIN_ID,requester_id:teacher,active:true});
+ const headers={'access-control-allow-origin':'*','access-control-allow-headers':'*','access-control-allow-methods':'POST, OPTIONS'};
+ let enabled=false;
+ await page.route('https://educart-e2e.supabase.co/rest/v1/rpc/get_email_preference',async route=>{
+  if(route.request().method()==='OPTIONS'){await route.fulfill({status:204,headers});return;}
+  await route.fulfill({status:200,headers,json:{enabled,channel_enabled:false}});
+ });
+ await page.route('https://educart-e2e.supabase.co/rest/v1/rpc/set_email_preference',async route=>{
+  if(route.request().method()==='OPTIONS'){await route.fulfill({status:204,headers});return;}
+  enabled=route.request().postDataJSON().p_enabled;
+  await route.fulfill({status:200,headers,json:{enabled,channel_enabled:false}});
+ });
+ await page.setViewportSize({width:320,height:780});
+ await login(page);
+ await page.getByRole('button',{name:/^Notificações/}).click();
+ const panel=page.getByRole('region',{name:'Preferências de e-mail'});
+ const toggle=panel.getByRole('checkbox',{name:'Receber avisos no e-mail confirmado da minha conta'});
+ await expect(toggle).not.toBeChecked();
+ await expect(panel.getByText(/O envio externo ainda não está habilitado/)).toBeVisible();
+ await toggle.click();await expect(toggle).toBeChecked();await expect(panel.getByText('Preferência salva.')).toBeVisible();
+ expect(enabled).toBe(true);
+ await toggle.click();await expect(toggle).not.toBeChecked();expect(enabled).toBe(false);
+ await expect(page.getByRole('heading',{name:'Seus avisos'})).toBeVisible();
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth<=document.documentElement.clientWidth+1)).toBe(true);
+});
+
+
+test('F4.1 — controles e feedback compartilham tokens nos dois temas',async({page})=>{
+ const db=await useFakeSupabase(page);
+ db.carts.push({id:crypto.randomUUID(),code:'DS-01',name:'Carrinho design system',capacity:10,active:true});
+ await page.setViewportSize({width:1440,height:900});await login(page);
+ const menu=page.getByRole('navigation',{name:'Menu principal'});
+ async function checkContrast(selector:string,min:number){
+  const ratio=await page.locator(selector).first().evaluate(el=>{
+   const luminance=(color:string)=>{const values=color.match(/\d+(\.\d+)?/g)!.slice(0,3).map(Number).map(x=>{const n=x/255;return n<=.04045?n/12.92:((n+.055)/1.055)**2.4;});return .2126*values[0]+.7152*values[1]+.0722*values[2];};
+   const style=getComputedStyle(el),a=luminance(style.color),b=luminance(style.backgroundColor);
+   return (Math.max(a,b)+.05)/(Math.min(a,b)+.05);
+  });
+  expect(ratio,selector+' contrast').toBeGreaterThanOrEqual(min);
+ }
+ for(const theme of ['dark','light']){
+  if(theme==='light')await page.getByRole('button',{name:'Ativar modo claro'}).click();
+  await expect(page.locator('html')).toHaveAttribute('data-theme',theme);
+  await menu.getByRole('button',{name:'Manutenção',exact:true}).click();
+  await page.getByRole('button',{name:'Nova manutenção'}).click();
+  await expect(page.getByRole('button',{name:'Voltar para manutenção'})).toHaveClass(/ghost records-back/);
+  await expect(page.locator('.ds-fieldset')).toBeVisible();
+  await expect(page.locator('.field textarea')).toHaveCSS('border-top-left-radius','10px');
+  await expect(page.locator('.field select')).toHaveCSS('min-height','44px');
+  await checkContrast('.records-form-panel .field select',4.5);
+  await checkContrast('.records-form-panel .primary',4.5);
+  await page.getByRole('button',{name:'Voltar para manutenção'}).click();
+  await expect(page.locator('.records-panel .empty')).toBeVisible();
+  await menu.getByRole('button',{name:'Localizações',exact:true}).click();
+  await expect(page.getByRole('group',{name:'Tipo de localização'})).toBeVisible();
+  await page.getByRole('button',{name:'Local de guarda',exact:true}).click();
+  await expect(page.getByRole('button',{name:'Atualizar listagem'})).toHaveClass(/secondary/);
+  await menu.getByRole('button',{name:'Retirada e devolução',exact:true}).click();
+  await expect(page.getByRole('group',{name:'Recorte das movimentações'})).toBeVisible();
+  await expect(page.getByRole('button',{name:'Atualizar listagem'})).toHaveClass(/secondary/);
+  await menu.getByRole('button',{name:'Reservas',exact:true}).click();
+  await page.getByRole('button',{name:'Nova reserva'}).click();
+  await page.getByRole('button',{name:'Repetir semanalmente'}).click();
+  const date=page.locator('#reservation-weekly-start');
+  await expect(date).toHaveCSS('min-height','44px');
+  expect(await date.evaluate(el=>el.getBoundingClientRect().width)).toBeGreaterThan(100);
+  await date.focus();await expect(date).toHaveCSS('outline-width','3px');
+  for(const width of [320,390,768,1440]){
+   await page.setViewportSize({width,height:800});
+   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),theme+' '+width).toBe(true);
+  }
+ }
+});
+
+
+test('F4.2 — localizações com busca, detalhe, formulário separado e vínculo de guarda',async({page})=>{
+ const db=await useFakeSupabase(page),campus=crypto.randomUUID(),block=crypto.randomUUID(),room=crypto.randomUUID(),cart=crypto.randomUUID();
+ db.campuses.push({id:campus,name:'Campus sintético',active:true},{id:crypto.randomUUID(),name:'Campus desativado',active:false});
+ db.campus_blocks.push({id:block,campus_id:campus,name:'Bloco A',active:true});
+ db.campus_rooms.push({id:room,block_id:block,name:'Sala teste',active:true});
+ db.carts.push({id:cart,code:'LOC-A',name:'Carrinho sintético',capacity:10,active:true});
+ const headers={'access-control-allow-origin':'*','access-control-allow-headers':'*','access-control-allow-methods':'POST, OPTIONS'};
+ await page.route('https://educart-e2e.supabase.co/rest/v1/cart_storage_locations',async route=>{
+  if(route.request().method()==='OPTIONS'){await route.fulfill({status:204,headers});return;}
+  if(route.request().method()!=='POST'){await route.fallback();return;}
+  expect(route.request().postDataJSON()).toMatchObject({cart_id:cart,room_id:room});
+  db.cart_storage_locations.push({cart_id:cart,room_id:room});await route.fulfill({status:201,headers,json:[]});
+ });
+ await login(page);
+ await page.getByRole('navigation',{name:'Menu principal'}).getByRole('button',{name:'Localizações'}).click();
+ await page.getByLabel('Buscar registro').fill('sintético');
+ await expect(page.getByRole('button',{name:'Ver detalhes'})).toHaveCount(1);
+ await page.getByRole('button',{name:'Ver detalhes'}).click();
+ await expect(page.getByRole('heading',{name:'Detalhes da localização'})).toBeVisible();
+ await expect(page.getByRole('navigation',{name:'Caminho de navegação'})).toContainText('Campus');
+ await page.getByRole('button',{name:'Editar',exact:true}).click();
+ await expect(page.getByRole('group',{name:'Tipo de localização'})).toHaveCount(0);
+ await page.getByLabel('Nome',{exact:true}).fill('Nome descartado');
+ await page.getByRole('button',{name:'Cancelar',exact:true}).click();
+ await expect(page.locator('.record-detail')).toContainText('Campus sintético');
+ expect(db.campuses[0].name).toBe('Campus sintético');
+ await page.getByRole('button',{name:'Voltar à listagem'}).click();
+ await expect(page.getByLabel('Buscar registro')).toHaveValue('sintético');
+ await page.getByRole('button',{name:'Local de guarda',exact:true}).click();
+ await expect(page.getByText('LOC-A · Não informada')).toBeVisible();
+ await page.getByRole('button',{name:'Ver detalhes'}).click();
+ await page.getByRole('button',{name:'Alterar local de guarda'}).click();
+ await page.getByRole('combobox',{name:'Sala de guarda'}).selectOption(room);
+ await page.getByRole('button',{name:'Salvar localização'}).click();
+ await expect(page.getByRole('status')).toContainText('Localização salva');
+ await expect(page.locator('.record-detail')).toContainText('Campus sintético / Bloco A / Sala teste');
+ for(const width of [320,390,768,1440]){await page.setViewportSize({width,height:800});expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);}
+ expect(db.cart_storage_locations).toHaveLength(1);
+});
+
+
+test('F4.3 — auditoria axe de telas e temas',async({page})=>{
+ test.setTimeout(120000);
+ test.skip(!existsSync('.local-sql-test/node_modules/axe-core/axe.min.js'),'Instale axe-core isolado conforme docs/f4-3-acessibilidade.md');
+ const db=await useFakeSupabase(page);
+ db.carts.push({id:crypto.randomUUID(),code:'A11Y',name:'Carrinho acessível',capacity:10,active:true});
+ const scan=async(label:string)=>{
+  await page.addScriptTag({path:'.local-sql-test/node_modules/axe-core/axe.min.js'});
+  const results=await page.evaluate(async()=> (await (window as any).axe.run(document,{runOnly:{type:'tag',values:['wcag2a','wcag2aa','wcag21a','wcag21aa']}})).violations);
+  console.log('AXE '+label+' '+JSON.stringify(results.map((r:any)=>({id:r.id,nodes:r.nodes.map((n:any)=>({target:n.target,summary:n.failureSummary?.slice(0,400)}))}))));
+  return results.length;
+ };
+ await page.goto('/');
+ let failures=await scan('login dark');
+ await login(page);
+ for(const theme of ['dark','light']){
+  if(theme==='light')await page.getByRole('button',{name:'Ativar modo claro'}).click();
+  for(const name of ['Visão geral','Localizações','Manutenção','Retirada e devolução','Carrinhos','Professores','Notebooks','Reservas','Calendário','Solicitações','Notificações']){
+   await page.getByRole('navigation',{name:'Menu principal'}).getByRole('button',{name,exact:true}).click();
+   await page.locator('main h1').waitFor();await page.waitForTimeout(150);
+   failures+=await scan(theme+' '+name);
+  }
+  for(const [module,action] of [['Localizações','Cadastrar campus'],['Manutenção','Nova manutenção'],['Reservas','Nova reserva']]){
+   await page.getByRole('navigation',{name:'Menu principal'}).getByRole('button',{name:module,exact:true}).click();
+   await page.getByRole('button',{name:action,exact:true}).click();
+   await page.locator('main h1').waitFor();
+   failures+=await scan(theme+' formulário '+module);
+   if(module==='Reservas'){await page.locator('#reservation-date-trigger').click();failures+=await scan(theme+' calendário aberto');await page.keyboard.press('Escape');}
+  }
+ }
+ await page.goto('/#/consulta-publica');await page.getByRole('heading',{name:'Disponibilidade dos carrinhos'}).waitFor();
+ failures+=await scan('public light');
+ expect(failures).toBe(0);
+});
+
+
+test('F4.3 — teclado e foco no menu, calendário e formulários',async({page})=>{
+ await useFakeSupabase(page);
+ await page.setViewportSize({width:390,height:500});
+ await login(page);
+ const skip=page.getByRole('link',{name:'Pular para o conteúdo'});
+ await skip.focus();await page.keyboard.press('Enter');
+ await expect(page.locator('#main-content')).toBeFocused();
+ const opener=page.getByRole('button',{name:'Abrir menu lateral'});
+ await opener.focus();await page.keyboard.press('Enter');
+ await expect(page.getByRole('button',{name:'Fechar menu lateral'})).toBeFocused();
+ await expect(page.locator('#main-content')).toHaveAttribute('inert','');
+ await page.keyboard.press('Shift+Tab');
+ await expect(page.getByRole('button',{name:'Sair',exact:true})).toBeFocused();
+ await page.keyboard.press('Tab');
+ await expect(page.getByRole('button',{name:'Fechar menu lateral'})).toBeFocused();
+ await page.keyboard.press('Escape');await expect(opener).toBeFocused();
+ await expect(page.locator('#main-content')).not.toHaveAttribute('inert','');
+ await opener.press('Enter');await page.getByRole('button',{name:'Reservas',exact:true}).click();
+ await expect(page.locator('#main-content')).toBeFocused();
+ await page.getByRole('button',{name:'Nova reserva'}).click();
+ const trigger=page.locator('#reservation-date-trigger');
+ await trigger.focus();await trigger.press('Enter');
+ await page.getByRole('button',{name:'1 semana',exact:true}).focus();await page.keyboard.press('Enter');
+ await expect(trigger).toBeFocused();await expect(trigger).toHaveAttribute('aria-expanded','false');
+ await trigger.press('Enter');await page.getByRole('button',{name:'Concluir',exact:true}).focus();await page.keyboard.press('Enter');
+ await expect(trigger).toBeFocused();
+ await trigger.press('Enter');await page.keyboard.press('Escape');await expect(trigger).toBeFocused();
+});
+
+test('F4.3 — reflow e ampliação de 200% simulada, temas persistidos',async({page})=>{
+ await useFakeSupabase(page);
+ await login(page);
+ for(const width of [320,390,768,1024,1440]){
+  await page.setViewportSize({width,height:450});
+  await expect(page.getByRole('heading',{name:'Visão geral',exact:true})).toBeVisible();
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),'viewport '+width).toBe(true);
+ }
+ await page.getByRole('button',{name:'Ativar modo claro'}).click();
+ await page.reload();await expect(page.locator('html')).toHaveAttribute('data-theme','light');
+ await page.setViewportSize({width:1440,height:900});
+ await page.evaluate(()=>document.documentElement.style.zoom='2');
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth<=document.documentElement.clientWidth+1),'zoom CSS 200%').toBe(true);
+ await page.evaluate(()=>document.documentElement.style.zoom='');
+ // Reduced CSS viewport equivalent to 1440x900 at 200% browser zoom.
+ await page.setViewportSize({width:720,height:450});
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),'zoom reflow').toBe(true);
+});
+
+
+test('F4.3 — auditoria do professor e consulta pública em telas pequenas',async({page})=>{
+ test.setTimeout(90000);
+ test.skip(!existsSync('.local-sql-test/node_modules/axe-core/axe.min.js'),'Instale axe-core isolado conforme docs/f4-3-acessibilidade.md');
+ const db=await useFakeSupabase(page,false),teacher=crypto.randomUUID(),cart=crypto.randomUUID();
+ db.requesters.push({id:teacher,name:'Professor de teste',active:true});
+ db.teacher_account_links.push({user_id:ADMIN_ID,requester_id:teacher,active:true});
+ db.carts.push({id:cart,name:'Carrinho sintético',code:'A11Y-P',capacity:10,active:true});
+ await page.setViewportSize({width:320,height:450});await login(page);
+ const scan=async(label:string)=>{
+  await page.addScriptTag({path:'.local-sql-test/node_modules/axe-core/axe.min.js'});
+  const result=await page.evaluate(async()=> (await (window as any).axe.run(document,{runOnly:{type:'tag',values:['wcag2a','wcag2aa','wcag21a','wcag21aa']}})).violations);
+  console.log('AXE '+label+' '+JSON.stringify(result.map((r:any)=>({id:r.id,nodes:r.nodes.map((n:any)=>({target:n.target,summary:n.failureSummary?.slice(0,400)}))}))));
+  expect(result,label).toHaveLength(0);
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),label+' reflow').toBe(true);
+ };
+ for(const theme of ['dark','light']){
+  if(theme==='light')await page.getByRole('button',{name:'Ativar modo claro'}).click();
+  await expect(page.getByRole('heading',{name:'Pedidos de reserva'})).toBeVisible();
+  await scan(theme+' professor lista');
+  const skip=page.getByRole('link',{name:'Ir ao conteúdo'});
+  await skip.focus();await page.keyboard.press('Enter');await expect(page.locator('#teacher-main')).toBeFocused();
+  await page.getByRole('button',{name:'Nova solicitação'}).click();
+  await page.locator('#teacher-cart').selectOption(cart);
+  await page.locator('#teacher-date-mode').selectOption('weekly');
+  await scan(theme+' professor recorrência');
+  await page.getByRole('button',{name:'Voltar para solicitações'}).click();
+ }
+ await page.goto('/#/consulta-publica');
+ await page.getByRole('heading',{name:'Disponibilidade dos carrinhos'}).waitFor();
+ await scan('light consulta pública 320');
+ await page.getByRole('button',{name:'Ativar modo escuro'}).click();await scan('dark consulta pública 320');
+});
+
+
+test('F4.4 — pedido antigo não desaparece após 250 solicitações',async({page})=>{
+ const db=await useFakeSupabase(page),teacher=crypto.randomUUID(),cart=crypto.randomUUID();
+ db.requesters.push({id:teacher,name:'Professor pendência antiga',active:true});
+ db.carts.push({id:cart,name:'Carrinho histórico',code:'HIST',capacity:10,active:true});
+ const day=futureMondays()[0];
+ for(let i=0;i<251;i++)db.reservation_requests.push({id:crypto.randomUUID(),requester_id:teacher,cart_id:cart,mode:'PARCIAL',quantity:1,dates:[day],shifts:['MATUTINO'],needs_mouse:false,notes:null,status:i===250?'PENDENTE':'REJEITADA',created_at:new Date().toISOString()});
+ await login(page);
+ await page.getByRole('button',{name:'Solicitações',exact:true}).click();
+ const metric=(label:string)=>page.locator('.teacher-approval-stats .stat').filter({has:page.getByText(label,{exact:true})}).locator('strong');
+ await expect(metric('Pedidos pendentes')).toHaveText('1');await expect(metric('Solicitações registradas')).toHaveText('251');
+ await expect(page.getByRole('button',{name:'Aprovar e confirmar reserva'})).toHaveCount(1);
+ await page.locator('#approval-filter').selectOption('TODAS');
+ await expect(page.locator('.teacher-request-list article')).toHaveCount(50);
+ await page.getByRole('button',{name:'Carregar mais solicitações'}).click();
+ await expect(page.locator('.teacher-request-list article')).toHaveCount(100);
+ await page.locator('#approval-filter').selectOption('PENDENTE');
+ await expect(page.locator('.teacher-request-list article')).toHaveCount(1);
+});
+
+test('F4.4 — recorte incompleto bloqueia exportação e atualização recupera dados',async({page})=>{
+ const db=await useFakeSupabase(page),teacher=crypto.randomUUID(),cart=crypto.randomUUID(),booking=crypto.randomUUID();
+ const day=futureMondays()[0];
+ db.requesters.push({id:teacher,name:'Professor relatório',active:true});
+ db.carts.push({id:cart,name:'Carrinho relatório',code:'REL',capacity:10,active:true});
+ db.reservations.push({id:booking,requester_id:teacher,cart_id:cart,mode:'PARCIAL',quantity:2,needs_mouse:false,notes:null,status:'CONFIRMADA',created_by:ADMIN_ID});
+ db.reservation_periods.push({id:crypto.randomUUID(),reservation_id:booking,cart_id:cart,usage_date:day,shift:'MATUTINO',quantity:2,active:true});
+ const pattern='https://educart-e2e.supabase.co/rest/v1/reservations?**';
+ await page.route(pattern,async route=>{
+  if(!new URL(route.request().url()).searchParams.get('id')?.startsWith('in.(')){await route.fallback();return;}
+  await route.fulfill({status:200,headers:{'access-control-allow-origin':'*','access-control-allow-headers':'*'},json:[]});
+ });
+ await login(page);await page.getByRole('button',{name:'Calendário',exact:true}).click();
+ await page.locator('#calendar-focus').fill(day);
+ await expect(page.getByRole('alert')).toContainText('Falha ao carregar o recorte completo');
+ await expect(page.getByRole('button',{name:'Planilha CSV'})).toBeDisabled();
+ await expect(page.getByRole('button',{name:'Exportar PDF'})).toBeDisabled();
+ await page.unroute(pattern);
+ await page.getByRole('button',{name:'Atualizar relatório'}).click();
+ await expect(page.getByRole('button',{name:'Planilha CSV'})).toBeEnabled();
+ await expect(page.locator('.calendar-event')).toContainText('Professor relatório');
+});
+
+test('F4.4 — aprovação invalida relatório e painel sem aguardar expiração do cache',async({page})=>{
+ const db=await useFakeSupabase(page),teacher=crypto.randomUUID(),cart=crypto.randomUUID(),request=crypto.randomUUID();
+ const day=futureMondays()[0];
+ db.requesters.push({id:teacher,name:'Professor integração',active:true});
+ db.carts.push({id:cart,name:'Carrinho integração',code:'INT',capacity:10,active:true});
+ db.reservation_requests.push({id:request,requester_id:teacher,cart_id:cart,mode:'PARCIAL',quantity:2,dates:[day],shifts:['MATUTINO'],needs_mouse:false,notes:null,status:'PENDENTE',created_at:new Date().toISOString()});
+ await login(page);await page.getByRole('button',{name:'Calendário',exact:true}).click();
+ await page.locator('#calendar-focus').fill(day);
+ const metric=()=>page.locator('.calendar-stats .stat').filter({has:page.getByText('Períodos ocupados',{exact:true})}).locator('strong');
+ await expect(metric()).toHaveText('0');
+ await page.getByRole('button',{name:'Solicitações',exact:true}).click();
+ await page.getByRole('button',{name:'Aprovar e confirmar reserva'}).click();
+ await expect(page.getByText('Solicitação aprovada e reserva confirmada.')).toBeVisible();
+ await page.getByRole('button',{name:'Calendário',exact:true}).click();
+ await page.locator('#calendar-focus').fill(day);
+ await expect(metric()).toHaveText('1');
+ await page.getByRole('button',{name:'Visão geral',exact:true}).click();
+ await page.getByLabel('Próximos dias').selectOption('30');
+ await expect(page.getByText('Professor integração',{exact:false}).first()).toBeVisible();
+});
+
+
+test('F4.4 — períodos são consultados por lote e códigos somente quando necessários',async({page})=>{
+ const db=await useFakeSupabase(page),cart=crypto.randomUUID(),teacher=crypto.randomUUID(),booking=crypto.randomUUID(),day=futureMondays()[0];
+ db.carts.push({id:cart,name:'Carrinho desempenho',code:'PERF',capacity:10,active:true});
+ db.requesters.push({id:teacher,name:'Professor desempenho',active:true});
+ db.notebook_codes.push({id:crypto.randomUUID(),cart_id:cart,code:'PERF-NB',active:true});
+ db.reservations.push({id:booking,cart_id:cart,requester_id:teacher,mode:'PARCIAL',quantity:1,status:'CONFIRMADA',needs_mouse:false,notes:null});
+ db.reservation_periods.push({id:crypto.randomUUID(),reservation_id:booking,cart_id:cart,usage_date:day,shift:'MATUTINO',quantity:1,active:true});
+ await login(page);await expect(page.getByRole('heading',{name:'Visão geral'})).toBeVisible();
+ await expect(page.locator('.dashboard-metrics .stat')).toHaveCount(6);
+ const urls:URL[]=[];
+ page.on('request',r=>{if(r.method()==='GET'&&r.url().startsWith('https://educart-e2e.supabase.co/rest/v1/'))urls.push(new URL(r.url()));});
+ await page.getByRole('button',{name:'Reservas',exact:true}).click();
+ await expect(page.getByRole('button',{name:'Editar',exact:true})).toBeEnabled();
+ const periodQueries=urls.filter(u=>u.pathname.endsWith('/reservation_periods'));
+ expect(periodQueries.length).toBeGreaterThan(0);
+ expect(periodQueries.every(u=>u.searchParams.get('reservation_id')?.startsWith('in.('))).toBe(true);
+ expect(urls.some(u=>u.pathname.endsWith('/notebook_codes'))).toBe(false);
+ await page.getByRole('button',{name:'Nova reserva'}).click();
+ await page.locator('#reservation-requester').selectOption(teacher);await page.locator('#reservation-cart').selectOption(cart);
+ await expect(page.getByRole('radio',{name:'Carrinho completo'})).toBeChecked();
+ expect(urls.some(u=>u.pathname.endsWith('/notebook_codes'))).toBe(false);
+ await page.getByRole('radio',{name:'Notebooks avulsos'}).check();
+ await expect(page.getByText('PERF-NB',{exact:true})).toBeVisible();
+ expect(urls.filter(u=>u.pathname.endsWith('/notebook_codes')).every(u=>u.searchParams.get('cart_id')==='eq.'+cart)).toBe(true);
+});
+
+test.describe('F5.0 — protótipo de ambiente 3D',()=>{
+  test('cena, inspeção, porta, busca e fallback acessível',async({page},testInfo)=>{
+    await useFakeSupabase(page);
+    await page.goto('/?prototype3d=1');
+    await page.getByLabel('E-mail').fill('test-admin@educart.example');
+    await page.getByLabel('Senha').fill('senha-de-teste-sem-uso-real');
+    await page.getByRole('button',{name:'Entrar no Educart'}).click();
+    await page.getByRole('button',{name:'Protótipo 3D'}).click();
+    await expect(page.getByRole('heading',{name:'Ambiente 3D · Protótipo'})).toBeVisible();
+    await expect(page.locator('.dt-cart')).toHaveCount(4);
+    await expect(page.locator('.dt-stage canvas')).toBeVisible();
+    const sceneMetrics=await page.locator('.dt-stage canvas').evaluate(el=>({drawCalls:Number(el.getAttribute('data-draw-calls')),triangles:Number(el.getAttribute('data-triangles'))}));
+    expect(sceneMetrics.drawCalls).toBeGreaterThan(0);expect(sceneMetrics.drawCalls).toBeLessThan(200);expect(sceneMetrics.triangles).toBeLessThan(10000);
+    console.log('F5.0 metricas da cena:',sceneMetrics);
+    await page.screenshot({path:testInfo.outputPath('visao-geral.png')});
+    await testInfo.attach('visao-geral',{path:testInfo.outputPath('visao-geral.png'),contentType:'image/png'});
+    await page.getByRole('button',{name:/DEMO-02/}).click();
+    await expect(page.locator('.dt-details')).toContainText('18');
+    await page.getByRole('button',{name:'Inspecionar carrinho'}).click();
+    await expect(page.getByRole('heading',{name:'Inspeção: DEMO-02'})).toBeVisible();
+    await page.getByRole('button',{name:'Abrir porta'}).click();
+    await expect(page.getByRole('button',{name:'Fechar porta'})).toHaveAttribute('aria-pressed','true');
+    await page.screenshot({path:testInfo.outputPath('inspecao.png')});
+    await testInfo.attach('inspecao',{path:testInfo.outputPath('inspecao.png'),contentType:'image/png'});
+    await page.keyboard.press('Escape');
+    await expect(page.getByRole('heading',{name:'Sala de TI — visão geral'})).toBeVisible();
+    await page.getByLabel('Exibir ambiente 3D').uncheck();
+    await expect(page.locator('.dt-stage canvas')).toHaveCount(0);
+    await page.getByLabel('Buscar carrinho na lista').fill('delta');
+    await expect(page.locator('.dt-cart')).toHaveCount(1);
+    await page.getByRole('button',{name:/DEMO-04/}).focus();
+    await page.keyboard.press('Enter');
+    await expect(page.locator('.dt-details')).toContainText('Sem localização definida');
+    await expect(page.locator('.dt-details')).toContainText('Em manutenção');
+    await page.getByLabel('Buscar carrinho na lista').fill('');
+    await expect(page.locator('.dt-cart')).toHaveCount(4);
+    await page.setViewportSize({width:390,height:844});
+    await page.getByLabel('Exibir ambiente 3D').check();
+    await expect(page.locator('.dt-stage canvas')).toBeVisible();
+    await expect.poll(()=>page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)).toBe(true);
+    await page.screenshot({path:testInfo.outputPath('mobile.png')});
+    await testInfo.attach('mobile',{path:testInfo.outputPath('mobile.png'),contentType:'image/png'});
+  });
+  test('lista permanece funcional sem WebGL',async({page})=>{
+    await page.addInitScript(()=>{
+      const original=HTMLCanvasElement.prototype.getContext;
+      HTMLCanvasElement.prototype.getContext=function(type:string,...args:unknown[]){
+        if(type==='webgl'||type==='webgl2'||type==='experimental-webgl')return null;
+        return Reflect.apply(original,this,[type,...args]);
+      } as typeof HTMLCanvasElement.prototype.getContext;
+    });
+    await useFakeSupabase(page);
+    await page.goto('/?prototype3d=1');
+    await page.getByLabel('E-mail').fill('test-admin@educart.example');
+    await page.getByLabel('Senha').fill('senha-de-teste-sem-uso-real');
+    await page.getByRole('button',{name:'Entrar no Educart'}).click();
+    await page.getByRole('button',{name:'Protótipo 3D'}).click();
+    await expect(page.getByText('WebGL indisponível.',{exact:false})).toBeVisible();
+    await page.getByRole('button',{name:/DEMO-03/}).click();
+    await expect(page.locator('.dt-details')).toContainText('Totalmente reservado');
+  });
+  test('flag não libera a demonstração a conta não autorizada',async({page})=>{
+    await useFakeSupabase(page,false);
+    await page.goto('/?prototype3d=1');
+    await page.getByLabel('E-mail').fill('test-admin@educart.example');
+    await page.getByLabel('Senha').fill('senha-de-teste-sem-uso-real');
+    await page.getByRole('button',{name:'Entrar no Educart'}).click();
+    await expect(page.getByRole('heading',{name:'Conta criada, aguardando autorização'})).toBeVisible();
+    await expect(page.getByRole('button',{name:'Protótipo 3D'})).toHaveCount(0);
+  });
+});
+
+test.describe('F5.1 — configuração espacial',()=>{
+ test('admin consulta e cadastra metadados, com resumo sem posição e detalhe sob demanda',async({page})=>{
+  const db=await useFakeSupabase(page);
+  const cartId='00000000-0000-4000-8000-000000000051';
+  const roomId='00000000-0000-4000-8000-000000000052';
+  const blockId='00000000-0000-4000-8000-000000000053';
+  const campusId='00000000-0000-4000-8000-000000000054';
+  db.carts.push({id:cartId,code:'F51',name:'Carrinho teste',capacity:10,active:true});
+  db.campuses.push({id:campusId,name:'Campus',active:true});
+  db.campus_blocks.push({id:blockId,campus_id:campusId,name:'Bloco',active:true});
+  db.campus_rooms.push({id:roomId,block_id:blockId,name:'Sala',active:true});
+  const summary={cart_id:cartId,code:'F51',name:'Carrinho teste',active:true,storage_room_id:null,scene_id:null,model_id:null,position_x:null,position_y:null,position_z:null,yaw:null,placement_version:null,nominal_capacity:10,effective_capacity:10,reserved:3,available:7,maintenance_count:0,availability_status:'PARTIAL',snapshot_at:new Date().toISOString()};
+  const headers={'access-control-allow-origin':'*','access-control-allow-headers':'*','access-control-allow-methods':'GET,POST,OPTIONS,PATCH,DELETE'};
+  let details=0;
+  await page.route('**/rest/v1/rpc/spatial_cart_summary*',r=>r.fulfill({headers,json:r.request().method()==='OPTIONS'?{}:[summary]}));
+  await page.route('**/rest/v1/rpc/spatial_cart_details*',r=>{if(r.request().method()!=='OPTIONS')details++;return r.fulfill({headers,json:{summary,reservations:[{id:'00000000-0000-4000-8000-000000000055',period_id:'00000000-0000-4000-8000-000000000056',requester:'Docente sintético',quantity:3,mode:'PARCIAL',destination_room_id:null,destination_label:null,needs_mouse:false,notes:null}],confirmed_slots:[]}});});
+  await page.goto('/?spatial3d=1');
+  await page.getByLabel('E-mail').fill('test-admin@educart.example');
+  await page.getByLabel('Senha').fill('senha-de-teste-sem-uso-real');
+  await page.getByRole('button',{name:'Entrar no Educart'}).click();
+  await page.getByRole('button',{name:'Configuração espacial'}).click();
+  await expect(page.getByRole('heading',{name:'Configuração espacial · F5.1'})).toBeVisible();
+  await expect(page.getByRole('button',{name:/F51 — Carrinho teste/})).toContainText('7/10 disponíveis');
+  expect(details).toBe(0);
+  await page.getByLabel('Nome do modelo').fill('Modelo sintético');
+  await page.getByLabel('Autoria').fill('Equipe TI');
+  await page.getByLabel('Licença').fill('Interno');
+  await page.getByRole('button',{name:'Salvar modelo'}).click();
+  await expect(page.getByText('Modelo salvo.',{exact:true})).toBeVisible();
+  expect(db.asset_models).toHaveLength(1);
+  await page.getByLabel('Nome do ambiente').fill('Ambiente sintético');
+  await page.getByLabel('Sala de referência').selectOption(roomId);
+  await page.getByRole('button',{name:'Salvar ambiente'}).click();
+  await expect(page.getByText('Ambiente salvo.',{exact:true})).toBeVisible();
+  expect(db.spatial_scenes).toHaveLength(1);
+  await page.getByRole('button',{name:/F51 — Carrinho teste/}).click();
+  await expect(page.getByText('1 reservas confirmadas · 0 vínculos físicos ativos')).toBeVisible();
+  expect(details).toBeGreaterThan(0);
+  await page.setViewportSize({width:390,height:844});
+  await expect.poll(()=>page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)).toBe(true);
+ });
+});
+
+test.describe('F5.2 — visão geral administrativa 3D',()=>{
+ test('todos os carrinhos, GLB e corte, detalhe sob demanda, turno, erro sem saldo, lista alternativa',async({page})=>{
+  test.setTimeout(90_000); // Cena GLB, múltiplas remontagens e seis viewports em um fluxo integrado.
+  const db=await useFakeSupabase(page);
+  const uid=(n:number)=>'00000000-0000-4000-8000-'+String(n).padStart(12,'0');
+  const cartA=uid(521),cartB=uid(522),cartC=uid(532),cartD=uid(533),roomId=uid(523),blockId=uid(524),campusId=uid(525),sceneId=uid(526),modelId=uid(527);
+  db.carts.push({id:cartA,code:'F52A',name:'Carrinho A',capacity:10,active:true},{id:cartB,code:'F52B',name:'Carrinho B',capacity:20,active:true},{id:cartC,code:'F52C',name:'Carrinho C',capacity:30,active:true},{id:cartD,code:'F52D',name:'Carrinho D',capacity:10,active:true});
+  db.campuses.push({id:campusId,name:'Campus sintético',active:true});
+  db.campus_blocks.push({id:blockId,campus_id:campusId,name:'Bloco A',active:true});
+  db.campus_rooms.push({id:roomId,block_id:blockId,name:'Sala 1',active:true});
+  db.spatial_scenes.push({id:sceneId,room_id:roomId,name:'Ambiente A',width_m:8,depth_m:6,active:true});
+  db.asset_models.push({id:modelId,kind:'CART',width_m:1,depth_m:.8,active:true});
+  const headers={'access-control-allow-origin':'*','access-control-allow-headers':'*','access-control-allow-methods':'GET,POST,OPTIONS'};
+  let fail=false,detailCalls=0,historyCalls=0;
+  const notebookId=uid(528),reservationId=uid(529),periodId=uid(530);
+  const reservation={id:reservationId,period_id:periodId,requester:'Docente sintético',quantity:3,mode:'PARCIAL',destination_room_id:roomId,destination_label:null,needs_mouse:false,notes:null};
+  const slot={slot_key:'POS-FISICA-7',notebook_id:notebookId,code:'F54-NB-01',confirmed_at:'2026-11-17T10:00:00Z',reservation_period_id:periodId};
+  await page.route('**/rest/v1/equipment_movements*',async route=>{
+   const url=new URL(route.request().url());
+   if(route.request().method()==='OPTIONS'){await route.fulfill({headers,status:204});return;}
+   if(!url.searchParams.has('notebook_ids')){await route.fulfill({headers,json:[]});return;}
+   historyCalls++;expect(url.searchParams.get('cart_id')).toBe('eq.'+cartA);expect(url.searchParams.get('notebook_ids')).toContain(notebookId);
+   await route.fulfill({headers,json:[{id:uid(531),cart_id:cartA,notebook_ids:[notebookId],pickup_at:'2026-11-17T10:00:00Z',return_at:'2026-11-17T11:00:00Z',pickup_condition:'BOA',return_condition:'RESSALVA'}]});
+  });
+  const summary=(shift:string)=>{
+   const reserved=shift==='VESPERTINO'?8:3;
+   return [{cart_id:cartA,code:'F52A',name:'Carrinho A',active:true,storage_room_id:roomId,scene_id:sceneId,model_id:modelId,position_x:1,position_y:0,position_z:-1,yaw:0,placement_version:1,nominal_capacity:10,effective_capacity:10,reserved,available:10-reserved,maintenance_count:0,availability_status:'PARTIAL',snapshot_at:new Date().toISOString()},
+   {cart_id:cartB,code:'F52B',name:'Carrinho B',active:true,storage_room_id:null,scene_id:null,model_id:null,position_x:null,position_y:null,position_z:null,yaw:null,placement_version:null,nominal_capacity:20,effective_capacity:0,reserved:0,available:0,maintenance_count:1,availability_status:'MAINTENANCE',snapshot_at:new Date().toISOString()},
+   {cart_id:cartC,code:'F52C',name:'Carrinho C',active:true,storage_room_id:roomId,scene_id:sceneId,model_id:modelId,position_x:-1,position_y:0,position_z:-1,yaw:0,placement_version:1,nominal_capacity:30,effective_capacity:30,reserved:0,available:30,maintenance_count:0,availability_status:'FREE',snapshot_at:new Date().toISOString()},
+   {cart_id:cartD,code:'F52D',name:'Carrinho D',active:true,storage_room_id:null,scene_id:null,model_id:null,position_x:null,position_y:null,position_z:null,yaw:null,placement_version:null,nominal_capacity:10,effective_capacity:10,reserved:10,available:0,maintenance_count:0,availability_status:'FULL',snapshot_at:new Date().toISOString()}];
+  };
+  await page.route('**/rest/v1/rpc/spatial_cart_summary*',async r=>{
+   if(r.request().method()==='OPTIONS'){await r.fulfill({headers,status:204});return;}
+   const body=r.request().postDataJSON();
+   await r.fulfill(fail?{headers,status:503,json:{message:'consulta indisponível'}}:{headers,json:summary(body.p_shift)});
+  });
+  await page.route('**/rest/v1/rpc/spatial_cart_details*',async r=>{
+   if(r.request().method()==='OPTIONS'){await r.fulfill({headers,status:204});return;}
+   detailCalls++;const body=r.request().postDataJSON();const row=summary(body.p_shift).find(c=>c.cart_id===body.p_cart_id)!;
+   await r.fulfill({headers,json:{summary:row,reservations:row.cart_id===cartA?[{...reservation,quantity:row.reserved}]:row.cart_id===cartD?[{...reservation,id:uid(534),period_id:uid(535),quantity:10,mode:'COMPLETA'}]:[],confirmed_slots:row.cart_id===cartA?[slot]:[]}});
+  });
+  // Falhar apenas no arquivo GLB, não no módulo Vite ?import&url.
+  const cartAsset=(url:URL)=>url.pathname.endsWith('/cart-illustrative-v1.glb')&&!url.searchParams.has('import')&&!url.searchParams.has('url');
+  await page.route(cartAsset,r=>r.fulfill({status:503,body:'asset unavailable'}));
+  await page.goto('/?environment3d=1');
+  await page.getByLabel('E-mail').fill('test-admin@educart.example');
+  await page.getByLabel('Senha').fill('senha-de-teste-sem-uso-real');
+  await page.getByRole('button',{name:'Entrar no Educart'}).click();
+  await page.getByRole('button',{name:'Ambiente 3D',exact:true}).click();
+  const list=page.locator('.dt-list');
+  await expect(list.getByRole('button')).toHaveCount(4);
+  await expect(list.getByRole('button',{name:/F52A/})).toContainText('Sala 1');
+  await expect(list.getByRole('button',{name:/F52B/})).toContainText('Sem localização definida');
+  expect(detailCalls).toBe(0);
+  await expect(list.getByRole('button',{name:/F52C/})).toContainText('Livre');
+  await expect(list.getByRole('button',{name:/F52D/})).toContainText('Totalmente reservado');
+  await page.getByLabel('Qualidade visual').selectOption('high');
+  const canvas=page.locator('.dt-stage canvas');
+  await canvas.scrollIntoViewIfNeeded();
+  await expect(canvas).toHaveAttribute('data-asset-mode','fallback',{timeout:15000});
+  await expect(list.getByRole('button')).toHaveCount(4);
+  await page.unroute(cartAsset);
+  await page.getByLabel('Qualidade visual').selectOption('low');
+  await page.getByLabel('Qualidade visual').selectOption('high');
+  await canvas.scrollIntoViewIfNeeded();
+  await expect(canvas).toHaveAttribute('data-asset-mode','detailed',{timeout:15000});
+  await expect(canvas).toHaveAttribute('data-instanced-carts','4');
+  await expect(canvas).toHaveAttribute('data-cart-count','4');
+  await list.getByRole('button',{name:/F52A/}).click();
+  await expect(page.getByRole('button',{name:/F54-NB-01/})).toBeVisible();
+  expect(historyCalls).toBe(0);
+  await page.getByRole('button',{name:/F54-NB-01/}).click();
+  await expect(page.getByText(/Reserva vinculada: Docente sintético/)).toBeVisible();
+  await expect(page.getByText(/Devolução: .*Com ressalva/)).toBeVisible();
+  expect(historyCalls).toBeGreaterThan(0);
+  expect(detailCalls).toBeGreaterThan(0);
+  await page.getByRole('button',{name:'Focalizar carrinho'}).click();
+  await expect(canvas).toHaveAttribute('data-cutaway-cart','');
+  await page.getByRole('button',{name:'Abrir porta virtual'}).click();
+  await canvas.scrollIntoViewIfNeeded();
+  await expect(canvas).toHaveAttribute('data-cutaway-cart',cartA);
+  await page.getByRole('button',{name:'Notebook ilustrativo',exact:true}).click();
+  await expect(page.getByText('Exemplo visual sem patrimônio, posição física ou reserva individual associada.',{exact:false})).toBeVisible();
+  await page.getByRole('button',{name:'Fechar porta virtual'}).click();
+  await canvas.scrollIntoViewIfNeeded();
+  await expect(canvas).toHaveAttribute('data-cutaway-cart','');
+  await list.getByRole('button',{name:/F52B/}).click();
+  await expect(page.getByRole('button',{name:/F54-NB-01/})).toHaveCount(0);
+  await expect(canvas).toHaveAttribute('data-cutaway-cart','');
+  await page.getByLabel('Qualidade visual').selectOption('low');
+  await expect(canvas).toHaveAttribute('data-asset-mode','economical');
+  await page.route(cartAsset,r=>r.fulfill({status:503,body:'asset unavailable'}));
+  await page.getByLabel('Qualidade visual').selectOption('high');
+  await expect(canvas).toHaveAttribute('data-asset-mode','detailed',{timeout:15000}); // cache verificado reutilizado sem rede
+  await expect(list.getByRole('button')).toHaveCount(4);
+  await page.unroute(cartAsset);
+  await list.getByRole('button',{name:/F52C/}).focus();
+  await page.keyboard.press('Enter');
+  await expect(page.getByRole('heading',{name:'Carrinho C',exact:true})).toBeVisible();
+  await list.getByRole('button',{name:/F52D/}).click();
+  await expect(page.getByRole('heading',{name:'Carrinho D',exact:true})).toBeVisible();
+  await list.getByRole('button',{name:/F52A/}).click();
+  await page.getByRole('combobox',{name:'Turno',exact:true}).selectOption('VESPERTINO');
+  await expect(list.getByRole('button',{name:/F52A/})).toContainText('2 disponíveis');
+  await page.getByLabel('Buscar carrinho na lista').fill('F52B');
+  await expect(list.getByRole('button')).toHaveCount(1);
+  await page.getByLabel('Buscar carrinho na lista').clear();
+  await page.getByLabel('Exibir ambiente 3D').uncheck();
+  await expect(list.getByRole('button')).toHaveCount(4);
+  fail=true;
+  await page.getByRole('button',{name:'Atualizar dados'}).click();
+  await expect(page.getByText('Não foi possível confirmar a ocupação deste período.',{exact:false})).toBeVisible();
+  await expect(list.getByRole('button',{name:/F52A/})).toContainText('Não confirmado');
+  await expect(list.getByRole('button',{name:/F52A/})).not.toContainText('disponíveis');
+  await page.setViewportSize({width:390,height:844});
+  await page.emulateMedia({reducedMotion:'reduce'});
+  await page.getByLabel('Qualidade visual').selectOption('auto');
+  await expect(page.getByText(/Qualidade em uso: Econômica/)).toBeVisible();
+  for(const width of [320,360,390,768,1024,1280]){await page.setViewportSize({width,height:844});await expect.poll(()=>page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)).toBe(true);}
+ });
+ test('sem autorização administrativa não expõe ambiente mesmo com flag DEV',async({page})=>{
+  await useFakeSupabase(page,false);
+  await page.goto('/?environment3d=1');
+  await page.getByLabel('E-mail').fill('test-admin@educart.example');
+  await page.getByLabel('Senha').fill('senha-de-teste-sem-uso-real');
+  await page.getByRole('button',{name:'Entrar no Educart'}).click();
+  await expect(page.getByRole('heading',{name:'Conta criada, aguardando autorização'})).toBeVisible();
+  await expect(page.getByRole('button',{name:'Ambiente 3D',exact:true})).toHaveCount(0);
+ });
+});
+
+test.describe('F6.2 — diagnóstico administrativo local',()=>{
+ test('diagnóstico contabiliza falhas sem expor conteúdo e pode ser limpo',async({page})=>{
+  await useFakeSupabase(page);
+  await page.goto('/');
+  await page.getByLabel('E-mail').fill('test-admin@educart.example');
+  await page.getByLabel('Senha').fill('senha-de-teste-sem-uso-real');
+  await page.getByRole('button',{name:'Entrar no Educart'}).click();
+  await page.getByRole('button',{name:'Saúde da aplicação',exact:true}).click();
+  await expect(page.getByRole('heading',{name:'Saúde da aplicação',exact:true})).toBeVisible();
+  await page.evaluate(()=>window.dispatchEvent(new ErrorEvent('error',{message:'PRIVATE_SENTINEL',error:new Error('PRIVATE_SENTINEL')})));
+  await expect(page.locator('.health-metrics article').filter({hasText:'Falhas da interface'})).toContainText('1');
+  await expect(page.locator('.health-page')).not.toContainText('PRIVATE_SENTINEL');
+  await page.getByRole('button',{name:'Limpar diagnóstico local'}).click();
+  await expect(page.locator('.health-metrics article').filter({hasText:'Falhas da interface'})).toContainText('0');
+  await page.setViewportSize({width:320,height:800});
+  await expect.poll(()=>page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)).toBe(true);
+ });
+ test('usuário sem autorização não vê diagnóstico administrativo',async({page})=>{
+  await useFakeSupabase(page,false);
+  await page.goto('/');
+  await page.getByLabel('E-mail').fill('test-admin@educart.example');
+  await page.getByLabel('Senha').fill('senha-de-teste-sem-uso-real');
+  await page.getByRole('button',{name:'Entrar no Educart'}).click();
+  await expect(page.getByRole('heading',{name:'Conta criada, aguardando autorização'})).toBeVisible();
+  await expect(page.getByRole('button',{name:'Saúde da aplicação',exact:true})).toHaveCount(0);
+ });
+});
+
+
+test('Issue #70 — carga 3D de 120 carrinhos, limite de detalhe e render sob demanda',async({page},testInfo)=>{
+ test.setTimeout(90000);
+ const db=await useFakeSupabase(page);
+ const uid=(n:number)=>'00000000-0000-4000-8000-'+String(n).padStart(12,'0');
+ const rows=Array.from({length:120},(_,i)=>({cart_id:uid(7000+i),code:'LOAD-'+String(i+1).padStart(3,'0'),name:'Carrinho de ensaio '+(i+1),active:true,storage_room_id:null,scene_id:null,model_id:null,position_x:null,position_y:null,position_z:null,yaw:null,placement_version:null,nominal_capacity:10,effective_capacity:10,reserved:0,available:10,maintenance_count:0,availability_status:'FREE',snapshot_at:new Date().toISOString()}));
+ db.carts.push(...rows.map(r=>({id:r.cart_id,code:r.code,name:r.name,capacity:10,active:true})));
+ const headers={'access-control-allow-origin':'*','access-control-allow-headers':'*','access-control-allow-methods':'GET,POST,OPTIONS'};
+ await page.route('**/rest/v1/rpc/spatial_cart_summary*',r=>r.fulfill(r.request().method()==='OPTIONS'?{headers,status:204}:{headers,json:rows}));
+ await page.route('**/rest/v1/rpc/spatial_cart_details*',r=>{
+  if(r.request().method()==='OPTIONS')return r.fulfill({headers,status:204});
+  const row=rows.find(x=>x.cart_id===r.request().postDataJSON().p_cart_id);
+  return r.fulfill({headers,json:{summary:row,reservations:[],confirmed_slots:[]}});
+ });
+ await page.setViewportSize({width:1440,height:900});
+ await page.goto('/?environment3d=1');
+ await page.getByLabel('E-mail').fill('test-admin@educart.example');
+ await page.getByLabel('Senha').fill('senha-de-teste-sem-uso-real');
+ await page.getByRole('button',{name:'Entrar no Educart'}).click();
+ await page.getByRole('button',{name:'Ambiente 3D',exact:true}).click();
+ const list=page.locator('.dt-list');
+ await expect(list.getByRole('button')).toHaveCount(40);
+ await expect(page.getByText(/Qualidade em uso: Econômica/)).toBeVisible();
+ await page.getByLabel('Qualidade visual').selectOption('high');
+ const canvas=page.locator('.dt-stage canvas');
+ await canvas.scrollIntoViewIfNeeded();
+ await expect(canvas).toHaveAttribute('data-asset-mode','detailed',{timeout:20000});
+ await expect(canvas).toHaveAttribute('data-instanced-carts','120');
+ await expect(canvas).toHaveAttribute('data-cart-count','120');
+ await expect.poll(async()=>Number(await canvas.getAttribute('data-frames'))).toBeGreaterThan(0);
+ const measure=async()=>canvas.evaluate(el=>({frames:Number(el.dataset.frames??0),drawCalls:Number(el.dataset.drawCalls??0),triangles:Number(el.dataset.triangles??0),detailCount:Number(el.dataset.detailCount??0)}));
+ await page.getByLabel('Buscar carrinho na lista').fill('LOAD-120');
+ await expect(list.getByRole('button')).toHaveCount(1);
+ await list.getByRole('button',{name:/LOAD-120/}).focus();
+ await page.keyboard.press('Enter');
+ await expect(page.getByRole('heading',{name:'Carrinho de ensaio 120',exact:true})).toBeVisible();
+ await page.getByRole('button',{name:'Focalizar carrinho'}).click();
+ await canvas.scrollIntoViewIfNeeded();
+ await expect(canvas).toHaveAttribute('data-selected-cart',uid(7119));
+ await expect.poll(async()=> (await measure()).drawCalls).toBeGreaterThan(0);
+ await page.waitForTimeout(700);
+ const focused=await measure();
+ expect(focused.detailCount).toBeLessThanOrEqual(12);
+ expect(focused.triangles).toBeGreaterThan(0);
+ await page.waitForTimeout(1000);
+ const idle=await measure();
+ expect(idle.frames-focused.frames,'sem loop contínuo quando a cena está estável').toBeLessThanOrEqual(2);
+ const sample={cartCount:120,quality:'high',...idle,idleAdditionalFrames:idle.frames-focused.frames,elapsedMs:1000,scope:'Chromium headless (SwiftShader permitted), synthetic data; not FPS or physical GPU certification'};
+ console.log('F70 LOAD '+JSON.stringify(sample));
+ await testInfo.attach('f70-render-aggregate',{body:JSON.stringify(sample,null,2),contentType:'application/json'});
+ await page.screenshot({path:testInfo.outputPath('f70-120-carts.png')});
+ await testInfo.attach('f70-120-carts',{path:testInfo.outputPath('f70-120-carts.png'),contentType:'image/png'});
+ await page.getByLabel('Exibir ambiente 3D').uncheck();
+ await expect(canvas).toHaveCount(0);
+ await expect(list.getByRole('button',{name:/LOAD-120/})).toBeVisible();
 });

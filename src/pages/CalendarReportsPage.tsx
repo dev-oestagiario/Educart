@@ -6,7 +6,7 @@ import {addCalendarDays,isWeekday,shiftLabel,showDate,todayInSaoPaulo,type Shift
 import {downloadCsv,downloadPdf,type ReportRow} from '../lib/reportExports';
 
 type Period={id:string;reservation_id:string;cart_id:string;usage_date:string;shift:Shift;quantity:number;active:boolean};
-type Booking={id:string;requester_id:string;cart_id:string;mode:string;needs_mouse:boolean;notes:string|null;created_by:string};
+type Booking={id:string;requester_id:string;cart_id:string;mode:string;needs_mouse:boolean;notes:string|null;created_by:string;destination_label?:string|null};
 type Admin={user_id:string;display_name:string};
 type CalendarRow=ReportRow&{dateIso:string;shiftCode:Shift;bookingId:string;active:boolean};
 function firstDayOfWeek(day:string):string{
@@ -28,7 +28,7 @@ function humanMonth(iso:string){
   return new Intl.DateTimeFormat('pt-BR',{timeZone:'UTC',month:'long',year:'numeric'})
     .format(new Date(iso+'T12:00:00Z'));
 }
-const today=todayInSaoPaulo();
+
 const REPORT_PAGE_SIZE=250;
 async function collectReportPages<T>(fetchPage:(start:number,end:number)=>PromiseLike<{data:T[]|null;error:unknown}>):Promise<T[]>{
   const rows:T[]=[];
@@ -48,6 +48,7 @@ async function getRows<T>(table:'carts'|'requesters'|'admin_users',cols='*'):Pro
   });
 }
 export default function CalendarReportsPage(){
+  const today=todayInSaoPaulo();
   const [mode,setMode]=useState<'semana'|'mes'>('semana');
   const [focus,setFocus]=useState(today);
   const [cartId,setCartId]=useState('');
@@ -78,7 +79,7 @@ export default function CalendarReportsPage(){
       const result:Booking[]=[];
       for(let index=0;index<bookingIds.length;index+=100){
         const {data,error}=await supabase.from('reservations')
-          .select('id,requester_id,cart_id,mode,needs_mouse,notes,created_by')
+          .select('id,requester_id,cart_id,mode,needs_mouse,notes,created_by,destination_label')
           .in('id',bookingIds.slice(index,index+100));
         if(error)throw error;
         result.push(...((data??[]) as Booking[]));
@@ -92,33 +93,40 @@ export default function CalendarReportsPage(){
   const rows=useMemo(():CalendarRow[]=>{
     if(!periodQuery.data)return [];
     const lookup=new Map((bookings.data??[]).map(x=>[x.id,x]));
+    const byCart=new Map(carts.data?.map(x=>[x.id,x]));
+    const byTeacher=new Map(teachers.data?.map(x=>[x.id,x]));
+    const byAdmin=new Map(admins.data?.map(x=>[x.user_id,x]));
     return periodQuery.data.flatMap(p=>{
       const booking=lookup.get(p.reservation_id);
       if(!booking)return [];
       if(cartId&&p.cart_id!==cartId)return [];
       if(teacherId&&booking.requester_id!==teacherId)return [];
       if(!includeCancelled&&!p.active)return [];
-      const cart=carts.data?.find(x=>x.id===p.cart_id);
-      const requester=teachers.data?.find(x=>x.id===booking.requester_id);
-      const admin=admins.data?.find(x=>x.user_id===booking.created_by);
+      const cart=byCart.get(p.cart_id);
+      const requester=byTeacher.get(booking.requester_id);
+      const admin=byAdmin.get(booking.created_by);
       return [{
         date:showDate(p.usage_date),dateIso:p.usage_date,shift:shiftLabel[p.shift],shiftCode:p.shift,
         cart:cart?.name??'Carrinho',requester:requester?.name??'Solicitante',
         mode:booking.mode==='COMPLETA'?'Completa':'Parcial',quantity:p.quantity,
         needsMouse:booking.needs_mouse,status:p.active?'Confirmada':'Cancelada',
-        createdBy:admin?.display_name??'TI',notes:booking.notes??'',bookingId:booking.id,active:p.active
+        createdBy:admin?.display_name??'TI',notes:booking.notes??'',room:booking.destination_label??'',bookingId:booking.id,active:p.active
       }];
     });
   },[periodQuery.data,bookings.data,carts.data,teachers.data,admins.data,cartId,teacherId,includeCancelled]);
+  const byDate=useMemo(()=>{const map=new Map<string,CalendarRow[]>();for(const row of rows){const group=map.get(row.dateIso)??[];group.push(row);map.set(row.dateIso,group);}return map;},[rows]);
   const active=rows.filter(r=>r.active);
   const bookingCount=new Set(active.map(r=>r.bookingId)).size;
   const notebookPeriods=active.reduce((n,r)=>n+r.quantity,0);
-  const busy=periodQuery.isLoading||(bookingIds.length>0&&bookings.isLoading)
-    ||carts.isLoading||teachers.isLoading||admins.isLoading;
-  const hasError=periodQuery.error||bookings.error||carts.error||teachers.error||admins.error;
+  const busy=periodQuery.isFetching||(bookingIds.length>0&&bookings.isFetching)
+    ||carts.isFetching||teachers.isFetching||admins.isFetching;
+  const missingBookings=useMemo(()=>{const ids=new Set(bookings.data?.map(b=>b.id));return !!periodQuery.data&&!!bookings.data&&bookingIds.some(id=>!ids.has(id));},[periodQuery.data,bookings.data,bookingIds]);
+  const hasError=periodQuery.error||bookings.error||carts.error||teachers.error||admins.error||missingBookings;
+  function refresh(){void periodQuery.refetch();if(bookingIds.length)void bookings.refetch();void carts.refetch();void teachers.refetch();void admins.refetch();}
   const dateLabel=mode==='mes'?humanMonth(first):showDate(first)+' a '+showDate(last);
 
   async function exportFile(format:'pdf'|'csv'){
+    if(busy||hasError||exportBusy)return;
     setExportError('');setExportBusy(true);
     try{
       const data=rows.map(({dateIso,shiftCode,bookingId,active,...report})=>report);
@@ -170,7 +178,7 @@ export default function CalendarReportsPage(){
         Incluir períodos cancelados nos resultados</label>
     </section>
     <div className="stats calendar-stats">
-      <div className="stat"><span className="stat-label">Reservas agrupadas</span><strong>{busy?'—':bookingCount}</strong></div>
+      <div className="stat"><span className="stat-label">Reservas agrupadas</span><strong>{busy||hasError?'—':bookingCount}</strong></div>
       <div className="stat"><span className="stat-label">Períodos ocupados</span><strong>{busy?'—':active.length}</strong></div>
       <div className="stat"><span className="stat-label">Notebooks × turnos</span><strong>{busy?'—':notebookPeriods}</strong></div>
       <div className="stat"><span className="stat-label">Linhas no relatório</span><strong>{busy?'—':rows.length}</strong></div>
@@ -181,6 +189,7 @@ export default function CalendarReportsPage(){
           <p className="reservation-subtle">Segunda a sexta; feriados permanecem no calendário.</p>
         </div>
         <div className="reservation-actions">
+          <button type="button" className="ghost" disabled={busy||exportBusy} onClick={refresh}>Atualizar relatório</button>
           <button type="button" className="secondary" disabled={busy||!!hasError||exportBusy}
             onClick={()=>void exportFile('csv')}><Download size={16} aria-hidden="true"/> Planilha CSV</button>
           <button type="button" className="secondary" disabled={busy||!!hasError||exportBusy}
@@ -189,9 +198,9 @@ export default function CalendarReportsPage(){
       </div>
       {exportError&&<p className="notice error" role="alert">{exportError}</p>}
       {busy?<p role="status">Carregando calendário…</p>:
-        hasError?<p className="notice error" role="alert">Falha ao carregar o recorte. Tente atualizar a página.</p>:
+        hasError?<p className="notice error" role="alert">Falha ao carregar o recorte completo. Use Atualizar relatório antes de exportar.</p>:
         <div className="calendar-grid">{dates.map((day,index)=>{
-          const dayRows=rows.filter(r=>r.dateIso===day);
+          const dayRows=byDate.get(day)??[];
           const weekday=new Date(day+'T12:00:00Z').getUTCDay();
           return <article className="calendar-day" key={day}
             style={index===0?{'--calendar-start':String(weekday===0?5:weekday)} as CSSProperties:undefined}>
@@ -206,6 +215,6 @@ export default function CalendarReportsPage(){
           </article>;
         })}</div>}
     </section>
-    <p className="form-hint">O indicador “Reservas agrupadas” conta registros distintos; “Períodos ocupados” conta cada data e turno. O PDF e o CSV respeitam os filtros e incluem cancelamentos apenas se a opção estiver marcada. O PDF apresenta uma agenda por dia útil e um resumo geral; a linha complementar de mouses não corresponde a uma segunda reserva. Como a sala não está cadastrada no sistema, ela aparece como “Não informada”.</p>
+    <p className="form-hint">O indicador “Reservas agrupadas” conta registros distintos; “Períodos ocupados” conta cada data e turno. O PDF e o CSV respeitam os filtros e incluem cancelamentos apenas se a opção estiver marcada. O PDF apresenta uma agenda por dia útil e um resumo geral; a linha complementar de mouses não corresponde a uma segunda reserva. A sala de utilização é exibida conforme o registro da reserva; reservas sem sala permanecem como “Não informada”.</p>
   </div>;
 }

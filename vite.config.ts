@@ -2,4 +2,10 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 
-export default defineConfig({ base: './', plugins: [react(), tailwindcss()] });
+export default defineConfig({
+  base: './',
+  plugins: [react(), tailwindcss()],
+  // Dev/build tools must not be exposed to the local network by default.
+  server: { host: '127.0.0.1' },
+  preview: { host: '127.0.0.1' },
+});

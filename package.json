@@ -10,7 +10,17 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:e2e": "playwright test",
-    "audit": "npm audit --audit-level=high"
+    "audit": "npm audit --audit-level=high",
+    "audit:runtime": "npm audit --omit=dev --audit-level=high",
+    "audit:bundle": "node scripts/verificar-escopo-dependencias.mjs",
+    "test:homologacao": "node scripts/homologacao-completa.mjs",
+    "test:homologacao:preflight": "node --test scripts/homologacao-preflight.test.mjs",
+    "backup:record": "node scripts/verificar-backup-operacional.mjs record",
+    "backup:verify": "node scripts/verificar-backup-operacional.mjs verify",
+    "test:backup": "node --test scripts/verificar-backup-operacional.test.mjs",
+    "monitor:check": "node scripts/monitorar-operacao.mjs",
+    "test:monitor": "node --test scripts/monitorar-operacao.test.mjs",
+    "release:preflight": "node scripts/preflight-release.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "2.80.0",

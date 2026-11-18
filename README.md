@@ -6,32 +6,28 @@ Sistema web de reserva e gestão de laboratórios móveis e notebooks. Painel da
 - [Consulta pública](https://dev-oestagiario.github.io/Educart/#/consulta-publica)
 - [Roadmap F0–F6](docs/roadmap-finalizacao-educart.md) · [F0 — integração](docs/f0-integracao-baseline.md) · [Gêmeo digital V2](docs/educart-3d-v2.md)
 
-## Executar localmente
+## Acesso pelo navegador
 
-Requer Node.js 22 e npm. Copie `.env.example` para `.env.local` e configure apenas URL e chave **publicável** do projeto Supabase autorizado; use projeto de homologação para testes manuais com escrita. Nunca use chave secreta ou service_role no navegador.
+Não é necessário instalar o Educart. Acesse o site no computador ou celular, usando navegador atualizado e internet. A consulta pública funciona sem login; professores e administradores precisam de conta e autorização institucional.
 
-```bash
-npm ci
-npm run dev
-```
+Os endereços acima são os previstos para publicação. A versão acumulada em preparação ainda não está homologada nem tem deploy confirmado.
 
-Verificação antes de alterações:
+## Manuais de uso
 
-```bash
-npm run build
-npm run test
-npx playwright install chromium
-npm run test:e2e
-```
+- [Manual do professor](docs/manual-professor.md) — criar conta, consultar disponibilidade, solicitar e acompanhar.
+- [Manual do administrador](docs/manual-administrador.md) — cadastros, autorizações, reservas, manutenção, movimentações, calendário e diagnóstico.
+- [Guia de acesso e suporte](docs/guia-acesso-suporte.md) — problemas de login e operação, abertura de chamado.
 
-Playwright usa backend simulado; testes de autorização e concorrência reais são fases F1/F2. Migrations em `supabase/migrations/` devem ser aplicadas de forma controlada, sem repetir operações em produção.
+## Documentação exclusiva da equipe técnica
 
-## Fluxo de desenvolvimento e publicação
+- [Arquitetura e operação](docs/arquitetura-operacional.md) — componentes, fluxo de dados, configuração técnica e homologação isolada.
+- [Catálogo de migrations](docs/catalogo-migrations.md) — ordem, escopo e procedimento controlado de atualização.
+- [Backup e recuperação](docs/f6-1-backup-recuperacao.md) e [monitoramento](docs/f6-2-operacao-monitoramento.md).
+- [Checklist de publicação e reversão](docs/checklist-publicacao.md) e [matriz de aceite F5.6](docs/f5-6-homologacao-3d.md).
 
-A baseline de integração está no PR #34. Novas alterações partem da main em branches próprias, com PR, CI e revisão. Não reutilize branches históricas para publicar. O pipeline de produção publica somente a main após testes e build, com metadados em `/Educart/version.json`. Prévias de PR são verificadas no CI, sem substituir produção. Em caso de regressão, reverter por PR preservando histórico. Acesso 3D antigo permanece oculto até a homologação do V2.
+A configuração de ambiente ou ferramentas de desenvolvimento é responsabilidade dos mantenedores, não dos usuários. A baseline da integração está no PR #34; o desenvolvimento atual segue PRs encadeados com validação e revisão antes de promover à main. O pipeline Pages exige testes e build e registra versão em version.json. A publicação permanece bloqueada pelos gates de homologação; o ambiente 3D continua restrito ao desenvolvimento administrativo.
 
-
-## Skills de engenharia
+## Skills de engenharia (somente mantenedores)
 
 As skills de [Matt Pocock](https://github.com/mattpocock/skills) são mantidas em `.agents/skills/` para uso no projeto, incluindo engenharia de software, TDD, revisão de código, especificação, triagem e produtividade.
 

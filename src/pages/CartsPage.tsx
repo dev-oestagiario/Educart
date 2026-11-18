@@ -24,6 +24,7 @@ export default function CartsPage(){
     },
     onSuccess:()=>{
       void qc.invalidateQueries({queryKey:['carts']});
+      void qc.invalidateQueries({queryKey:['spatial']});
       setFeedback({kind:'success',message:editingId?'Carrinho atualizado.':'Carrinho cadastrado.'});
       setEditingId(null);setScreen('list');
     },

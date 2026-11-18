@@ -1,43 +1,43 @@
 import { lazy, Suspense, useEffect, useRef, useState, useSyncExternalStore, type FormEvent } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { BarChart3, BookOpen, Boxes, CalendarDays, ClipboardList, Laptop, LogOut, ClipboardCheck, Bell, Menu, ShieldCheck, UserRound, UserRoundPlus, X } from 'lucide-react';
+import { BarChart3, Boxes, CalendarDays, ClipboardList, Laptop, LogOut, ClipboardCheck, Bell, Menu, ShieldCheck, UserRound, UserRoundPlus, MapPin, Wrench, ArrowLeftRight, X } from 'lucide-react';
 import { create } from 'zustand';
-import { supabase, isConfigured, getRecoveryState, subscribeRecovery, rejectDirectRecovery, clearRecovery, type Cart, type Requester, type Notebook } from './lib/supabase';
+import { supabase, isConfigured, getRecoveryState, subscribeRecovery, rejectDirectRecovery, clearRecovery } from './lib/supabase';
+import {diagnostics} from './lib/observability';
 import {errorMessage} from './lib/validation';
-import { configuredCapacity } from './lib/capacity';
 import NotificationBell from './components/NotificationBell';
 import BrandLogo from './components/BrandLogo';
 import ThemeToggle from './components/ThemeToggle';
 import PasswordResetPage from './pages/PasswordResetPage';
 import {recoveryRedirect,recoveryMessage,newPasswordError} from './lib/passwordRecovery';
 
+const HealthPage=lazy(()=>import('./pages/HealthPage'));
+const DashboardPage=lazy(()=>import('./pages/DashboardPage'));
+const MovementsPage=lazy(()=>import('./pages/MovementsPage'));
+const MaintenancePage=lazy(()=>import('./pages/MaintenancePage'));
+const LocationsPage=lazy(()=>import('./pages/LocationsPage'));
 const CartsPage = lazy(()=>import('./pages/CartsPage'));
 const RequestersPage = lazy(()=>import('./pages/RequestersPage'));
 const NotebooksPage = lazy(()=>import('./pages/NotebooksPage'));
 const ReservationsPage = lazy(()=>import('./pages/ReservationsPage'));
 const CalendarReportsPage = lazy(()=>import('./pages/CalendarReportsPage'));
+const SpatialEditorPage = lazy(()=>import('./features/digitalTwin/SpatialEditorPage'));
+const Prototype3DPage = lazy(()=>import('./features/digitalTwin/PrototypePage'));
+const DigitalTwinPage = lazy(()=>import('./features/digitalTwin/DigitalTwinPage'));
 const Visual3DPage = lazy(()=>import('./pages/Visual3DPage'));
 const PublicCartAvailabilityPage = lazy(()=>import('./pages/PublicCartAvailabilityPage'));
 const TeacherPortal = lazy(()=>import('./pages/TeacherPortal'));
 const TeacherApprovalsPage = lazy(()=>import('./pages/TeacherApprovalsPage'));
 const NotificationsPage = lazy(()=>import('./pages/NotificationsPage'));
 
-type Page = 'overview' | 'carts' | 'requesters' | 'notebooks' | 'reservations' | 'calendar' | 'visual3d' | 'approvals' | 'notifications';
+type Page = 'health' | 'digital-twin' | 'spatial-editor' | 'movements' | 'maintenance' | 'locations' | 'overview' | 'carts' | 'requesters' | 'notebooks' | 'reservations' | 'calendar' | 'visual3d' | 'approvals' | 'notifications';
 const useUi = create<{page:Page; setPage:(page:Page)=>void}>()(
   set => ({page:'overview',setPage:page=>set({page})})
 );
 
-async function fetchRows<T>(table: 'carts'|'requesters'|'notebook_codes'): Promise<T[]> {
-  const {data,error} = await supabase.from(table).select('*').order('created_at',{ascending:false});
-  if (error) throw error;
-  return (data ?? []) as T[];
-}
 function Notice({message,kind='error'}:{message:string;kind?:'error'|'success'}) {
   return <p role={kind==='error'?'alert':'status'} className={'notice '+kind}>{message}</p>;
-}
-function PageHeader({title,description}:{title:string;description:string}) {
-  return <div className="page-header"><h1>{title}</h1><p>{description}</p></div>;
 }
 function TextInput({label,id,value,onChange,required=false,type='text',min,autoComplete,disabled=false}:{label:string;id:string;value:string;onChange:(v:string)=>void;required?:boolean;type?:string;min?:number;autoComplete?:string;disabled?:boolean}) {
   return <label className="field" htmlFor={id}><span>{label}</span>
@@ -103,24 +103,6 @@ function Login({onLogin,resetSuccess=false}:{onLogin:()=>void;resetSuccess?:bool
     <p className="auth-footer"><ShieldCheck size={16}/> Criar conta não concede acesso automático ao sistema.</p>
   </section></div>;
 }
-function Overview() {
-  const carts=useQuery({queryKey:['carts'],queryFn:()=>fetchRows<Cart>('carts')});
-  const requesters=useQuery({queryKey:['requesters'],queryFn:()=>fetchRows<Requester>('requesters')});
-  const notebooks=useQuery({queryKey:['notebooks'],queryFn:()=>fetchRows<Notebook>('notebook_codes')});
-  const totalCapacity=(carts.data??[]).filter(x=>x.active).reduce((n,c)=>n+configuredCapacity(c.capacity,0),0);
-  const {setPage}=useUi();
-  return <><PageHeader title="Visão geral" description="Uma visão rápida dos laboratórios e cadastros da instituição."/>
-    <div className="stats">
-      <div className="stat"><span className="stat-icon"><Boxes/></span><span className="stat-label">Carrinhos cadastrados</span><strong>{carts.data?.length??'—'}</strong></div>
-      <div className="stat"><span className="stat-icon"><Laptop/></span><span className="stat-label">Capacidade cadastrada</span><strong>{carts.isLoading?'—':totalCapacity}</strong></div>
-      <div className="stat"><span className="stat-icon"><UserRound/></span><span className="stat-label">Professores</span><strong>{requesters.data?.length??'—'}</strong></div>
-      <div className="stat"><span className="stat-icon"><ClipboardList/></span><span className="stat-label">Notebooks identificados</span><strong>{notebooks.data?.length??'—'}</strong></div>
-    </div>
-    {(carts.error||requesters.error||notebooks.error)&&<Notice message="Não foi possível carregar alguns indicadores. Confira a conexão."/>}
-    <div className="panel welcome-panel"><div><span className="eyebrow">GESTÃO DE EQUIPAMENTOS</span><h2>Organize os equipamentos</h2><p>Cadastre os carrinhos, professores e códigos de notebooks. A contagem de códigos não altera a capacidade configurada do carrinho.</p></div><button className="secondary" onClick={()=>setPage('carts')}>Gerenciar carrinhos</button></div>
-    <div className="panel muted-panel"><BookOpen size={19}/><p>Agora você já pode reservar carrinhos completos ou quantidades parciais por turno na área Reservas.</p></div>
-  </>;
-}
 export default function App() {
   const qc=useQueryClient();const [session,setSession]=useState<Session|null>(null),[loading,setLoading]=useState(true);
   const {page,setPage}=useUi();
@@ -138,6 +120,8 @@ export default function App() {
   },[]);
   const menuButtonRef=useRef<HTMLButtonElement>(null);
   const closeButtonRef=useRef<HTMLButtonElement>(null);
+  const mainRef=useRef<HTMLElement>(null);
+  const skipRef=useRef<HTMLAnchorElement>(null);
   const sidebarRef=useRef<HTMLElement>(null);
   useEffect(()=>{
     let current=true;
@@ -146,7 +130,7 @@ export default function App() {
     function acceptSession(next:Session|null){
       if(!current)return;
       const id=next?.user.id??null;
-      if(previousUser!==id||!next){qc.clear();setMenuOpen(false);setPage('overview');}
+      if(previousUser!==id||!next){diagnostics.reset();qc.clear();setMenuOpen(false);setPage('overview');}
       previousUser=id;setSession(next);setLoading(false);
     }
     const {data:{subscription}}=supabase.auth.onAuthStateChange((_event,next)=>{observed=true;acceptSession(next);});
@@ -155,6 +139,8 @@ export default function App() {
   },[qc,setPage]);
   useEffect(()=>{
     if(!menuOpen)return;
+    const main=mainRef.current,skip=skipRef.current;
+    if(main)main.inert=true;if(skip)skip.inert=true;
     const previousOverflow=document.body.style.overflow;
     document.body.style.overflow='hidden';
     // A gaveta inicia oculta por CSS. Aguarde a próxima atualização de layout
@@ -173,15 +159,15 @@ export default function App() {
 
     function handleKeydown(event:KeyboardEvent){
       if(event.key==='Escape'){
-        setMenuOpen(false);
-        menuButtonRef.current?.focus();
+        event.preventDefault();closeMobileMenu();
         return;
       }
       if(event.key!=='Tab')return;
-      const controls=sidebarRef.current?.querySelectorAll<HTMLElement>('button:not(:disabled), a[href]');
+      const controls=Array.from(sidebarRef.current?.querySelectorAll<HTMLElement>('button:not(:disabled), a[href]')??[]).filter(el=>el.getClientRects().length>0&&getComputedStyle(el).visibility!=='hidden');
       if(!controls?.length)return;
       const first=controls[0], last=controls[controls.length-1];
-      if(event.shiftKey&&document.activeElement===first){event.preventDefault();last.focus();}
+      if(!sidebarRef.current?.contains(document.activeElement)){event.preventDefault();(event.shiftKey?last:first).focus();}
+      else if(event.shiftKey&&document.activeElement===first){event.preventDefault();last.focus();}
       else if(!event.shiftKey&&document.activeElement===last){event.preventDefault();first.focus();}
     }
     function handleResize(){if(window.innerWidth>690)setMenuOpen(false);}
@@ -190,20 +176,25 @@ export default function App() {
     return ()=>{
       window.cancelAnimationFrame(focusFrame);
       window.clearTimeout(focusRetry);
+      if(main)main.inert=false;if(skip)skip.inert=false;
       document.body.style.overflow=previousOverflow;
       document.removeEventListener('keydown',handleKeydown);
       window.removeEventListener('resize',handleResize);
     };
   },[menuOpen]);
   function closeMobileMenu(){
+    if(mainRef.current)mainRef.current.inert=false;
+    if(skipRef.current)skipRef.current.inert=false;
     setMenuOpen(false);
     menuButtonRef.current?.focus();
   }
   function navigateTo(target:Page){
     setPage(target);
     if(menuOpen){
+      if(mainRef.current)mainRef.current.inert=false;
+      if(skipRef.current)skipRef.current.inert=false;
       setMenuOpen(false);
-      document.getElementById('main-content')?.focus();
+      mainRef.current?.focus();
     }
   }
   const check=useQuery({queryKey:['admin',session?.user.id],enabled:Boolean(session)&&recoveryState==='none',refetchOnWindowFocus:'always',refetchInterval:60_000,queryFn:async()=>{
@@ -223,7 +214,7 @@ export default function App() {
   });
   if(!isConfigured)return <div className="setup"><h1>Educart ainda não está configurado</h1><p>Defina VITE_SUPABASE_URL e VITE_SUPABASE_PUBLISHABLE_KEY no arquivo .env antes de iniciar a aplicação. Nunca exponha uma chave secreta.</p></div>;
   if(recoveryState!=='none')return <PasswordResetPage state={recoveryState} onFinish={changed=>{
-    setSession(null);qc.clear();setMenuOpen(false);setPage('overview');setResetSuccess(changed);
+    setSession(null);diagnostics.reset();qc.clear();setMenuOpen(false);setPage('overview');setResetSuccess(changed);
     const clean=new URL(window.location.href);clean.search='';clean.hash='/login';
     window.history.replaceState(window.history.state,'',clean.toString());
     setIsPublicView(false);clearRecovery();
@@ -248,9 +239,15 @@ export default function App() {
       <button className="secondary" onClick={()=>{void qc.invalidateQueries({queryKey:['admin']});void qc.invalidateQueries({queryKey:['teacher-account']})}}>Verificar autorização</button>
       <button className="ghost" onClick={()=>void supabase.auth.signOut()}>Sair desta conta</button></div>;
   }
-  const nav:[Page,string,typeof Boxes][]=[['overview','Visão geral',ClipboardList],['carts','Carrinhos',Boxes],['requesters','Professores',UserRoundPlus],['notebooks','Notebooks',Laptop],['reservations','Reservas',CalendarDays],['calendar','Calendário',BarChart3],['approvals','Solicitações',ClipboardCheck],['notifications','Notificações',Bell]];
+  const nav:[Page,string,typeof Boxes][]=[['overview','Visão geral',ClipboardList],['carts','Carrinhos',Boxes],['locations','Localizações',MapPin],['maintenance','Manutenção',Wrench],['movements','Retirada e devolução',ArrowLeftRight],['requesters','Professores',UserRoundPlus],['notebooks','Notebooks',Laptop],['reservations','Reservas',CalendarDays],['calendar','Calendário',BarChart3],['approvals','Solicitações',ClipboardCheck],['notifications','Notificações',Bell],['health','Saúde da aplicação',ShieldCheck]];
+  const prototypeEnabled=import.meta.env.DEV&&new URLSearchParams(window.location.search).get('prototype3d')==='1';
+  if(prototypeEnabled)nav.push(['visual3d','Protótipo 3D',Boxes]);
+  const spatialEnabled=import.meta.env.DEV&&new URLSearchParams(window.location.search).get('spatial3d')==='1';
+  if(spatialEnabled)nav.push(['spatial-editor','Configuração espacial',MapPin]);
+  const digitalTwinEnabled=import.meta.env.DEV&&new URLSearchParams(window.location.search).get('environment3d')==='1';
+  if(digitalTwinEnabled)nav.push(['digital-twin','Ambiente 3D',Boxes]);
   return <div className="app-shell">
-    <a className="skip-link" href="#main-content">Pular para o conteúdo</a>
+    <a ref={skipRef} className="skip-link" href="#main-content" onClick={e=>{e.preventDefault();mainRef.current?.focus();}}>Pular para o conteúdo</a>
     {menuOpen&&<button type="button" tabIndex={-1} className="mobile-menu-backdrop" aria-label="Fechar navegação" onClick={closeMobileMenu}/>}
     <aside id="main-nav-panel" ref={sidebarRef} className={'sidebar '+(menuOpen?'sidebar-open':'')} role={menuOpen?'dialog':undefined} aria-modal={menuOpen||undefined} aria-label="Navegação principal">
       <div className="sidebar-top">
@@ -266,7 +263,7 @@ export default function App() {
         <button type="button" className="nav-item" onClick={()=>supabase.auth.signOut()}><LogOut size={18} aria-hidden="true"/> Sair</button>
       </div>
     </aside>
-    <main id="main-content" tabIndex={-1} className="main">
+    <main ref={mainRef} id="main-content" tabIndex={-1} className="main">
       <header className="topbar">
         <div className="topbar-main">
           <button type="button" ref={menuButtonRef} className="mobile-menu-toggle" aria-controls="main-nav-panel" aria-expanded={menuOpen} aria-label="Abrir menu lateral" onClick={()=>setMenuOpen(true)}>
@@ -278,7 +275,7 @@ export default function App() {
           <NotificationBell userId={session.user.id} onOpen={()=>navigateTo('notifications')}/></div>
       </header>
       <div className="content">
-        {page==='overview'?<Overview/>:page==='carts'?<Suspense fallback={<p role="status">Carregando carrinhos…</p>}><CartsPage/></Suspense>:page==='requesters'?<Suspense fallback={<p role="status">Carregando professores…</p>}><RequestersPage/></Suspense>:page==='notebooks'?<Suspense fallback={<p role="status">Carregando notebooks…</p>}><NotebooksPage/></Suspense>:page==='reservations'?<Suspense fallback={<p role="status">Carregando reservas…</p>}><ReservationsPage/></Suspense>:page==='calendar'?<Suspense fallback={<p role="status">Carregando calendário…</p>}><CalendarReportsPage/></Suspense>:page==='visual3d'?<Suspense fallback={<p role="status">Carregando visualização 3D…</p>}><Visual3DPage/></Suspense>:page==='approvals'?<Suspense fallback={<p role="status">Carregando solicitações…</p>}><TeacherApprovalsPage/></Suspense>:<Suspense fallback={<p role="status">Carregando notificações…</p>}><NotificationsPage userId={session.user.id} audience="admin" onReturn={()=>navigateTo('overview')} onViewRequests={()=>navigateTo('approvals')}/></Suspense>}
+        {page==='health'?<Suspense fallback={<p role="status">Carregando diagnóstico…</p>}><HealthPage/></Suspense>:page==='digital-twin'&&digitalTwinEnabled?<Suspense fallback={<p role="status">Carregando ambiente 3D…</p>}><DigitalTwinPage onNavigate={navigateTo}/></Suspense>:page==='spatial-editor'&&spatialEnabled?<Suspense fallback={<p role="status">Carregando configuração espacial…</p>}><SpatialEditorPage/></Suspense>:page==='overview'?<Suspense fallback={<p role="status">Carregando painel operacional…</p>}><DashboardPage onNavigate={navigateTo}/></Suspense>:page==='movements'?<Suspense fallback={<p role="status">Carregando movimentações…</p>}><MovementsPage/></Suspense>:page==='maintenance'?<Suspense fallback={<p role="status">Carregando manutenção…</p>}><MaintenancePage/></Suspense>:page==='locations'?<Suspense fallback={<p role="status">Carregando localizações…</p>}><LocationsPage/></Suspense>:page==='carts'?<Suspense fallback={<p role="status">Carregando carrinhos…</p>}><CartsPage/></Suspense>:page==='requesters'?<Suspense fallback={<p role="status">Carregando professores…</p>}><RequestersPage/></Suspense>:page==='notebooks'?<Suspense fallback={<p role="status">Carregando notebooks…</p>}><NotebooksPage/></Suspense>:page==='reservations'?<Suspense fallback={<p role="status">Carregando reservas…</p>}><ReservationsPage/></Suspense>:page==='calendar'?<Suspense fallback={<p role="status">Carregando calendário…</p>}><CalendarReportsPage/></Suspense>:page==='visual3d'?<Suspense fallback={<p role="status">Carregando visualização 3D…</p>}>{prototypeEnabled?<Prototype3DPage/>:<Visual3DPage/>}</Suspense>:page==='approvals'?<Suspense fallback={<p role="status">Carregando solicitações…</p>}><TeacherApprovalsPage/></Suspense>:<Suspense fallback={<p role="status">Carregando notificações…</p>}><NotificationsPage userId={session.user.id} audience="admin" onReturn={()=>navigateTo('overview')} onViewRequests={()=>navigateTo('approvals')}/></Suspense>}
       </div>
     </main>
   </div>;
