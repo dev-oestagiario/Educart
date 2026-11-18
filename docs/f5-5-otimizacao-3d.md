@@ -13,7 +13,7 @@ Base PR #59. Acesso administrativo somente DEV, sem mudanças de banco, permiss�
 localhost, Debian 13 PRoot/Termux ARM64, Node 24.9.0; checkout da branch existente apenas para testes. Commits pela conexão Dev.
 - Commit 1db2d79: typecheck aprovado, 119/119 Vitest em 24 arquivos, 11 novos (8 políticas + 3 cache/perfil). 
 - Perfil estrutural em Node, 120 clones detalhados vs 12: 21.240 vs 2.124 nós de GLB (90% menos nós detalhados, não nós totais da cena). Tempo de construção nesta única execução: 931,48 ms vs 46,58 ms; não generalizar, sem GPU, labels, fallback, rendering ou medição repetida. 
-- Commit 647d554: 3/3 hashes GLB e 12/12 testes de layout aprovados; build final em validação.
+- Commit 647d554: 3/3 hashes GLB e 12/12 testes de layout aprovados; build final aprovado (exit 0, Vite 56,58 s). Avisos de chunks acima de 500 kB permanecem; redução do tamanho do bundle JavaScript não foi comprovada.
 - E2E ampliado (041b9f0) com falha a frio, recuperação, cache, instâncias e modo automático móvel. Não executado: Chromium indisponível no PRoot e PCs tradicionais offline. Pendências: WebGL real, raycast, FPS, memória, largura/zoom 200%, contraste e rede limitada, consistência funcional e RLS na stack real. Sem execução de Actions deliberada, merge ou publicação.
 - DT-021/022/023 mantidos pendentes de aceite integral; F5.6 deve validar o conjunto e só publicar após autorização.
 
