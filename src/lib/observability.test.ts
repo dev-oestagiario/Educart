@@ -35,6 +35,9 @@ describe('F6.2 observabilidade local',()=>{
   expect(total(store)).toBe(2);expect(store.summary().truncated).toBe(true);
   now=WINDOW_MS;expect(total(store)).toBe(0);expect(store.summary().truncated).toBe(false);
  });
+ it('rejeita limites inválidos e mantém teto absoluto',()=>{
+  for(const limit of [-1,0,NaN,Infinity,100000]){const store=createDiagnostics(()=>1,limit);for(let i=0;i<1001;i++)store.record('rpc','ok',1);expect(total(store)).toBe(1000);expect(store.summary().truncated).toBe(true);}
+ });
  it('reset invalida requisições em voo da conta anterior',async()=>{
   let complete:(r:Response)=>void=()=>{};
   const store=createDiagnostics();const f=observedFetch(()=>new Promise(resolve=>{complete=resolve}),base,store);
