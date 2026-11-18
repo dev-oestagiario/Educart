@@ -12,10 +12,10 @@ describe('consulta e atualização dos fluxos',()=>{
  });
  it('invalida recortes dependentes e preserva consultas não relacionadas',async()=>{
   const qc=new QueryClient();
-  const keys=[['calendar-periods','semana'],['calendar-bookings','id'],['operational-dashboard','date'],['booking-periods',['id']],['movement-periods','date'],['teacher-availability','id'],['notifications']];
+  const keys=[['calendar-periods','semana'],['calendar-bookings','id'],['operational-dashboard','date'],['booking-periods',['id']],['movement-periods','date'],['teacher-availability','id'],['spatial','overview-detail','cart'],['spatial','notebook-history','cart','notebook'],['notifications']];
   keys.forEach(k=>qc.setQueryData(k,[1]));
   await invalidateReservationViews(qc);
-  expect(keys.map(k=>qc.getQueryState(k)?.isInvalidated)).toEqual([true,true,true,true,true,true,false]);
+  expect(keys.map(k=>qc.getQueryState(k)?.isInvalidated)).toEqual([true,true,true,true,true,true,true,true,false]);
   qc.clear();
  });
 });
