@@ -1,7 +1,7 @@
 import {Feedback} from '../components/Feedback';
 import {lazy,Suspense,useMemo,useState,type FormEvent} from 'react';
 import {useMutation,useQuery,useQueryClient} from '@tanstack/react-query';
-import {CalendarDays,ClipboardList,LogOut,Send,ShieldCheck} from 'lucide-react';
+import {CalendarDays,ClipboardList,LogOut,Send,ShieldCheck,Bell,Settings,Wrench} from 'lucide-react';
 import {supabase,type Cart} from '../lib/supabase';
 import {addCalendarDays,expandReservationDates,isWeekday,SHIFTS,shiftLabel,showDate,todayInSaoPaulo,type Shift} from '../lib/reservations';
 import {requestStatusLabel,validateTeacherRequest,type TeacherRequest} from '../lib/teacherRequests';
@@ -11,10 +11,14 @@ import ThemeToggle from '../components/ThemeToggle';
 import {collectPages} from '../lib/queryRefresh';
 import {fetchCatalogRows} from '../lib/catalog';
 import RecordsHeader from '../components/RecordsHeader';
+import DateRangeFields from '../components/DateRangeFields';
 import WeeklyRecurrence from '../components/WeeklyRecurrence';
 import {defaultWeeklyPattern,expandWeeklyPattern} from '../lib/recurrence';
 import TeacherAvailabilityPreview from '../components/TeacherAvailabilityPreview';
 const NotificationsPage = lazy(()=>import('./NotificationsPage'));
+const TeacherCalendar=lazy(()=>import('./PublicCartAvailabilityPage'));
+const SettingsPage=lazy(()=>import('./SettingsPage'));
+const TeacherMaintenance=lazy(()=>import('./TeacherMaintenancePage'));
 
 
 type Props={requesterId:string;userId:string;email:string;onLogout:()=>void};
@@ -34,14 +38,14 @@ export default function TeacherPortal({requesterId,userId,email,onLogout}:Props)
   const qc=useQueryClient();
   const today=todayInSaoPaulo(),firstDay=firstWeekday(today);
   const [limit,setLimit]=useState(50);
-  const [showNotifications,setShowNotifications]=useState(false);
+  const [page,setPage]=useState<'requests'|'calendar'|'maintenance'|'notifications'|'settings'>('requests');
   const [screen,setScreen]=useState<'list'|'form'>('list');
   const [cartId,setCartId]=useState('');
   const [mode,setMode]=useState<'PARCIAL'|'COMPLETA'>('PARCIAL');
   const [quantity,setQuantity]=useState('1');
   const [dateMode,setDateMode]=useState<'intervalo'|'avulsas'|'weekly'>('intervalo');
   const [pattern,setPattern]=useState(()=>defaultWeeklyPattern(firstDay));
-  const [start,setStart]=useState(firstDay),[end,setEnd]=useState(firstDay);
+  const [start,setStart]=useState(firstDay),[end,setEnd]=useState('');
   const [individualDate,setIndividualDate]=useState(firstDay);
   const [individualDates,setIndividualDates]=useState<string[]>([]);
   const [shifts,setShifts]=useState<Shift[]>(['MATUTINO']);
@@ -70,12 +74,12 @@ export default function TeacherPortal({requesterId,userId,email,onLogout}:Props)
   const cart=carts.data?.find(x=>x.id===cartId);
   const requestedQuantity=mode==='COMPLETA'?(cart?.capacity??0):Number(quantity);
   const days=useMemo(()=>{
-    try {return dateMode==='weekly'?expandWeeklyPattern(pattern,todayInSaoPaulo()):expandReservationDates(dateMode,start,end,individualDates,todayInSaoPaulo());}
+    try {return dateMode==='weekly'?expandWeeklyPattern(pattern,todayInSaoPaulo()):expandReservationDates(dateMode,start,end||start,individualDates,todayInSaoPaulo());}
     catch{return [];}
   },[dateMode,pattern,start,end,individualDates,today]);
   const create=useMutation({
     mutationFn:async()=>{
-      const selected=dateMode==='weekly'?expandWeeklyPattern(pattern,todayInSaoPaulo()):expandReservationDates(dateMode,start,end,individualDates,todayInSaoPaulo());
+      const selected=dateMode==='weekly'?expandWeeklyPattern(pattern,todayInSaoPaulo()):expandReservationDates(dateMode,start,end||start,individualDates,todayInSaoPaulo());
       const input=validateTeacherRequest({
         cart_id:cartId,mode,quantity:requestedQuantity,dates:selected,
         shifts,needs_mouse:needsMouse,notes:notes.trim()
@@ -108,7 +112,7 @@ export default function TeacherPortal({requesterId,userId,email,onLogout}:Props)
   });
   function newRequest(){
     setCartId('');setMode('PARCIAL');setQuantity('1');
-    setDateMode('intervalo');setPattern(defaultWeeklyPattern(firstDay));setStart(firstDay);setEnd(firstDay);
+    setDateMode('intervalo');setPattern(defaultWeeklyPattern(firstDay));setStart(firstDay);setEnd('');
     setIndividualDate(firstDay);setIndividualDates([]);setShifts(['MATUTINO']);
     setNeedsMouse(false);setNotes('');setMessage(null);setScreen('form');
   }
@@ -129,13 +133,14 @@ export default function TeacherPortal({requesterId,userId,email,onLogout}:Props)
     <header className="teacher-topbar">
       <BrandLogo tone="light"/>
       <div className="teacher-account"><ThemeToggle/><span title={email}>{teacher.data?.name??'Portal do professor'}</span>
-        <NotificationBell userId={userId} onOpen={()=>setShowNotifications(true)}/>
+        <NotificationBell userId={userId} onOpen={()=>setPage('notifications')}/>
         <button type="button" className="ghost" onClick={onLogout}><LogOut size={17} aria-hidden="true"/> Sair</button>
       </div>
     </header>
     <main id="teacher-main" tabIndex={-1} className="teacher-main">
-      {showNotifications?<Suspense fallback={<p role="status">Carregando notificações…</p>}>
-        <NotificationsPage userId={userId} audience="teacher" onReturn={()=>setShowNotifications(false)} onViewRequests={()=>setShowNotifications(false)}/>
+      <nav aria-label="Menu do professor" className="teacher-portal-nav">{([['requests','Solicitações',ClipboardList],['calendar','Calendário',CalendarDays],['maintenance','Manutenções',Wrench],['notifications','Notificações',Bell],['settings','Configurações',Settings]] as const).map(([id,label,Icon])=><button key={id} type="button" className={page===id?'primary':'ghost'} aria-current={page===id?'page':undefined} onClick={()=>setPage(id)}><Icon size={17} aria-hidden="true"/>{label}</button>)}</nav>
+      {page==='calendar'?<Suspense fallback={<p role="status">Carregando calendário…</p>}><TeacherCalendar embedded/></Suspense>:page==='maintenance'?<Suspense fallback={<p role="status">Carregando manutenções…</p>}><TeacherMaintenance/></Suspense>:page==='settings'?<Suspense fallback={<p role="status">Carregando configurações…</p>}><SettingsPage userId={userId}/></Suspense>:page==='notifications'?<Suspense fallback={<p role="status">Carregando notificações…</p>}>
+        <NotificationsPage userId={userId} audience="teacher" onReturn={()=>setPage('requests')} onViewRequests={()=>setPage('requests')}/>
       </Suspense>:<>
 
       {screen==='list'?<>
@@ -208,20 +213,13 @@ export default function TeacherPortal({requesterId,userId,email,onLogout}:Props)
                   onChange={e=>toggleShift(shift,e.target.checked)}/>{shiftLabel[shift]}</label>)}
               </div>
             </fieldset>
-            <label className="field" htmlFor="teacher-date-mode"><span>Datas da solicitação</span>
-              <select id="teacher-date-mode" value={dateMode}
-                onChange={e=>setDateMode(e.target.value as 'intervalo'|'avulsas'|'weekly')}>
-                <option value="intervalo">Período (somente dias úteis)</option>
-                <option value="avulsas">Datas avulsas</option>
-                <option value="weekly">Recorrência semanal</option>
-              </select>
-            </label>
+            <fieldset className="ds-fieldset"><legend>Datas da solicitação</legend>
+              <div className="ds-choice-group" role="group" aria-label="Opções de datas">{([['intervalo','Início e fim'],['avulsas','Dias avulsos'],['weekly','Recorrência semanal']] as const).map(([id,label])=><button key={id} type="button" className={dateMode===id?'primary':'ghost'} aria-pressed={dateMode===id} onClick={()=>setDateMode(id)}>{label}</button>)}</div>
+            </fieldset>
             {dateMode==='weekly'?<WeeklyRecurrence id="teacher-weekly" value={pattern} today={todayInSaoPaulo()} shifts={shifts.length} disabled={create.isPending} onChange={setPattern}/>:
             dateMode==='intervalo'?
-              <div className="reservation-dates">
-                <label className="field" htmlFor="teacher-start"><span>De</span><input id="teacher-start" type="date" min={today} value={start} onChange={e=>setStart(e.target.value)}/></label>
-                <label className="field" htmlFor="teacher-end"><span>Até</span><input id="teacher-end" type="date" min={today} value={end} onChange={e=>setEnd(e.target.value)}/></label>
-              </div>:
+              <DateRangeFields id="teacher-period" min={today} start={start} end={end} disabled={create.isPending} onChange={(a,b)=>{setStart(a);setEnd(b);}}/>
+:
               <div className="form-stack">
                 <div className="request-date-add"><label className="field" htmlFor="teacher-single-date"><span>Escolher data</span>
                   <input type="date" id="teacher-single-date" min={today} value={individualDate} onChange={e=>setIndividualDate(e.target.value)}/></label>
