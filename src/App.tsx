@@ -4,6 +4,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { BarChart3, Boxes, CalendarDays, ClipboardList, Laptop, LogOut, ClipboardCheck, Bell, Menu, ShieldCheck, UserRound, UserRoundPlus, MapPin, Wrench, ArrowLeftRight, Settings, X } from 'lucide-react';
 import { create } from 'zustand';
 import { supabase, isConfigured, getRecoveryState, subscribeRecovery, rejectDirectRecovery, clearRecovery } from './lib/supabase';
+import {useOperationalRealtime} from './lib/useOperationalRealtime';
 import {diagnostics} from './lib/observability';
 import {errorMessage} from './lib/validation';
 import NotificationBell from './components/NotificationBell';
@@ -214,6 +215,7 @@ export default function App() {
       return data as {requester_id:string;active:boolean}|null;
     }
   });
+  useOperationalRealtime(session?.user.id,Boolean(isConfigured&&session&&recoveryState==='none'&&!isPublicView&&(check.data||teacherAccess.data)));
   if(!isConfigured)return <div className="setup"><h1>Educart ainda não está configurado</h1><p>Defina VITE_SUPABASE_URL e VITE_SUPABASE_PUBLISHABLE_KEY no arquivo .env antes de iniciar a aplicação. Nunca exponha uma chave secreta.</p></div>;
   if(recoveryState!=='none')return <PasswordResetPage state={recoveryState} onFinish={changed=>{
     setSession(null);diagnostics.reset();qc.clear();setMenuOpen(false);setPage('overview');setResetSuccess(changed);
