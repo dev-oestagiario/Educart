@@ -121,9 +121,9 @@ Implementação e testes locais: [F5.1](f5-1-fundacao-espacial.md). Editor numé
 - [x] DT-007 Mapeamento opcional slot/notebook físico; preservar capacidade sem código e impedir associação falsa/duplicada.
 
 ### F5.2 — Experiência de visão geral
-- [ ] DT-008 Criar layout canvas + toolbar + painel, carregar todos sem seleção; manter lazy load e dados acessíveis.
-- [ ] DT-009 Cena com salas/ambientes e carrinhos, seleção por raycast/ID, destaque, camada de etiquetas, câmera e navegar todos.
-- [ ] DT-010 Painel de status/ocupação/reservas e localização registrada, atualização de data/turno e tratamento de erro; busca opcional.
+- [x] DT-008 Criar layout canvas + toolbar + painel, carregar todos sem seleção; manter lazy load e dados acessíveis.
+- [x] DT-009 Cena com salas/ambientes e carrinhos, seleção por raycast/ID, destaque, camada de etiquetas, câmera e navegar todos.
+- [x] DT-010 Painel de status/ocupação/reservas e localização registrada, atualização de data/turno e tratamento de erro; busca opcional.
 - [ ] DT-011 Testar carrinhos sem posição, 0/1/N ativos, estados mistos, dados defasados, troca de turno e filtros.
 
 ### F5.3 — Assets detalhados
