@@ -2381,7 +2381,7 @@ test.describe('F5.1 — configuração espacial',()=>{
   const headers={'access-control-allow-origin':'*','access-control-allow-headers':'*','access-control-allow-methods':'GET,POST,OPTIONS,PATCH,DELETE'};
   let details=0;
   await page.route('**/rest/v1/rpc/spatial_cart_summary*',r=>r.fulfill({headers,json:r.request().method()==='OPTIONS'?{}:[summary]}));
-  await page.route('**/rest/v1/rpc/spatial_cart_details*',r=>{if(r.request().method()!=='OPTIONS')details++;return r.fulfill({headers,json:{summary,reservations:[],confirmed_slots:[]}});});
+  await page.route('**/rest/v1/rpc/spatial_cart_details*',r=>{if(r.request().method()!=='OPTIONS')details++;return r.fulfill({headers,json:{summary,reservations:[{id:'00000000-0000-4000-8000-000000000055',period_id:'00000000-0000-4000-8000-000000000056',requester:'Docente sintético',quantity:3,mode:'PARCIAL',destination_room_id:null,destination_label:null,needs_mouse:false,notes:null}],confirmed_slots:[]}});});
   await page.goto('/?spatial3d=1');
   await page.getByLabel('E-mail').fill('test-admin@educart.example');
   await page.getByLabel('Senha').fill('senha-de-teste-sem-uso-real');
@@ -2402,7 +2402,7 @@ test.describe('F5.1 — configuração espacial',()=>{
   await expect(page.getByText('Ambiente salvo.',{exact:true})).toBeVisible();
   expect(db.spatial_scenes).toHaveLength(1);
   await page.getByRole('button',{name:/F51 — Carrinho teste/}).click();
-  await expect(page.getByText('0 reservas confirmadas · 0 vínculos físicos ativos')).toBeVisible();
+  await expect(page.getByText('1 reservas confirmadas · 0 vínculos físicos ativos')).toBeVisible();
   expect(details).toBeGreaterThan(0);
   await page.setViewportSize({width:390,height:844});
   await expect.poll(()=>page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)).toBe(true);
@@ -2413,8 +2413,8 @@ test.describe('F5.2 — visão geral administrativa 3D',()=>{
  test('todos os carrinhos, GLB e corte, detalhe sob demanda, turno, erro sem saldo, lista alternativa',async({page})=>{
   const db=await useFakeSupabase(page);
   const uid=(n:number)=>'00000000-0000-4000-8000-'+String(n).padStart(12,'0');
-  const cartA=uid(521),cartB=uid(522),roomId=uid(523),blockId=uid(524),campusId=uid(525),sceneId=uid(526),modelId=uid(527);
-  db.carts.push({id:cartA,code:'F52A',name:'Carrinho A',capacity:10,active:true},{id:cartB,code:'F52B',name:'Carrinho B',capacity:20,active:true});
+  const cartA=uid(521),cartB=uid(522),cartC=uid(532),cartD=uid(533),roomId=uid(523),blockId=uid(524),campusId=uid(525),sceneId=uid(526),modelId=uid(527);
+  db.carts.push({id:cartA,code:'F52A',name:'Carrinho A',capacity:10,active:true},{id:cartB,code:'F52B',name:'Carrinho B',capacity:20,active:true},{id:cartC,code:'F52C',name:'Carrinho C',capacity:30,active:true},{id:cartD,code:'F52D',name:'Carrinho D',capacity:10,active:true});
   db.campuses.push({id:campusId,name:'Campus sintético',active:true});
   db.campus_blocks.push({id:blockId,campus_id:campusId,name:'Bloco A',active:true});
   db.campus_rooms.push({id:roomId,block_id:blockId,name:'Sala 1',active:true});
@@ -2435,7 +2435,9 @@ test.describe('F5.2 — visão geral administrativa 3D',()=>{
   const summary=(shift:string)=>{
    const reserved=shift==='VESPERTINO'?8:3;
    return [{cart_id:cartA,code:'F52A',name:'Carrinho A',active:true,storage_room_id:roomId,scene_id:sceneId,model_id:modelId,position_x:1,position_y:0,position_z:-1,yaw:0,placement_version:1,nominal_capacity:10,effective_capacity:10,reserved,available:10-reserved,maintenance_count:0,availability_status:'PARTIAL',snapshot_at:new Date().toISOString()},
-   {cart_id:cartB,code:'F52B',name:'Carrinho B',active:true,storage_room_id:null,scene_id:null,model_id:null,position_x:null,position_y:null,position_z:null,yaw:null,placement_version:null,nominal_capacity:20,effective_capacity:0,reserved:0,available:0,maintenance_count:1,availability_status:'MAINTENANCE',snapshot_at:new Date().toISOString()}];
+   {cart_id:cartB,code:'F52B',name:'Carrinho B',active:true,storage_room_id:null,scene_id:null,model_id:null,position_x:null,position_y:null,position_z:null,yaw:null,placement_version:null,nominal_capacity:20,effective_capacity:0,reserved:0,available:0,maintenance_count:1,availability_status:'MAINTENANCE',snapshot_at:new Date().toISOString()},
+   {cart_id:cartC,code:'F52C',name:'Carrinho C',active:true,storage_room_id:roomId,scene_id:sceneId,model_id:modelId,position_x:-1,position_y:0,position_z:-1,yaw:0,placement_version:1,nominal_capacity:30,effective_capacity:30,reserved:0,available:30,maintenance_count:0,availability_status:'FREE',snapshot_at:new Date().toISOString()},
+   {cart_id:cartD,code:'F52D',name:'Carrinho D',active:true,storage_room_id:null,scene_id:null,model_id:null,position_x:null,position_y:null,position_z:null,yaw:null,placement_version:null,nominal_capacity:10,effective_capacity:10,reserved:10,available:0,maintenance_count:0,availability_status:'FULL',snapshot_at:new Date().toISOString()}];
   };
   await page.route('**/rest/v1/rpc/spatial_cart_summary*',async r=>{
    if(r.request().method()==='OPTIONS'){await r.fulfill({headers,status:204});return;}
@@ -2445,7 +2447,7 @@ test.describe('F5.2 — visão geral administrativa 3D',()=>{
   await page.route('**/rest/v1/rpc/spatial_cart_details*',async r=>{
    if(r.request().method()==='OPTIONS'){await r.fulfill({headers,status:204});return;}
    detailCalls++;const body=r.request().postDataJSON();const row=summary(body.p_shift).find(c=>c.cart_id===body.p_cart_id)!;
-   await r.fulfill({headers,json:{summary:row,reservations:row.cart_id===cartA?[{...reservation,quantity:row.reserved}]:[],confirmed_slots:row.cart_id===cartA?[slot]:[]}});
+   await r.fulfill({headers,json:{summary:row,reservations:row.cart_id===cartA?[{...reservation,quantity:row.reserved}]:row.cart_id===cartD?[{...reservation,id:uid(534),period_id:uid(535),quantity:10,mode:'COMPLETA'}]:[],confirmed_slots:row.cart_id===cartA?[slot]:[]}});
   });
   await page.route('**/cart-illustrative-v1.glb*',r=>r.fulfill({status:503,body:'asset unavailable'}));
   await page.goto('/?environment3d=1');
@@ -2454,22 +2456,24 @@ test.describe('F5.2 — visão geral administrativa 3D',()=>{
   await page.getByRole('button',{name:'Entrar no Educart'}).click();
   await page.getByRole('button',{name:'Ambiente 3D',exact:true}).click();
   const list=page.locator('.dt-list');
-  await expect(list.getByRole('button')).toHaveCount(2);
+  await expect(list.getByRole('button')).toHaveCount(4);
   await expect(list.getByRole('button',{name:/F52A/})).toContainText('Sala 1');
   await expect(list.getByRole('button',{name:/F52B/})).toContainText('Sem localização definida');
   expect(detailCalls).toBe(0);
+  await expect(list.getByRole('button',{name:/F52C/})).toContainText('Livre');
+  await expect(list.getByRole('button',{name:/F52D/})).toContainText('Totalmente reservado');
   await page.getByLabel('Qualidade visual').selectOption('high');
   const canvas=page.locator('.dt-stage canvas');
   await canvas.scrollIntoViewIfNeeded();
   await expect(canvas).toHaveAttribute('data-asset-mode','fallback',{timeout:15000});
-  await expect(list.getByRole('button')).toHaveCount(2);
+  await expect(list.getByRole('button')).toHaveCount(4);
   await page.unroute('**/cart-illustrative-v1.glb*');
   await page.getByLabel('Qualidade visual').selectOption('low');
   await page.getByLabel('Qualidade visual').selectOption('high');
   await canvas.scrollIntoViewIfNeeded();
   await expect(canvas).toHaveAttribute('data-asset-mode','detailed',{timeout:15000});
-  await expect(canvas).toHaveAttribute('data-instanced-carts','2');
-  await expect(canvas).toHaveAttribute('data-cart-count','2');
+  await expect(canvas).toHaveAttribute('data-instanced-carts','4');
+  await expect(canvas).toHaveAttribute('data-cart-count','4');
   await list.getByRole('button',{name:/F52A/}).click();
   await expect(page.getByRole('button',{name:/F54-NB-01/})).toBeVisible();
   expect(historyCalls).toBe(0);
@@ -2496,8 +2500,13 @@ test.describe('F5.2 — visão geral administrativa 3D',()=>{
   await page.route('**/cart-illustrative-v1.glb*',r=>r.fulfill({status:503,body:'asset unavailable'}));
   await page.getByLabel('Qualidade visual').selectOption('high');
   await expect(canvas).toHaveAttribute('data-asset-mode','detailed',{timeout:15000}); // cache verificado reutilizado sem rede
-  await expect(list.getByRole('button')).toHaveCount(2);
+  await expect(list.getByRole('button')).toHaveCount(4);
   await page.unroute('**/cart-illustrative-v1.glb*');
+  await list.getByRole('button',{name:/F52C/}).focus();
+  await page.keyboard.press('Enter');
+  await expect(page.getByRole('heading',{name:'Carrinho C',exact:true})).toBeVisible();
+  await list.getByRole('button',{name:/F52D/}).click();
+  await expect(page.getByRole('heading',{name:'Carrinho D',exact:true})).toBeVisible();
   await list.getByRole('button',{name:/F52A/}).click();
   await page.getByLabel('Turno',{exact:true}).selectOption('VESPERTINO');
   await expect(list.getByRole('button',{name:/F52A/})).toContainText('2 disponíveis');
@@ -2505,16 +2514,17 @@ test.describe('F5.2 — visão geral administrativa 3D',()=>{
   await expect(list.getByRole('button')).toHaveCount(1);
   await page.getByLabel('Buscar carrinho na lista').clear();
   await page.getByLabel('Exibir ambiente 3D').uncheck();
-  await expect(list.getByRole('button')).toHaveCount(2);
+  await expect(list.getByRole('button')).toHaveCount(4);
   fail=true;
   await page.getByRole('button',{name:'Atualizar dados'}).click();
   await expect(page.getByText('Não foi possível confirmar a ocupação deste período.',{exact:false})).toBeVisible();
   await expect(list.getByRole('button',{name:/F52A/})).toContainText('Não confirmado');
   await expect(list.getByRole('button',{name:/F52A/})).not.toContainText('disponíveis');
   await page.setViewportSize({width:390,height:844});
+  await page.emulateMedia({reducedMotion:'reduce'});
   await page.getByLabel('Qualidade visual').selectOption('auto');
   await expect(page.getByText(/Qualidade em uso: Econômica/)).toBeVisible();
-  await expect.poll(()=>page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)).toBe(true);
+  for(const width of [320,360,390,768,1024,1280]){await page.setViewportSize({width,height:844});await expect.poll(()=>page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)).toBe(true);}
  });
  test('sem autorização administrativa não expõe ambiente mesmo com flag DEV',async({page})=>{
   await useFakeSupabase(page,false);
