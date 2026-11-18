@@ -94,8 +94,8 @@ export async function verifyBackupPair(primary,secondary,expected,now=Date.now()
  const x=await verifyOne(a,expected,now),y=await verifyOne(b,expected,now);
  assert.ok(!(x.ino!==0&&x.dev===y.dev&&x.ino===y.ino),'Cópias apontam para o mesmo arquivo');
  assert.deepEqual(x.m,y.m,'Manifestos divergentes');
- const ageHours=(now-Date.parse(x.m.startedAt))/3600000;
- return {copiesVerified:2,bytes:x.m.bytes,migrations:x.m.migrations.length,ageHours:Math.round(ageHours*100)/100,fresh:ageHours<=24,scopeAttested:true,restoreVerified:false};
+ const ageMs=now-Date.parse(x.m.startedAt),ageHours=ageMs/3600000;
+ return {copiesVerified:2,bytes:x.m.bytes,migrations:x.m.migrations.length,ageMs,ageHours:Math.round(ageHours*100)/100,fresh:ageHours<=24,scopeAttested:true,restoreVerified:false};
 }
 async function main(){
  const [action,...args]=process.argv.slice(2);

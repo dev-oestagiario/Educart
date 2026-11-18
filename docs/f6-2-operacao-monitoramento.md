@@ -11,3 +11,6 @@ Diagnóstico local por aba, restrito à interface administrativa; não é monito
 
 ## Gates
 Não ativado monitor externo, agendamento ou envio de alertas. Testes de navegador e homologação Supabase real seguem pendentes; não autorizar publicação nem habilitar 3D. Painel local não comprova SLA ou disponibilidade global.
+
+## Atualização #69
+Monitor one-shot com estado agregado, SHA, idade de backup, incidentes e recuperação implementado e validado localmente: [procedimento e evidências](issue-69-monitoramento-operacional.md). Agendamento, entrega de alertas, evidências reais e aceite permanecem pendentes.
