@@ -2454,7 +2454,13 @@ test.describe('F5.2 — visão geral administrativa 3D',()=>{
   await expect(page.getByText('Nenhuma reserva registrada neste período.',{exact:true})).toBeVisible();
   expect(detailCalls).toBeGreaterThan(0);
   await page.getByRole('button',{name:'Focalizar carrinho'}).click();
+  await expect(canvas).toHaveAttribute('data-cutaway-cart','');
+  await page.getByRole('button',{name:'Abrir porta virtual'}).click();
   await expect(canvas).toHaveAttribute('data-cutaway-cart',cartA);
+  await page.getByRole('button',{name:'Notebook ilustrativo',exact:true}).click();
+  await expect(page.getByText('Exemplo visual sem patrimônio, posição física ou reserva individual associada.',{exact:false})).toBeVisible();
+  await page.getByRole('button',{name:'Fechar porta virtual'}).click();
+  await expect(canvas).toHaveAttribute('data-cutaway-cart','');
   await list.getByRole('button',{name:/F52B/}).click();
   await expect(canvas).toHaveAttribute('data-cutaway-cart','');
   await page.getByLabel('Qualidade visual').selectOption('low');
