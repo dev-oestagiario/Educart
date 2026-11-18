@@ -17,7 +17,9 @@
     "test:homologacao:preflight": "node --test scripts/homologacao-preflight.test.mjs",
     "backup:record": "node scripts/verificar-backup-operacional.mjs record",
     "backup:verify": "node scripts/verificar-backup-operacional.mjs verify",
-    "test:backup": "node --test scripts/verificar-backup-operacional.test.mjs"
+    "test:backup": "node --test scripts/verificar-backup-operacional.test.mjs",
+    "monitor:check": "node scripts/monitorar-operacao.mjs",
+    "test:monitor": "node --test scripts/monitorar-operacao.test.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "2.80.0",

@@ -17,7 +17,7 @@ async function setup(t,m=metadata){
  for(const f of ['manifest.json','backup.age'])await copyFile(join(a,f),join(b,f));
  return {root,a,b};
 }
-test('records and checks distinct copies, scope and freshness',async t=>{const {a,b}=await setup(t);const r=await verifyBackupPair(a,b,ref,now);assert.deepEqual(r,{copiesVerified:2,bytes:fixture.length,migrations:2,ageHours:3,fresh:true,scopeAttested:true,restoreVerified:false});await assert.rejects(()=>recordBackup(a,ref,now));});
+test('records and checks distinct copies, scope and freshness',async t=>{const {a,b}=await setup(t);const r=await verifyBackupPair(a,b,ref,now);assert.deepEqual(r,{copiesVerified:2,bytes:fixture.length,migrations:2,ageMs:10800000,ageHours:3,fresh:true,scopeAttested:true,restoreVerified:false});await assert.rejects(()=>recordBackup(a,ref,now));});
 test('stale backup cannot satisfy 24h target',async t=>{const {a,b}=await setup(t);assert.equal((await verifyBackupPair(a,b,ref,now+22*3600000)).fresh,false);});
 test('detects same-length corruption and truncation',async t=>{const {a,b}=await setup(t);const modified=Buffer.from(fixture);modified[modified.length-1]^=1;await writeFile(join(b,'backup.age'),modified);await assert.rejects(()=>verifyBackupPair(a,b,ref,now),/SHA-256/);await writeFile(join(b,'backup.age'),fixture.subarray(0,-1));await assert.rejects(()=>verifyBackupPair(a,b,ref,now),/Tamanho/);});
 test('rejects plaintext/missing header',async t=>{const {a,b}=await setup(t);await writeFile(join(b,'backup.age'),'plain fixture data not encrypted');await assert.rejects(()=>verifyBackupPair(a,b,ref,now),/age/);});

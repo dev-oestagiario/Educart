@@ -33,6 +33,17 @@ export async function probeDeploy(value,fetcher=fetch){
  const {text:discard,...assetResult}=asset;
  return {ok:assetResult.ok,entry,asset:assetResult};
 }
+export async function probeVersion(value,expectedSha,fetcher=fetch){
+ if(typeof expectedSha!=='string'||!(/^[a-f0-9]{40}$/).test(expectedSha))throw Error('SHA esperado inválido');
+ const target=validatedTarget(value);
+ const {text,...result}=await check(new URL('version.json',target),/^application\/json\b/i,8192,fetcher);
+ if(!result.ok)return {ok:false,kind:result.kind,ms:result.ms};
+ try{
+  const v=JSON.parse(text);
+  if(Object.keys(v).sort().join(',')!=='build,commit,ref'||v.commit!==expectedSha||!(/^[A-Za-z0-9][A-Za-z0-9/_-]{0,127}$/).test(v.ref)||typeof v.build!=='string'||!Number.isFinite(Date.parse(v.build)))throw Error('Versão inesperada');
+  return {ok:true,kind:'ok',ms:result.ms};
+ }catch{return {ok:false,kind:'unexpected-version',ms:result.ms};}
+}
 if(process.argv[1]&&import.meta.url===pathToFileURL(resolve(process.argv[1])).href){
  try{if(process.argv.length!==3)throw Error('Uso: node scripts/verificar-saude-deploy.mjs URL_BASE');const report=await probeDeploy(process.argv[2]);console.log(JSON.stringify(report));if(!report.ok)process.exitCode=1;}
  catch{console.error('Falha de configuração do probe; informe a URL base autorizada, sem dados sensíveis.');process.exitCode=2;}
