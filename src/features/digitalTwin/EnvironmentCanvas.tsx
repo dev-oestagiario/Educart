@@ -7,12 +7,9 @@ import {detailIds,frameScheduler,sceneKey} from './renderPolicy';
 import {overviewStatuses,type OverviewLayout,type SceneCart} from './overviewLayout';
 
 type Props={layout:OverviewLayout;selectedId:string|null;focusId:string|null;reset:number;onPick:(id:string)=>void;doorOpen:boolean;hotspot:Hotspot|null;onHotspot:(id:string,part:Hotspot)=>void;onInspectionReady:(ready:boolean)=>void;quality:'low'|'high'};
-const unitBox=()=>new THREE.BoxGeometry(1,1,1);
-function box(root:THREE.Object3D,w:number,h:number,d:number,color:number,x:number,y:number,z:number,metalness=0,pool?:{geometry:THREE.BoxGeometry;materials:Map<string,THREE.MeshStandardMaterial>}){
- const key=color+':'+metalness;let material=pool?.materials.get(key);
- if(!material){material=new THREE.MeshStandardMaterial({color,roughness:.72,metalness});pool?.materials.set(key,material);}
- const mesh=new THREE.Mesh(pool?.geometry??unitBox(),material);mesh.scale.set(w,h,d);
- mesh.position.set(x,y,z);root.add(mesh);return mesh;
+function box(root:THREE.Object3D,w:number,h:number,d:number,color:number,x:number,y:number,z:number){
+ const mesh=new THREE.Mesh(new THREE.BoxGeometry(1,1,1),new THREE.MeshStandardMaterial({color,roughness:.72}));
+ mesh.scale.set(w,h,d);mesh.position.set(x,y,z);root.add(mesh);return mesh;
 }
 function label(value:string,color:number,width:number){
  const c=document.createElement('canvas');c.width=768;c.height=112;
@@ -26,21 +23,18 @@ function label(value:string,color:number,width:number){
  const sprite=new THREE.Sprite(new THREE.SpriteMaterial({map:texture,depthTest:false}));
  sprite.scale.set(width,width*112/768,1);sprite.renderOrder=2;return sprite;
 }
-function cartMesh(cart:SceneCart,pool: {geometry:THREE.BoxGeometry;materials:Map<string,THREE.MeshStandardMaterial>}){
+function cartMesh(cart:SceneCart){
  const root=new THREE.Group();root.position.set(cart.x,cart.y,cart.z);root.rotation.y=cart.yaw*Math.PI/180;
  root.userData.cartId=cart.id;
- const visual=new THREE.Group();root.add(visual);
  const w=cart.width,d=cart.depth,h=1.7;
  // One body and one status strip in far LOD; detailed parts loaded only for nearby carts.
- box(visual,w,h,d,0x46566b,0,h/2+.17,0,.35,pool);
  const status=overviewStatuses[cart.status];
- box(root,w*.83,.08,.025,status.color,0,1.77,d/2+.09,0,pool);
  const tag=label(cart.code+' · '+status.label,status.color,Math.max(2.6,w*1.2));
  if(tag){tag.position.set(0,h+.58,0);root.add(tag);}
  const radius=Math.max(.75,Math.hypot(w,d)/2+.16);
  const ring=new THREE.Mesh(new THREE.RingGeometry(radius,radius+.095,32),new THREE.MeshBasicMaterial({color:0xd0b6ff,side:THREE.DoubleSide}));
  ring.rotation.x=-Math.PI/2;ring.position.y=.025;ring.visible=false;root.add(ring);
- return {root,ring,cart,visual,detailed:null as ReturnType<typeof createCartVisual>|null};
+ return {root,ring,cart,detailed:null as ReturnType<typeof createCartVisual>|null};
 }
 
 export default function EnvironmentCanvas(props:Props){
@@ -77,8 +71,25 @@ export default function EnvironmentCanvas(props:Props){
    const name=label(zone.label,zone.unplaced?0xc7a3ff:0xa5b8cf,Math.min(Math.max(3.5,zone.width*.8),12));
    if(name){name.position.set(zone.x,.7,zone.z+zone.depth/2+.45);scene.add(name);}
   }
-  const pool={geometry:unitBox(),materials:new Map<string,THREE.MeshStandardMaterial>()};
-  const carts=props.layout.carts.map(c=>cartMesh(c,pool));for(const c of carts)scene.add(c.root);
+  const carts=props.layout.carts.map(cartMesh);for(const c of carts)scene.add(c.root);
+  const unit=new THREE.BoxGeometry(1,1,1);
+  const body=new THREE.InstancedMesh(unit,new THREE.MeshStandardMaterial({color:0x46566b,roughness:.72,metalness:.35}),carts.length);
+  const statusBatch=new THREE.InstancedMesh(unit,new THREE.MeshStandardMaterial({color:0xffffff,roughness:.72}),carts.length);
+  body.instanceMatrix.setUsage(THREE.DynamicDrawUsage);body.frustumCulled=false;statusBatch.frustumCulled=false;
+  scene.add(body,statusBatch);
+  const temp=new THREE.Object3D(),matrix=new THREE.Matrix4(),rotation=new THREE.Matrix4();
+  function instanceMatrix(c:SceneCart,w:number,h:number,d:number,y:number,z:number){
+   temp.position.set(0,y,z);temp.scale.set(w,h,d);temp.updateMatrix();
+   rotation.makeRotationY(c.yaw*Math.PI/180);rotation.setPosition(c.x,c.y,c.z);
+   return matrix.multiplyMatrices(rotation,temp.matrix);
+  }
+  function writeBody(i:number,shown:boolean){
+   const c=carts[i]!.cart;body.setMatrixAt(i,instanceMatrix(c,shown?c.width:0,shown?1.7:0,shown?c.depth:0,1.02,0));
+  }
+  carts.forEach(({cart:c},i)=>{writeBody(i,true);statusBatch.setMatrixAt(i,instanceMatrix(c,c.width*.83,.08,.025,1.77,c.depth/2+.09));statusBatch.setColorAt(i,new THREE.Color(overviewStatuses[c.status].color));});
+  body.instanceMatrix.needsUpdate=true;statusBatch.instanceMatrix.needsUpdate=true;body.computeBoundingSphere();statusBatch.computeBoundingSphere();
+  canvas.dataset.instancedCarts=String(carts.length);canvas.dataset.detailCount='0';
+
   const abort=new AbortController();let library:AssetLibrary|null=null;
   let lost=false,lastFocus:string|null|undefined=undefined,lastReset=-1;
   let visible=true,detailSet=new Set<string>();
@@ -93,12 +104,13 @@ export default function EnvironmentCanvas(props:Props){
     if(!want&&r.detailed){r.root.remove(r.detailed);r.detailed=undefined;}
     r.fallback.visible=!r.detailed;
    }
-   for(const c of carts){const want=detailSet.has(c.cart.id);
-    if(want&&!c.detailed){c.detailed=createCartVisual(library,c.cart.width,c.cart.depth);c.root.add(c.detailed.root);}
-    if(!want&&c.detailed){c.root.remove(c.detailed.root);c.detailed=null;}
-    c.visual.visible=!c.detailed;
+   let changed=false;
+   for(const [i,c] of carts.entries()){const want=detailSet.has(c.cart.id);
+    if(want&&!c.detailed){c.detailed=createCartVisual(library,c.cart.width,c.cart.depth);c.root.add(c.detailed.root);writeBody(i,false);changed=true;}
+    if(!want&&c.detailed){c.root.remove(c.detailed.root);c.detailed=null;writeBody(i,true);changed=true;}
     c.detailed?.setCutaway(c.cart.id===state.focusId&&state.doorOpen);
    }
+   if(changed)body.instanceMatrix.needsUpdate=true;
    canvas.dataset.detailCount=String(detailSet.size);
    canvas.dataset.cutawayCart=carts.find(c=>c.cart.id===state.focusId&&c.detailed&&state.doorOpen)?.cart.id??'';
   }
@@ -140,7 +152,8 @@ export default function EnvironmentCanvas(props:Props){
    pointer.set((e.clientX-rect.left)/rect.width*2-1,-(e.clientY-rect.top)/rect.height*2+1);
    ray.setFromCamera(pointer,camera);
    const visible=(o:THREE.Object3D)=>{for(let n:THREE.Object3D|null=o;n;n=n.parent)if(!n.visible)return false;return true;};
-   const hit=ray.intersectObjects(carts.map(c=>c.root),true).find(h=>h.object instanceof THREE.Mesh&&visible(h.object));
+   const hit=ray.intersectObjects([body,statusBatch,...carts.map(c=>c.root)],true).find(h=>h.object instanceof THREE.Mesh&&visible(h.object)&&!(h.object===body&&h.instanceId!==undefined&&carts[h.instanceId]?.detailed));
+   if(hit&&(hit.object===body||hit.object===statusBatch)&&hit.instanceId!==undefined){const cart=carts[hit.instanceId];if(cart)latest.current.onPick(cart.cart.id);return;}
    let obj:THREE.Object3D|null=hit?.object??null;
    while(obj&&!obj.userData.cartId)obj=obj.parent;
    if(obj){const id=obj.userData.cartId as string,state=latest.current;
@@ -171,7 +184,7 @@ export default function EnvironmentCanvas(props:Props){
    }).catch(()=>{
     if(abort.signal.aborted)return;
     for(const r of roomVisuals){for(const child of [...r.root.children])if(child!==r.fallback)r.root.remove(child);r.fallback.visible=true;}
-    for(const c of carts){if(c.detailed)c.root.remove(c.detailed.root);c.detailed=null;c.visual.visible=true;}
+    for(const [i,c] of carts.entries()){if(c.detailed)c.root.remove(c.detailed.root);c.detailed=null;writeBody(i,true);}body.instanceMatrix.needsUpdate=true;
     if(library){disposeAssets(Object.values(library));library=null;}
     setAssetState('fallback');canvas.dataset.assetMode='fallback';update();
    });
@@ -182,7 +195,7 @@ export default function EnvironmentCanvas(props:Props){
    canvas.removeEventListener('webglcontextlost',contextLost);canvas.removeEventListener('webglcontextrestored',restored);
    // GLB geometry/materials are shared by clones; dispose each resource once.
    if(library)disposeAssets([...Object.values(library),scene]);else disposeAssets([scene]);
-   if(!carts.length)pool.geometry.dispose();
+   body.dispose();statusBatch.dispose();
    scene.traverse(obj=>{if(obj instanceof THREE.Sprite){obj.material.map?.dispose();obj.material.dispose();}});
    renderer.dispose();canvas.remove();
   };
