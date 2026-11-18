@@ -2408,3 +2408,70 @@ test.describe('F5.1 — configuração espacial',()=>{
   await expect.poll(()=>page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)).toBe(true);
  });
 });
+
+test.describe('F5.2 — visão geral administrativa 3D',()=>{
+ test('todos os carrinhos, detalhe sob demanda, turno, erro sem saldo, lista alternativa',async({page})=>{
+  const db=await useFakeSupabase(page);
+  const uid=(n:number)=>'00000000-0000-4000-8000-'+String(n).padStart(12,'0');
+  const cartA=uid(521),cartB=uid(522),roomId=uid(523),blockId=uid(524),campusId=uid(525),sceneId=uid(526),modelId=uid(527);
+  db.carts.push({id:cartA,code:'F52A',name:'Carrinho A',capacity:10,active:true},{id:cartB,code:'F52B',name:'Carrinho B',capacity:20,active:true});
+  db.campuses.push({id:campusId,name:'Campus sintético',active:true});
+  db.campus_blocks.push({id:blockId,campus_id:campusId,name:'Bloco A',active:true});
+  db.campus_rooms.push({id:roomId,block_id:blockId,name:'Sala 1',active:true});
+  db.spatial_scenes.push({id:sceneId,room_id:roomId,name:'Ambiente A',width_m:8,depth_m:6,active:true});
+  db.asset_models.push({id:modelId,kind:'CART',width_m:1,depth_m:.8,active:true});
+  const headers={'access-control-allow-origin':'*','access-control-allow-headers':'*','access-control-allow-methods':'GET,POST,OPTIONS'};
+  let fail=false,detailCalls=0;
+  const summary=(shift:string)=>{
+   const reserved=shift==='VESPERTINO'?8:3;
+   return [{cart_id:cartA,code:'F52A',name:'Carrinho A',active:true,storage_room_id:roomId,scene_id:sceneId,model_id:modelId,position_x:1,position_y:0,position_z:-1,yaw:0,placement_version:1,nominal_capacity:10,effective_capacity:10,reserved,available:10-reserved,maintenance_count:0,availability_status:'PARTIAL',snapshot_at:new Date().toISOString()},
+   {cart_id:cartB,code:'F52B',name:'Carrinho B',active:true,storage_room_id:null,scene_id:null,model_id:null,position_x:null,position_y:null,position_z:null,yaw:null,placement_version:null,nominal_capacity:20,effective_capacity:0,reserved:0,available:0,maintenance_count:1,availability_status:'MAINTENANCE',snapshot_at:new Date().toISOString()}];
+  };
+  await page.route('**/rest/v1/rpc/spatial_cart_summary*',async r=>{
+   if(r.request().method()==='OPTIONS'){await r.fulfill({headers,status:204});return;}
+   const body=r.request().postDataJSON();
+   await r.fulfill(fail?{headers,status:503,json:{message:'consulta indisponível'}}:{headers,json:summary(body.p_shift)});
+  });
+  await page.route('**/rest/v1/rpc/spatial_cart_details*',async r=>{
+   if(r.request().method()==='OPTIONS'){await r.fulfill({headers,status:204});return;}
+   detailCalls++;const body=r.request().postDataJSON();const row=summary(body.p_shift).find(c=>c.cart_id===body.p_cart_id)!;
+   await r.fulfill({headers,json:{summary:row,reservations:[],confirmed_slots:[]}});
+  });
+  await page.goto('/?environment3d=1');
+  await page.getByLabel('E-mail').fill('test-admin@educart.example');
+  await page.getByLabel('Senha').fill('senha-de-teste-sem-uso-real');
+  await page.getByRole('button',{name:'Entrar no Educart'}).click();
+  await page.getByRole('button',{name:'Ambiente 3D',exact:true}).click();
+  const list=page.locator('.dt-list');
+  await expect(list.getByRole('button')).toHaveCount(2);
+  await expect(list.getByRole('button',{name:/F52A/})).toContainText('Sala 1');
+  await expect(list.getByRole('button',{name:/F52B/})).toContainText('Sem localização definida');
+  expect(detailCalls).toBe(0);
+  await list.getByRole('button',{name:/F52A/}).click();
+  await expect(page.getByText('Nenhuma reserva registrada neste período.',{exact:true})).toBeVisible();
+  expect(detailCalls).toBeGreaterThan(0);
+  await page.getByLabel('Turno',{exact:true}).selectOption('VESPERTINO');
+  await expect(list.getByRole('button',{name:/F52A/})).toContainText('2 disponíveis');
+  await page.getByLabel('Buscar carrinho na lista').fill('F52B');
+  await expect(list.getByRole('button')).toHaveCount(1);
+  await page.getByLabel('Buscar carrinho na lista').clear();
+  await page.getByLabel('Exibir ambiente 3D').uncheck();
+  await expect(list.getByRole('button')).toHaveCount(2);
+  fail=true;
+  await page.getByRole('button',{name:'Atualizar dados'}).click();
+  await expect(page.getByText('Não foi possível confirmar a ocupação deste período.',{exact:false})).toBeVisible();
+  await expect(list.getByRole('button',{name:/F52A/})).toContainText('Não confirmado');
+  await expect(list.getByRole('button',{name:/F52A/})).not.toContainText('disponíveis');
+  await page.setViewportSize({width:390,height:844});
+  await expect.poll(()=>page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)).toBe(true);
+ });
+ test('sem autorização administrativa não expõe ambiente mesmo com flag DEV',async({page})=>{
+  await useFakeSupabase(page,false);
+  await page.goto('/?environment3d=1');
+  await page.getByLabel('E-mail').fill('test-admin@educart.example');
+  await page.getByLabel('Senha').fill('senha-de-teste-sem-uso-real');
+  await page.getByRole('button',{name:'Entrar no Educart'}).click();
+  await expect(page.getByRole('heading',{name:'Conta criada, aguardando autorização'})).toBeVisible();
+  await expect(page.getByRole('button',{name:'Ambiente 3D',exact:true})).toHaveCount(0);
+ });
+});
