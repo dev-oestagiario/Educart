@@ -22,13 +22,14 @@ const ReservationsPage = lazy(()=>import('./pages/ReservationsPage'));
 const CalendarReportsPage = lazy(()=>import('./pages/CalendarReportsPage'));
 const SpatialEditorPage = lazy(()=>import('./features/digitalTwin/SpatialEditorPage'));
 const Prototype3DPage = lazy(()=>import('./features/digitalTwin/PrototypePage'));
+const DigitalTwinPage = lazy(()=>import('./features/digitalTwin/DigitalTwinPage'));
 const Visual3DPage = lazy(()=>import('./pages/Visual3DPage'));
 const PublicCartAvailabilityPage = lazy(()=>import('./pages/PublicCartAvailabilityPage'));
 const TeacherPortal = lazy(()=>import('./pages/TeacherPortal'));
 const TeacherApprovalsPage = lazy(()=>import('./pages/TeacherApprovalsPage'));
 const NotificationsPage = lazy(()=>import('./pages/NotificationsPage'));
 
-type Page = 'spatial-editor' | 'movements' | 'maintenance' | 'locations' | 'overview' | 'carts' | 'requesters' | 'notebooks' | 'reservations' | 'calendar' | 'visual3d' | 'approvals' | 'notifications';
+type Page = 'digital-twin' | 'spatial-editor' | 'movements' | 'maintenance' | 'locations' | 'overview' | 'carts' | 'requesters' | 'notebooks' | 'reservations' | 'calendar' | 'visual3d' | 'approvals' | 'notifications';
 const useUi = create<{page:Page; setPage:(page:Page)=>void}>()(
   set => ({page:'overview',setPage:page=>set({page})})
 );
@@ -241,6 +242,8 @@ export default function App() {
   if(prototypeEnabled)nav.push(['visual3d','Protótipo 3D',Boxes]);
   const spatialEnabled=import.meta.env.DEV&&new URLSearchParams(window.location.search).get('spatial3d')==='1';
   if(spatialEnabled)nav.push(['spatial-editor','Configuração espacial',MapPin]);
+  const digitalTwinEnabled=import.meta.env.DEV&&new URLSearchParams(window.location.search).get('environment3d')==='1';
+  if(digitalTwinEnabled)nav.push(['digital-twin','Ambiente 3D',Boxes]);
   return <div className="app-shell">
     <a ref={skipRef} className="skip-link" href="#main-content" onClick={e=>{e.preventDefault();mainRef.current?.focus();}}>Pular para o conteúdo</a>
     {menuOpen&&<button type="button" tabIndex={-1} className="mobile-menu-backdrop" aria-label="Fechar navegação" onClick={closeMobileMenu}/>}
@@ -270,7 +273,7 @@ export default function App() {
           <NotificationBell userId={session.user.id} onOpen={()=>navigateTo('notifications')}/></div>
       </header>
       <div className="content">
-        {page==='spatial-editor'&&spatialEnabled?<Suspense fallback={<p role="status">Carregando configuração espacial…</p>}><SpatialEditorPage/></Suspense>:page==='overview'?<Suspense fallback={<p role="status">Carregando painel operacional…</p>}><DashboardPage onNavigate={navigateTo}/></Suspense>:page==='movements'?<Suspense fallback={<p role="status">Carregando movimentações…</p>}><MovementsPage/></Suspense>:page==='maintenance'?<Suspense fallback={<p role="status">Carregando manutenção…</p>}><MaintenancePage/></Suspense>:page==='locations'?<Suspense fallback={<p role="status">Carregando localizações…</p>}><LocationsPage/></Suspense>:page==='carts'?<Suspense fallback={<p role="status">Carregando carrinhos…</p>}><CartsPage/></Suspense>:page==='requesters'?<Suspense fallback={<p role="status">Carregando professores…</p>}><RequestersPage/></Suspense>:page==='notebooks'?<Suspense fallback={<p role="status">Carregando notebooks…</p>}><NotebooksPage/></Suspense>:page==='reservations'?<Suspense fallback={<p role="status">Carregando reservas…</p>}><ReservationsPage/></Suspense>:page==='calendar'?<Suspense fallback={<p role="status">Carregando calendário…</p>}><CalendarReportsPage/></Suspense>:page==='visual3d'?<Suspense fallback={<p role="status">Carregando visualização 3D…</p>}>{prototypeEnabled?<Prototype3DPage/>:<Visual3DPage/>}</Suspense>:page==='approvals'?<Suspense fallback={<p role="status">Carregando solicitações…</p>}><TeacherApprovalsPage/></Suspense>:<Suspense fallback={<p role="status">Carregando notificações…</p>}><NotificationsPage userId={session.user.id} audience="admin" onReturn={()=>navigateTo('overview')} onViewRequests={()=>navigateTo('approvals')}/></Suspense>}
+        {page==='digital-twin'&&digitalTwinEnabled?<Suspense fallback={<p role="status">Carregando ambiente 3D…</p>}><DigitalTwinPage onNavigate={navigateTo}/></Suspense>:page==='spatial-editor'&&spatialEnabled?<Suspense fallback={<p role="status">Carregando configuração espacial…</p>}><SpatialEditorPage/></Suspense>:page==='overview'?<Suspense fallback={<p role="status">Carregando painel operacional…</p>}><DashboardPage onNavigate={navigateTo}/></Suspense>:page==='movements'?<Suspense fallback={<p role="status">Carregando movimentações…</p>}><MovementsPage/></Suspense>:page==='maintenance'?<Suspense fallback={<p role="status">Carregando manutenção…</p>}><MaintenancePage/></Suspense>:page==='locations'?<Suspense fallback={<p role="status">Carregando localizações…</p>}><LocationsPage/></Suspense>:page==='carts'?<Suspense fallback={<p role="status">Carregando carrinhos…</p>}><CartsPage/></Suspense>:page==='requesters'?<Suspense fallback={<p role="status">Carregando professores…</p>}><RequestersPage/></Suspense>:page==='notebooks'?<Suspense fallback={<p role="status">Carregando notebooks…</p>}><NotebooksPage/></Suspense>:page==='reservations'?<Suspense fallback={<p role="status">Carregando reservas…</p>}><ReservationsPage/></Suspense>:page==='calendar'?<Suspense fallback={<p role="status">Carregando calendário…</p>}><CalendarReportsPage/></Suspense>:page==='visual3d'?<Suspense fallback={<p role="status">Carregando visualização 3D…</p>}>{prototypeEnabled?<Prototype3DPage/>:<Visual3DPage/>}</Suspense>:page==='approvals'?<Suspense fallback={<p role="status">Carregando solicitações…</p>}><TeacherApprovalsPage/></Suspense>:<Suspense fallback={<p role="status">Carregando notificações…</p>}><NotificationsPage userId={session.user.id} audience="admin" onReturn={()=>navigateTo('overview')} onViewRequests={()=>navigateTo('approvals')}/></Suspense>}
       </div>
     </main>
   </div>;
