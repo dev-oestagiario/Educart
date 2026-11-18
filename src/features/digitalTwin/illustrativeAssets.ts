@@ -54,17 +54,26 @@ export function createRoomVisual(library:AssetLibrary,width:number,depth:number)
 }
 export function createCartVisual(library:AssetLibrary,width:number,depth:number){
  const root=library.cart.clone(true);
- root.scale.set(width/manifest.assets.cart.nominalDimensions[0],1,depth/manifest.assets.cart.nominalDimensions[2]);
+ // Fit the complete closed model, including handle and wheels, inside the registered footprint.
+ const bounds=new THREE.Box3().setFromObject(root);
+ const fullWidth=2*Math.max(Math.abs(bounds.min.x),Math.abs(bounds.max.x));
+ const fullDepth=2*Math.max(Math.abs(bounds.min.z),Math.abs(bounds.max.z));
+ if(!Number.isFinite(fullWidth)||!Number.isFinite(fullDepth)||fullWidth<=0||fullDepth<=0)throw Error('Dimensões inválidas.');
+ root.scale.set(width/fullWidth,1,depth/fullDepth);
  const hinge=root.getObjectByName('door-hinge');
  const exampleNotebooks=new THREE.Group();exampleNotebooks.name='illustrative-notebooks';
  // GLB slot IDs are deliberately not DB slot keys. They prove neither presence nor occupancy.
- const slots:THREE.Vector3[]=[];
- root.traverse(obj=>{if(/^illustrative-slot-\d{2}$/.test(obj.name))slots.push(obj.position.clone());});
+ const slots:THREE.Vector3[]=[],interior:THREE.Object3D[]=[];
+ root.traverse(obj=>{
+  if(/^illustrative-slot-\d{2}$/.test(obj.name))slots.push(obj.position.clone());
+  if(/^(shelf|divider|charging-rail|connector|cable)-/.test(obj.name)){interior.push(obj);obj.visible=false;}
+ });
  exampleNotebooks.visible=false;
  const modelRoot=root.getObjectByName('cart-illustrative-v1')??root;
  modelRoot.add(exampleNotebooks);
  return {root,setCutaway(open:boolean){
   if(hinge)hinge.visible=!open;
+  for(const part of interior)part.visible=open;
   if(open&&!exampleNotebooks.children.length)for(const position of slots){
    const sample=library.notebook.clone(true);sample.position.copy(position);exampleNotebooks.add(sample);
   }
