@@ -2421,7 +2421,17 @@ test.describe('F5.2 — visão geral administrativa 3D',()=>{
   db.spatial_scenes.push({id:sceneId,room_id:roomId,name:'Ambiente A',width_m:8,depth_m:6,active:true});
   db.asset_models.push({id:modelId,kind:'CART',width_m:1,depth_m:.8,active:true});
   const headers={'access-control-allow-origin':'*','access-control-allow-headers':'*','access-control-allow-methods':'GET,POST,OPTIONS'};
-  let fail=false,detailCalls=0;
+  let fail=false,detailCalls=0,historyCalls=0;
+  const notebookId=uid(528),reservationId=uid(529),periodId=uid(530);
+  const reservation={id:reservationId,period_id:periodId,requester:'Docente sintético',quantity:3,mode:'PARCIAL',destination_room_id:roomId,destination_label:null,needs_mouse:false,notes:null};
+  const slot={slot_key:'POS-FISICA-7',notebook_id:notebookId,code:'F54-NB-01',confirmed_at:'2026-11-17T10:00:00Z',reservation_period_id:periodId};
+  await page.route('**/rest/v1/equipment_movements*',async route=>{
+   const url=new URL(route.request().url());
+   if(route.request().method()==='OPTIONS'){await route.fulfill({headers,status:204});return;}
+   if(!url.searchParams.has('notebook_ids')){await route.fulfill({headers,json:[]});return;}
+   historyCalls++;expect(url.searchParams.get('cart_id')).toBe('eq.'+cartA);expect(url.searchParams.get('notebook_ids')).toContain(notebookId);
+   await route.fulfill({headers,json:[{id:uid(531),cart_id:cartA,notebook_ids:[notebookId],pickup_at:'2026-11-17T10:00:00Z',return_at:'2026-11-17T11:00:00Z',pickup_condition:'BOA',return_condition:'RESSALVA'}]});
+  });
   const summary=(shift:string)=>{
    const reserved=shift==='VESPERTINO'?8:3;
    return [{cart_id:cartA,code:'F52A',name:'Carrinho A',active:true,storage_room_id:roomId,scene_id:sceneId,model_id:modelId,position_x:1,position_y:0,position_z:-1,yaw:0,placement_version:1,nominal_capacity:10,effective_capacity:10,reserved,available:10-reserved,maintenance_count:0,availability_status:'PARTIAL',snapshot_at:new Date().toISOString()},
@@ -2435,7 +2445,7 @@ test.describe('F5.2 — visão geral administrativa 3D',()=>{
   await page.route('**/rest/v1/rpc/spatial_cart_details*',async r=>{
    if(r.request().method()==='OPTIONS'){await r.fulfill({headers,status:204});return;}
    detailCalls++;const body=r.request().postDataJSON();const row=summary(body.p_shift).find(c=>c.cart_id===body.p_cart_id)!;
-   await r.fulfill({headers,json:{summary:row,reservations:[],confirmed_slots:[]}});
+   await r.fulfill({headers,json:{summary:row,reservations:row.cart_id===cartA?[reservation]:[],confirmed_slots:row.cart_id===cartA?[slot]:[]}});
   });
   await page.goto('/?environment3d=1');
   await page.getByLabel('E-mail').fill('test-admin@educart.example');
@@ -2451,7 +2461,12 @@ test.describe('F5.2 — visão geral administrativa 3D',()=>{
   await expect(canvas).toHaveAttribute('data-asset-mode','detailed',{timeout:15000});
   await expect(canvas).toHaveAttribute('data-cart-count','2');
   await list.getByRole('button',{name:/F52A/}).click();
-  await expect(page.getByText('Nenhuma reserva registrada neste período.',{exact:true})).toBeVisible();
+  await expect(page.getByRole('button',{name:/F54-NB-01/})).toBeVisible();
+  expect(historyCalls).toBe(0);
+  await page.getByRole('button',{name:/F54-NB-01/}).click();
+  await expect(page.getByText(/Reserva vinculada: Docente sintético/)).toBeVisible();
+  await expect(page.getByText(/Devolução: .*Com ressalva/)).toBeVisible();
+  expect(historyCalls).toBeGreaterThan(0);
   expect(detailCalls).toBeGreaterThan(0);
   await page.getByRole('button',{name:'Focalizar carrinho'}).click();
   await expect(canvas).toHaveAttribute('data-cutaway-cart','');
@@ -2462,6 +2477,7 @@ test.describe('F5.2 — visão geral administrativa 3D',()=>{
   await page.getByRole('button',{name:'Fechar porta virtual'}).click();
   await expect(canvas).toHaveAttribute('data-cutaway-cart','');
   await list.getByRole('button',{name:/F52B/}).click();
+  await expect(page.getByRole('button',{name:/F54-NB-01/})).toHaveCount(0);
   await expect(canvas).toHaveAttribute('data-cutaway-cart','');
   await page.getByLabel('Qualidade visual').selectOption('low');
   await expect(canvas).toHaveAttribute('data-asset-mode','economical');
