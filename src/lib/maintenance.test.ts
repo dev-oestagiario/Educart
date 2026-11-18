@@ -17,3 +17,11 @@ describe('maintenance availability',()=>{
   expect(slots[0]).toMatchObject({capacity:8,remaining:8});
  });
 });
+
+it('reduces capacity only for distinct notebooks in the selected turn',()=>{
+ const slots=calculateAvailability(10,[{usage_date:'2027-01-04',shift:'MATUTINO',quantity:3,active:true}],['2027-01-04'],['MATUTINO','VESPERTINO']);
+ const individual={...window,notebook_id:'n1'};
+ expect(isMaintenanceBlocked([individual],'c1','2027-01-04','MATUTINO')).toBe(false);
+ expect(applyMaintenance(slots,[individual,individual,{...individual,notebook_id:'n2'}],'c1')).toMatchObject([{capacity:8,remaining:5},{capacity:10,remaining:10}]);
+ expect(applyMaintenance(slots,[individual,window],'c1')[0]).toMatchObject({capacity:0,remaining:0});
+});

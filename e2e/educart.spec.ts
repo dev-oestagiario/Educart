@@ -723,7 +723,8 @@ test('Fase 6 — professor vinculado envia e retira pedido, sem ocupar capacidad
   db.teacher_account_links.push({user_id:ADMIN_ID,requester_id:teacherId,active:true});
   await login(page);
   await expect(page.getByRole('heading',{name:'Pedidos de reserva'})).toBeVisible();
-  await expect(page.getByRole('button',{name:'Solicitações'})).toHaveCount(0);
+  await expect(page.getByRole('navigation',{name:'Menu principal'})).toHaveCount(0);
+  await expect(page.getByRole('navigation',{name:'Menu do professor'}).getByRole('button',{name:'Solicitações',exact:true})).toBeVisible();
   await page.getByRole('button',{name:'Nova solicitação'}).click();
   await page.locator('#teacher-cart').selectOption(cartId);
   await page.locator('#teacher-quantity').fill('7');
@@ -865,7 +866,7 @@ test('Fase 7 — não é possível marcar notificação de outro usuário',async
   });
   await login(page);
   await page.locator('.notifications-trigger').click();
-  await expect(page.getByText('Não há notificações ainda. As atualizações aparecerão aqui quando houver solicitações ou decisões da TI.')).toBeVisible();
+  await expect(page.getByText('Não há notificações ainda.',{exact:true})).toBeVisible();
   expect(db.user_notifications[0].read_at).toBeNull();
 });
 
@@ -2024,7 +2025,7 @@ test('F4.1 — controles e feedback compartilham tokens nos dois temas',async({p
   await expect(page.getByRole('button',{name:'Voltar para manutenção'})).toHaveClass(/ghost records-back/);
   await expect(page.locator('.ds-fieldset')).toBeVisible();
   await expect(page.locator('.field textarea')).toHaveCSS('border-top-left-radius','10px');
-  await expect(page.locator('.field select')).toHaveCSS('min-height','44px');
+  for(const select of await page.locator('.field select').all())await expect(select).toHaveCSS('min-height','44px');
   await checkContrast('.records-form-panel .field select',4.5);
   await checkContrast('.records-form-panel .primary',4.5);
   await page.getByRole('button',{name:'Voltar para manutenção'}).click();
@@ -2772,5 +2773,37 @@ test('Cadastros — inativação e reativação sem exclusão física e toast se
  await assertToast('Cadastro reativado.');
  expect(db.campus_rooms.find(r=>r.id===room)?.active).toBe(true);
  await page.setViewportSize({width:390,height:844});
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
+});
+
+test('Portal docente — calendário e manutenção somente leitura, sem configurações na notificação',async({page})=>{
+ const db=await useFakeSupabase(page,false);
+ const teacher=crypto.randomUUID(),cart=crypto.randomUUID();
+ db.requesters.push({id:teacher,name:'Professor sintético',active:true});
+ db.teacher_account_links.push({user_id:ADMIN_ID,requester_id:teacher,active:true});
+ db.carts.push({id:cart,name:'Laboratório manutenção',code:'LAB',capacity:10,active:true});
+ const headers={'access-control-allow-origin':'*','access-control-allow-headers':'*','content-type':'application/json'};
+ await page.route('https://educart-e2e.supabase.co/rest/v1/rpc/public_cart_availability',async route=>{
+  if(route.request().method()==='OPTIONS'){await route.fulfill({status:204,headers});return;}
+  const {p_start}=route.request().postDataJSON();
+  await route.fulfill({status:200,headers,json:[{usage_date:p_start,cart_id:cart,cart_name:'Laboratório manutenção',capacity:9,shift:'MATUTINO',reserved:0,available:9}]});
+ });
+ await page.route('https://educart-e2e.supabase.co/rest/v1/rpc/teacher_maintenance_schedule',async route=>{
+  if(route.request().method()==='OPTIONS'){await route.fulfill({status:204,headers});return;}
+  const {p_start,p_end}=route.request().postDataJSON();
+  await route.fulfill({status:200,headers,json:[{id:crypto.randomUUID(),cart_name:'Laboratório manutenção',start_date:p_start,end_date:p_end,shifts:['MATUTINO'],notebook_count:1}]});
+ });
+ await page.setViewportSize({width:390,height:844});await login(page);
+ const nav=page.getByRole('navigation',{name:'Menu do professor'});
+ await nav.getByRole('button',{name:'Calendário',exact:true}).click();
+ await expect(page.getByRole('heading',{name:'Disponibilidade dos carrinhos'})).toBeVisible();
+ await expect(page.getByRole('button',{name:'Exportar PDF'})).toHaveCount(0);
+ await expect(page.getByRole('button',{name:'Planilha CSV'})).toHaveCount(0);
+ await nav.getByRole('button',{name:'Manutenções',exact:true}).click();
+ await expect(page.getByText(/1 notebook\(s\)/)).toBeVisible();
+ await expect(page.getByRole('button',{name:'Programar manutenção'})).toHaveCount(0);
+ await nav.getByRole('button',{name:'Notificações',exact:true}).click();
+ await expect(page.getByRole('heading',{name:'Notificações',exact:true})).toBeVisible();
+ await expect(page.getByRole('region',{name:'Preferências de e-mail'})).toHaveCount(0);
  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
 });
