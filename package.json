@@ -10,7 +10,9 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:e2e": "playwright test",
-    "audit": "npm audit --audit-level=high"
+    "audit": "npm audit --audit-level=high",
+    "audit:runtime": "npm audit --omit=dev --audit-level=high",
+    "audit:bundle": "node scripts/verificar-escopo-dependencias.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "2.80.0",
