@@ -43,12 +43,12 @@ export default function DigitalTwinPage({onNavigate}:{onNavigate:(target:'reserv
  function refresh(){void catalog.refetch();if(valid)void summary.refetch();if(selected&&summaryFresh){void detail.refetch();void movement.refetch();}}
  return <div className="dt-page" onKeyDown={e=>{if(e.key==='Escape'&&focusId){e.preventDefault();overview();}}}>
   <header className="page-header"><h1>Ambiente 3D</h1><p>Consulte todos os carrinhos cadastrados e a ocupação no período selecionado.</p></header>
-  <p className="notice warning"><strong>F5.2 — ambiente de desenvolvimento.</strong> Geometria ilustrativa; salas exibidas separadamente, sem planta real. Posições e movimentações registradas não comprovam localização física em tempo real.</p>
+  <p className="notice warning"><strong>F5.3 — ambiente de desenvolvimento.</strong> Modelos 3D ilustrativos; salas exibidas separadamente, sem planta real. Posições e movimentações registradas não comprovam localização física em tempo real.</p>
   <div className="panel dt-overview-toolbar">
    <label className="field"><span>Data</span><input id="dt-date" type="date" value={date} onChange={e=>period(e.target.value,shift)}/></label>
    <label className="field"><span>Turno</span><select id="dt-shift" value={shift} onChange={e=>period(date,e.target.value as Shift)}>{SHIFTS.map(s=><option key={s} value={s}>{shiftLabel[s]}</option>)}</select></label>
    <label className="field"><span>Buscar carrinho na lista</span><input type="search" value={search} onChange={e=>setSearch(e.target.value)} placeholder="Código, nome ou local"/></label>
-   <label className="field"><span>Qualidade visual</span><select value={quality} onChange={e=>setQuality(e.target.value==='low'?'low':'high')}><option value="high">Padrão</option><option value="low">Econômica</option></select></label>
+   <label className="field"><span>Qualidade visual</span><select value={quality} onChange={e=>setQuality(e.target.value==='low'?'low':'high')}><option value="high">Detalhada (GLB)</option><option value="low">Econômica</option></select></label>
    <label className="dt-toggle"><input type="checkbox" checked={show3d} onChange={e=>setShow3d(e.target.checked)}/> Exibir ambiente 3D</label>
    <div className="dt-overview-actions"><button type="button" className="secondary" onClick={overview}><RotateCcw size={16}/> Visão geral</button><button type="button" className="secondary" disabled={catalog.isFetching||summary.isFetching||detail.isFetching||movement.isFetching} onClick={refresh}><RefreshCw size={16}/> Atualizar dados</button></div>
   </div>
@@ -68,7 +68,7 @@ export default function DigitalTwinPage({onNavigate}:{onNavigate:(target:'reserv
     <h2><Box size={19}/> {focusId&&selected?.id===focusId?'Foco: '+selected.code:'Ambientes — visão geral'}</h2>
     <div className="dt-legend">{Object.entries(overviewStatuses).map(([key,s])=><span key={key}><i style={{backgroundColor:'#'+s.color.toString(16).padStart(6,'0')}}/>{s.label}</span>)}</div>
     {show3d&&layout.carts.length>0?<CanvasBoundary key={quality}><Suspense fallback={<p role="status">Carregando visualização 3D…</p>}><Canvas layout={layout} selectedId={selected?.id??null} focusId={focusId} reset={reset} onPick={pick} quality={quality}/></Suspense></CanvasBoundary>:<p className="empty">{!show3d?'Cena desativada; use a lista acessível.':summary.isSuccess?'Nenhum carrinho cadastrado neste resumo.':'Aguardando dados para a cena.'}</p>}
-    <p className="form-hint">Arraste para orbitar, roda ou pinça para zoom; use a lista para selecionar por teclado. A busca não remove carrinhos da cena.</p>
+    <p className="form-hint">Arraste para orbitar, roda ou pinça para zoom; use a lista para selecionar por teclado. A busca não remove carrinhos da cena. Na qualidade padrão, focalizar um carrinho exibe o interior em corte ilustrativo; não indica ocupação real.</p>
    </section>
    <section className="panel dt-details" aria-labelledby="dt-real-details">
     <h2 id="dt-real-details">Detalhes do carrinho</h2>

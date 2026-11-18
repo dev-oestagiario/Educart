@@ -127,11 +127,11 @@ Implementação e testes locais: [F5.1](f5-1-fundacao-espacial.md). Editor numé
 - [ ] DT-011 Testar carrinhos sem posição, 0/1/N ativos, estados mistos, dados defasados, troca de turno e filtros.
 
 ### F5.3 — Assets detalhados
-- [ ] DT-012 Pipeline de Blender/GLB e manifesto de escala, licença e hotspots; materiais, iluminação e LOD.
-- [ ] DT-013 Ambiente modelado com paredes, piso, portas, corredores e mobiliário conforme material disponibilizado; modo ilustrativo se ausente.
-- [ ] DT-014 Modelos de carrinho exterior/interior detalhados, dobradiças, ventilação, compartimentos, rodas, cabos/conectores, etiquetas; dimensões conforme modelo real.
-- [ ] DT-015 Modelo detalhado de notebooks e posições repetíveis, associação aos tipos de carrinho sem inventar códigos; tratamento de asset ausente.
-- [ ] DT-016 Revisão visual das referências e aprovação do realismo/modelagem antes de declarar réplica.
+- [x] DT-012 Pipeline GLB original reproduzível, manifesto de escala, direitos e hotspots; materiais PBR e modo econômico. Blender não obrigatório para os assets procedurais; LOD de distância fica na F5.5.
+- [x] DT-013 Modelo ilustrativo com paredes em corte, piso, porta e mobiliário genérico (mobiliário não posicionado na cena registrada). Corredores reais e revisão visual aguardam referências.
+- [x] DT-014 Modelo ilustrativo exterior/interior com dobradiças, ventilação, compartimentos, rodas, cabos/conectores e etiqueta; cabe no footprint cadastrado, altura ilustrativa.
+- [x] DT-015 Modelo genérico de notebook, posições de exemplo repetíveis, sem equivalência com slots físicos; fallback e modo econômico preservam dados. Associação por tipo real e vínculos na F5.4, condicionados a referências.
+- [ ] DT-016 Revisão visual das referências e aprovação do realismo/modelagem antes de declarar réplica. Chromium/WebGL ainda pendentes.
 
 ### F5.4 — Inspeção e interação
 - [ ] DT-017 Foco/sair, rotação/zoom, abrir portas e explorar interior com hotspots e controles de teclado.

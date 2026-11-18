@@ -90,7 +90,7 @@ Especificação técnica e plano de tarefas: [educart-3d-v2.md](educart-3d-v2.md
 - [ ] F5.0 [Protótipo implementado e orçamento inicial](f5-0-prototipo-ambiente-3d.md); referências/medidas autorizadas e aceite visual ainda pendentes.
 - [x] F5.1 [Modelo espacial persistente e contratos de leitura seguros](f5-1-fundacao-espacial.md). Validados localmente; stack Supabase completa e promoção pendentes.
 - [ ] F5.2 [Visão geral multi-carrinhos implementada (validação parcial)](f5-2-visao-geral-3d.md); aguardando build e cenário E2E no PC conectado.
-- [ ] F5.3 Modelos detalhados GLB: ambiente, carrinhos, portas, prateleiras, rodas, cabos e notebooks, conforme referências reais; assets com autoria/licença.
+- [ ] F5.3 [Modelos GLB ilustrativos integrados](f5-3-assets-detalhados.md); validação técnica parcial, referência física e aceite visual pendentes.
 - [ ] F5.4 Inspeção interativa: foco, portas, hotspots, slots, códigos e reservas; dados e cena sincronizados.
 - [ ] F5.5 Otimização de carregamento, níveis de detalhe, qualidade adaptativa, mobile e alternativa 2D/textual.
 - [ ] F5.6 Testes, comparação com inventário físico, aceite visual da TI e reativação do menu somente quando aprovado.
