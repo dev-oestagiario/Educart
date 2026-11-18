@@ -9,6 +9,7 @@ export const MAX_SAMPLES=1000;
 const allowedService=(v:unknown):v is Service=>SERVICES.includes(v as Service);
 const allowedOutcome=(v:unknown):v is Outcome=>OUTCOMES.includes(v as Outcome);
 export function createDiagnostics(clock=()=>Date.now(),limit=MAX_SAMPLES){
+ const capacity=Number.isSafeInteger(limit)&&limit>0?Math.min(limit,MAX_SAMPLES):MAX_SAMPLES;
  let samples:Sample[]=[],generation=0,omittedUntil=0,version=0;
  const listeners=new Set<()=>void>();
  function changed(){version++;for(const listener of listeners){try{listener();}catch{/* diagnostics cannot break app */}}}
@@ -22,7 +23,7 @@ export function createDiagnostics(clock=()=>Date.now(),limit=MAX_SAMPLES){
    if(epoch!==generation||!allowedService(service)||!allowedOutcome(outcome)||!Number.isFinite(ms)||ms<0)return;
    const at=clock();if(!Number.isFinite(at))return;prune(at);
    samples.push({service,outcome,ms:Math.min(120_000,Math.round(ms)),at});
-   while(samples.length>limit){const removed=samples.shift()!;omittedUntil=Math.max(omittedUntil,removed.at+WINDOW_MS);}
+   while(samples.length>capacity){const removed=samples.shift()!;omittedUntil=Math.max(omittedUntil,removed.at+WINDOW_MS);}
    changed();
   },
   summary(){
