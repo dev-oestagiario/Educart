@@ -48,3 +48,7 @@ PGlite cria base em memória, auth.uid e claims simuladas; não comprova Auth re
 ## Atualização F6.4 — reteste Windows
 
 O bloqueio de execução do navegador no Termux foi contornado utilizando CQP-KAINA-72. Após corrigir a interceptação GLB do Vite e o seletor/timeout do teste (aef8782), a regressão Playwright completa passou: 71 aprovados, 2 skips legados, zero falhas. A validação F5.2 desktop com backend simulado passou, incluindo fallback, inspeção, turno e reflow. Evidências em [F6.4](f6-4-release.md). Permanecem pendentes homologação real, teste de desempenho GPU/FPS em carga, inspeção física/aceite TI e audit; o ambiente 3D continua restrito a DEV.
+
+## Atualização #70 — teste de carga em navegador
+
+CQP-KAINA-72: 71/73 casos da regressão original aprovados (2 ignores legados), mais 1/1 novo cenário de carga, 120 carrinhos, limite de 12 detalhes, 570 draw calls e 13.596 triângulos no frame observado, zero frames adicionais em 1 s ocioso. Chromium headless, dados sintéticos, SwiftShader permitido. Não comprova FPS, memória GPU, raycast físico nem aceite de patrimônio. Consultar [matriz e evidências #70](issue-70-aceite-operacional.md). Flags DEV permanecem.
