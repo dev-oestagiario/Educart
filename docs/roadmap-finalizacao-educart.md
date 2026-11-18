@@ -101,7 +101,7 @@ Especificação técnica e plano de tarefas: [educart-3d-v2.md](educart-3d-v2.md
 
 - [ ] F6.1 [Backup e recuperação — ensaio sintético aprovado](f6-1-backup-recuperacao.md). Metas RPO/RTO propostas; configuração de backups reais, responsáveis e aceite operacional pendentes.
 - [ ] F6.2 [Diagnóstico local e probe de deploy implementados](f6-2-operacao-monitoramento.md); monitor externo, alertas institucionais e homologação pendentes.
-- [ ] F6.3 Atualizar README, manual TI/professor, documentação funcional e arquitetura, guia de ambiente, migrations, suporte e checklist de operação.
+- [x] F6.3 Documentação versionada: [README](../README.md), [professor](manual-professor.md), [administrador](manual-administrador.md), [acesso e suporte](guia-acesso-suporte.md), [arquitetura](arquitetura-operacional.md), [migrations](catalogo-migrations.md) e [checklist](checklist-publicacao.md). Uso exclusivamente web; configuração técnica separada para mantenedores. Aceite institucional e publicação pendentes.
 - [ ] F6.4 Executar regressão completa, validação de release, publicar Pages main, verificar rotas e banco, smoke tests; release/tag v1.0.0 e plano de rollback.
 - [ ] F6.5 Encerrar issues aceitas, registrar limitações conhecidas, manter backlog futuro.
 
