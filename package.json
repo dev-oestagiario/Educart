@@ -19,7 +19,8 @@
     "backup:verify": "node scripts/verificar-backup-operacional.mjs verify",
     "test:backup": "node --test scripts/verificar-backup-operacional.test.mjs",
     "monitor:check": "node scripts/monitorar-operacao.mjs",
-    "test:monitor": "node --test scripts/monitorar-operacao.test.mjs"
+    "test:monitor": "node --test scripts/monitorar-operacao.test.mjs",
+    "release:preflight": "node scripts/preflight-release.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "2.80.0",
