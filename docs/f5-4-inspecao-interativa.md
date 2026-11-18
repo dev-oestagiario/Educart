@@ -12,7 +12,7 @@ Base F5.3 (PR #58). DT-017/018/019 implementados no escopo ilustrativo; DT-020 e
 ## Validação
 Dispositivo localhost, Debian 13 via PRoot/Termux ARM64 e runtime Linux Node 24.9.0. Clone existente da F5.3 atualizado via fetch e checkout para testes; commits pela conexão Dev.
 - Typecheck aprovado, 108/108 testes Vitest em 23 arquivos (6 novos + 102 existentes), commit 9bbbcb9.
-- Após ajustes de disponibilidade dos controles, no commit 01c21ce: 3/3 GLB reproduzidos com SHA-256 e 12/12 testes de layout. Build integral iniciado, ver resultado final no PR.
+- Após ajustes de disponibilidade dos controles, no commit 01c21ce: 3/3 GLB reproduzidos com SHA-256 e 12/12 testes de layout. Build integral aprovado (exit 0) no commit 01c21ce; Vite concluiu em 55,17 s. Avisos de chunks acima de 500 kB permanecem para F5.5.
 - E2E ampliado para abertura e fechamento, hotspot ilustrativo, vínculo real, reserva e histórico mockados, isolamento entre carrinhos e fallback. Não executado: Chromium e suas bibliotecas gráficas ausentes; computadores tradicionais offline. Não declarar homologação visual. Validação de RLS/consulta na stack real, integração com dashboard/relatórios/consulta pública e referências/aceite visual pendentes. Sem executar Actions deliberadamente, sem merge/deploy.
 - Consultar docs/educart-3d-v2.md e roadmap. Próxima F5.5: otimização de carregamento e renderização, LOD, desempenho e responsividade. F5.6: testes completos e homologação.
 
