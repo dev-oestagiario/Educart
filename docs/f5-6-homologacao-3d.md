@@ -44,3 +44,7 @@ PGlite cria base em memória, auth.uid e claims simuladas; não comprova Auth re
 4. A TI confere capacidades, posições e vínculos cadastrados e aprova expressamente a representação ilustrativa ou as referências reais autorizadas. Não inventar planta ou equiparar slot de GLB a patrimônio.
 5. Somente com aceite documentado, elaborar PR de promoção (backup, revisão dos gates, feature flag controlada, smoke tests e rollback por reversão/desativação). Aprovação explícita antes de integrar/publicar.
 6. Atualizar manual e changelog de release com evidências e limitações. F6.1 (backup/restore) pode ser preparada separadamente, mas nenhuma liberação F6.4 enquanto gates críticos F5.6 estiverem abertos.
+
+## Atualização F6.4 — reteste Windows
+
+O bloqueio de execução do navegador no Termux foi contornado utilizando CQP-KAINA-72. Após corrigir a interceptação GLB do Vite e o seletor/timeout do teste (aef8782), a regressão Playwright completa passou: 71 aprovados, 2 skips legados, zero falhas. A validação F5.2 desktop com backend simulado passou, incluindo fallback, inspeção, turno e reflow. Evidências em [F6.4](f6-4-release.md). Permanecem pendentes homologação real, teste de desempenho GPU/FPS em carga, inspeção física/aceite TI e audit; o ambiente 3D continua restrito a DEV.

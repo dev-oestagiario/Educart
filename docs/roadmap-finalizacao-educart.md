@@ -102,7 +102,7 @@ Especificação técnica e plano de tarefas: [educart-3d-v2.md](educart-3d-v2.md
 - [ ] F6.1 [Backup e recuperação — ensaio sintético aprovado](f6-1-backup-recuperacao.md). Metas RPO/RTO propostas; configuração de backups reais, responsáveis e aceite operacional pendentes.
 - [ ] F6.2 [Diagnóstico local e probe de deploy implementados](f6-2-operacao-monitoramento.md); monitor externo, alertas institucionais e homologação pendentes.
 - [x] F6.3 Documentação versionada: [README](../README.md), [professor](manual-professor.md), [administrador](manual-administrador.md), [acesso e suporte](guia-acesso-suporte.md), [arquitetura](arquitetura-operacional.md), [migrations](catalogo-migrations.md) e [checklist](checklist-publicacao.md). Uso exclusivamente web; configuração técnica separada para mantenedores. Aceite institucional e publicação pendentes.
-- [ ] F6.4 [Candidata consolidada e regressão local](f6-4-release.md): artefato e smoke HTTP local aprovados; audit high, navegador e homologação operacional bloqueiam release/tag v1.0.0 e Pages.
+- [ ] F6.4 [Candidata consolidada e regressão local](f6-4-release.md): artefato e smoke HTTP local aprovados; Playwright desktop simulado aprovado (71/73, 2 skips legados); audit high e homologação operacional real bloqueiam release/tag v1.0.0 e Pages.
 - [ ] F6.5 Encerrar issues aceitas, registrar limitações conhecidas, manter backlog futuro.
 
 **Aceite:** versões e deploy rastreáveis; recuperação testada; aprovação de operação; release estável e documentação atual. Nenhum segredo, dado de professor ou planta interna publicado na rota pública.
