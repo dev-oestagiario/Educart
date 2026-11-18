@@ -114,8 +114,13 @@ try{
     await page.getByRole('button',{name:'Enviar solicitação para aprovação'}).click();
     await expect(page.getByText(/Solicitação enviada à TI/)).toBeVisible();
   }
+  // Both browser sessions are already open: verify delivery without reload and before 30s polling fallback.
   await submit(pa,cartA.id,6,true);
+  await expect(admin.locator('article.booking-item').filter({has:admin.getByText(teachers[0].name,{exact:true})})).toBeVisible({timeout:8000});
+  await expect(admin.locator('.notifications-trigger')).toHaveAttribute('aria-label',/Notificações, 1 não lida/,{timeout:8000});
   await submit(pb,cartA.id,7);
+  await expect(admin.locator('article.booking-item').filter({has:admin.getByText(teachers[1].name,{exact:true})})).toBeVisible({timeout:8000});
+  await expect(admin.locator('.notifications-trigger')).toHaveAttribute('aria-label',/Notificações, 2 não lidas/,{timeout:8000});
   const [ra]=await requests(a,cartA.id),[rb]=await requests(b,cartA.id);
   assert.ok(ra&&rb&&ra.id!==rb.id);
   assert.equal(ra.needs_mouse,true);assert.equal(ra.notes,'Material sintético para aula');
@@ -133,8 +138,6 @@ try{
   denied(await a.client.rpc('review_teacher_request',{p_request_id:ra.id,p_approve:true}),'Professor não aprova');
   console.log('PASS F2.3-VINCULO: contas confirmadas, vínculo pela TI, portal próprio, prévia e pedidos pendentes.');
 
-  await admin.reload();
-  await expect(admin.getByRole('heading',{name:'Visão geral'})).toBeVisible();
   await admin.getByRole('button',{name:/Notificações, 2 não lidas/}).click();
   await expect(admin.getByRole('heading',{name:'Notificações'})).toBeVisible();
   await expect(admin.getByText('2 notificação(ões) não lida(s)')).toBeVisible();
@@ -166,9 +169,8 @@ try{
   console.log('PASS F2.3-DECISAO: aprovação, conflito mantido pendente, rejeição com justificativa e saldo coerente.');
 
   for(const [page,title,otherTitle,status,reply] of [[pa,'Solicitação aprovada','Solicitação rejeitada','Aprovada','Aprovado para aula'],[pb,'Solicitação rejeitada','Solicitação aprovada','Rejeitada','Saldo insuficiente no turno']]){
-    await page.reload();
     await expect(page.getByRole('heading',{name:'Pedidos de reserva'})).toBeVisible();
-    await expect(page.locator('.teacher-status')).toHaveText(status);
+    await expect(page.locator('.teacher-status')).toHaveText(status,{timeout:8000});
     await expect(page.getByText(reply,{exact:false})).toBeVisible();
     await page.getByRole('button',{name:/Notificações, 1 não lida/}).click();
     await expect(page.getByText(title,{exact:true})).toBeVisible();
@@ -179,6 +181,7 @@ try{
     await expect(page.getByRole('heading',{name:'Pedidos de reserva'})).toBeVisible();
     assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=document.documentElement.clientWidth+1));
   }
+  console.log('PASS REALTIME: pedidos e decisões nas sessões existentes, sem recarregar.');
   const aa=await notices(a,ra.id),bb=await notices(b,rb.id);
   assert.equal(aa.length,1);assert.equal(bb.length,1);
   assert.equal(aa[0].kind,'PEDIDO_APROVADO');assert.equal(bb[0].kind,'PEDIDO_REJEITADO');
