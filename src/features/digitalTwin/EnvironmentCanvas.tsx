@@ -5,7 +5,7 @@ import {loadIllustrativeAssets,createRoomVisual,createCartVisual,disposeAssets,t
 import {hotspotForName,type Hotspot} from './inspection';
 import {overviewStatuses,type OverviewLayout,type SceneCart} from './overviewLayout';
 
-type Props={layout:OverviewLayout;selectedId:string|null;focusId:string|null;reset:number;onPick:(id:string)=>void;doorOpen:boolean;hotspot:Hotspot|null;onHotspot:(id:string,part:Hotspot)=>void;quality:'low'|'high'};
+type Props={layout:OverviewLayout;selectedId:string|null;focusId:string|null;reset:number;onPick:(id:string)=>void;doorOpen:boolean;hotspot:Hotspot|null;onHotspot:(id:string,part:Hotspot)=>void;onInspectionReady:(ready:boolean)=>void;quality:'low'|'high'};
 function box(root:THREE.Object3D,w:number,h:number,d:number,color:number,x:number,y:number,z:number,metalness=0){
  const mesh=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),new THREE.MeshStandardMaterial({color,roughness:.72,metalness}));
  mesh.position.set(x,y,z);root.add(mesh);return mesh;
@@ -164,6 +164,7 @@ export default function EnvironmentCanvas(props:Props){
   };
  },[props.layout,props.quality]);
  useEffect(()=>{synchronise.current?.();},[props.selectedId,props.focusId,props.reset,props.doorOpen,props.hotspot]);
+ useEffect(()=>{props.onInspectionReady(assetState==='detailed'&&!unavailable);return ()=>props.onInspectionReady(false);},[assetState,unavailable,props.onInspectionReady]);
  return <div><div className="dt-stage dt-overview-stage" ref={mount} role="img" aria-label="Ambientes esquemáticos e carrinhos cadastrados. Use a lista para seleção por teclado."/>
   {unavailable&&<p role="status" className="notice warning">WebGL indisponível. Todos os carrinhos continuam acessíveis pela lista.</p>}
   {!unavailable&&<p className="form-hint" role="status">{assetState==='detailed'?'Modelos GLB ilustrativos verificados. A porta virtual mostra exemplos, não equipamentos presentes.':assetState==='loading'?'Carregando modelos detalhados; geometria simples disponível.':assetState==='fallback'?'Modelos detalhados indisponíveis. Geometria simplificada preservada.':'Qualidade econômica: geometria simplificada.'}</p>}</div>;
