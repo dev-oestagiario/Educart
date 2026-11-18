@@ -26,7 +26,7 @@ export default function NotebookInspection({cartId,slots,reservations,now,onHist
     <h4>{selected.code}</h4><p>Slot cadastrado: {selected.slot_key}</p><p>Vínculo confirmado em {format(selected.confirmed_at)}.</p>
     <p>{selected.reservation?'Reserva vinculada: '+selected.reservation.requester+' · '+selected.reservation.quantity+' equipamento(s) no período.':'Sem atribuição individual confirmada no período. Isso não significa disponível.'}</p>
     <h4>Histórico individual registrado</h4>
-    <p className="form-hint">Até 10 movimentações explicitamente vinculadas ao código, por identidade. Condição registrada na movimentação, não diagnóstico atual. Quantidades sem identificação não vinculam equipamentos.</p>
+    <p className="form-hint">Até 10 movimentações explicitamente vinculadas ao código, por identidade. Condição registrada na movimentação como um todo, não diagnóstico específico nem atual do notebook. Quantidades sem identificação não vinculam equipamentos.</p>
     {history.isFetching&&!history.dataUpdatedAt?<p role="status">Consultando histórico…</p>:!fresh?<p role="status">Histórico não confirmado. Atualize a consulta.</p>:history.data?.length===0?<p>Nenhuma movimentação individual registrada.</p>:<ul>{history.data?.map(m=><li key={m.id}><strong>Retirada: {format(m.pickup_at)}</strong><p>Condição de retirada: {condition(m.pickup_condition)}</p><p>{m.return_at?'Devolução: '+format(m.return_at)+' · '+condition(m.return_condition):'Devolução não registrada'}</p></li>)}</ul>}
     <button type="button" className="secondary" disabled={history.isFetching} onClick={()=>void history.refetch()}>Atualizar histórico individual</button>
    </article>}
