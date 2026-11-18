@@ -58,15 +58,17 @@ export function createCartVisual(library:AssetLibrary,width:number,depth:number)
  const hinge=root.getObjectByName('door-hinge');
  const exampleNotebooks=new THREE.Group();exampleNotebooks.name='illustrative-notebooks';
  // GLB slot IDs are deliberately not DB slot keys. They prove neither presence nor occupancy.
- root.traverse(obj=>{if(/^illustrative-slot-\d{2}$/.test(obj.name)){
-  const sample=library.notebook.clone(true);sample.position.copy(obj.position);sample.name='sample-'+obj.name;exampleNotebooks.add(sample);
- }});
+ const slots:THREE.Vector3[]=[];
+ root.traverse(obj=>{if(/^illustrative-slot-\d{2}$/.test(obj.name))slots.push(obj.position.clone());});
  exampleNotebooks.visible=false;
- // Slots are direct children of the named model root, not the wrapper scene.
  const modelRoot=root.getObjectByName('cart-illustrative-v1')??root;
  modelRoot.add(exampleNotebooks);
  return {root,setCutaway(open:boolean){
   if(hinge)hinge.visible=!open;
+  if(open&&!exampleNotebooks.children.length)for(const position of slots){
+   const sample=library.notebook.clone(true);sample.position.copy(position);exampleNotebooks.add(sample);
+  }
+  if(!open)exampleNotebooks.clear();
   exampleNotebooks.visible=open;
  }};
 }
