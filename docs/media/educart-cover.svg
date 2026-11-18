@@ -1,0 +1,63 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="520" viewBox="0 0 1440 520" role="img" aria-labelledby="title desc">
+<title id="title">Educart — Tecnologia disponível para cada aula</title>
+<desc id="desc">Banner institucional violeta com ilustração de um laboratório móvel, notebooks e uma agenda.</desc>
+<defs>
+ <linearGradient id="bg" x2="1" y2="1"><stop stop-color="#15121e"/><stop offset="1" stop-color="#30213f"/></linearGradient>
+ <linearGradient id="a" x2="1" y2="1"><stop stop-color="#c0a7ff"/><stop offset="1" stop-color="#8060d4"/></linearGradient>
+ <pattern id="dots" width="32" height="32" patternUnits="userSpaceOnUse"><circle cx="2" cy="2" r="1.2" fill="#b5a1de" opacity=".14"/></pattern>
+</defs>
+<rect width="1440" height="520" rx="28" fill="url(#bg)"/>
+<rect x="790" y="0" width="650" height="520" fill="url(#dots)"/>
+<circle cx="1190" cy="240" r="220" fill="#574176" opacity=".22"/>
+<circle cx="1190" cy="240" r="180" fill="none" stroke="#9d83d4" stroke-opacity=".18" stroke-width="2"/>
+<g font-family="system-ui, -apple-system, Segoe UI, sans-serif">
+ <path d="M80 55h35l-4 8H91v9h18l-4 8H91v9h23l-4 8H80a7 7 0 0 1-7-7V62a7 7 0 0 1 7-7z" fill="#f6f1ff"/>
+ <path d="M94 73h15l-4 7H94z" fill="#bba1ff"/>
+ <text x="128" y="88" font-weight="750" font-size="36" fill="#f6f1ff">Educart</text>
+ <text x="76" y="155" font-size="15" font-weight="700" letter-spacing="3" fill="#c5afff">GESTÃO EDUCACIONAL · WEB APP</text>
+ <text x="72" y="223" font-size="58" font-weight="750" fill="#fbf8ff">Tecnologia disponível</text>
+ <text x="72" y="289" font-size="58" font-weight="750" fill="#c4adff">para cada aula.</text>
+ <text x="76" y="340" font-size="23" fill="#d5cde2">Reserve, organize e acompanhe laboratórios móveis</text>
+ <text x="76" y="371" font-size="23" fill="#d5cde2">em um único ambiente digital.</text>
+ <rect x="76" y="410" width="170" height="44" rx="22" fill="#352847" stroke="#6c528f"/>
+ <text x="161" y="438" text-anchor="middle" font-size="16" font-weight="650" fill="#eee2ff">Sem instalação</text>
+ <rect x="258" y="410" width="190" height="44" rx="22" fill="#352847" stroke="#6c528f"/>
+ <text x="353" y="438" text-anchor="middle" font-size="16" font-weight="650" fill="#eee2ff">Desktop e mobile</text>
+ <rect x="460" y="410" width="178" height="44" rx="22" fill="#352847" stroke="#6c528f"/>
+ <text x="549" y="438" text-anchor="middle" font-size="16" font-weight="650" fill="#eee2ff">Agenda pública</text>
+</g>
+<!-- Ilustração vetorial do equipamento físico: não é uma tela da aplicação. -->
+<g transform="translate(905 110)">
+ <rect x="0" y="0" width="270" height="328" rx="22" fill="#30263f" stroke="#a68bdc" stroke-width="3"/>
+ <rect x="22" y="38" width="226" height="246" rx="14" fill="#1c1727" stroke="#695482" stroke-width="2"/>
+ <path d="M26 123h218M26 204h218" stroke="#775b9b" stroke-width="3"/>
+ <g fill="#584173" stroke="#b39aeb" stroke-width="1.7">
+  <rect x="38" y="53" width="22" height="58" rx="4"/><rect x="70" y="53" width="22" height="58" rx="4"/><rect x="102" y="53" width="22" height="58" rx="4"/><rect x="134" y="53" width="22" height="58" rx="4"/><rect x="166" y="53" width="22" height="58" rx="4"/><rect x="198" y="53" width="22" height="58" rx="4"/>
+  <rect x="38" y="134" width="22" height="58" rx="4"/><rect x="70" y="134" width="22" height="58" rx="4"/><rect x="102" y="134" width="22" height="58" rx="4"/><rect x="134" y="134" width="22" height="58" rx="4"/><rect x="166" y="134" width="22" height="58" rx="4"/><rect x="198" y="134" width="22" height="58" rx="4"/>
+ </g>
+ <path d="M42 231h184v34H42z" fill="#352b44" stroke="#655078" stroke-width="2"/>
+ <rect x="100" y="15" width="70" height="10" rx="5" fill="#b89ef4"/>
+ <rect x="112" y="295" width="46" height="8" rx="4" fill="#a991d4"/>
+ <circle cx="50" cy="333" r="16" fill="#17131f" stroke="#a68bdc" stroke-width="3"/><circle cx="220" cy="333" r="16" fill="#17131f" stroke="#a68bdc" stroke-width="3"/>
+</g>
+<g transform="translate(1120 97)">
+ <rect width="238" height="175" rx="18" fill="#21192f" stroke="#b19ae8" stroke-width="2"/>
+ <rect x="0" y="0" width="238" height="42" rx="18" fill="#5a437e"/>
+ <rect x="0" y="22" width="238" height="20" fill="#5a437e"/>
+ <g fill="#e9dbff"><rect x="28" y="-10" width="8" height="24" rx="4"/><rect x="202" y="-10" width="8" height="24" rx="4"/></g>
+ <g fill="#352748">
+  <rect x="19" y="58" width="32" height="28" rx="5"/><rect x="61" y="58" width="32" height="28" rx="5"/><rect x="103" y="58" width="32" height="28" rx="5"/><rect x="145" y="58" width="32" height="28" rx="5"/><rect x="187" y="58" width="32" height="28" rx="5"/>
+  <rect x="19" y="97" width="32" height="28" rx="5"/><rect x="61" y="97" width="32" height="28" rx="5"/><rect x="103" y="97" width="32" height="28" rx="5"/><rect x="145" y="97" width="32" height="28" rx="5"/><rect x="187" y="97" width="32" height="28" rx="5"/>
+ </g>
+ <rect x="61" y="97" width="74" height="28" rx="5" fill="url(#a)"/>
+ <path d="m87 111 9 8 15-17" fill="none" stroke="#21192f" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+ <rect x="19" y="140" width="116" height="9" rx="4.5" fill="#695087"/>
+</g>
+<g transform="translate(1125 292)">
+ <rect width="232" height="131" rx="18" fill="#231b31" stroke="#b29ae8" stroke-width="2"/>
+ <rect x="25" y="28" width="70" height="47" rx="5" fill="#705499"/>
+ <path d="M19 81h82l-6 8H25z" fill="#c3aafa"/>
+ <g font-family="system-ui, sans-serif"><text x="116" y="55" font-size="14" fill="#cbbce2">Equipamentos</text><text x="116" y="80" font-size="20" font-weight="700" fill="#f4ecff">Organizados</text></g>
+ <rect x="25" y="105" width="180" height="6" rx="3" fill="#3d2f50"/><rect x="25" y="105" width="135" height="6" rx="3" fill="#b39aec"/>
+</g>
+</svg>
