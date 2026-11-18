@@ -38,6 +38,8 @@ jobs:
           node-version: '22'
       - name: Instalar dependências
         run: npm ci --no-audit --no-fund
+      - name: Preparar acessibilidade automatizada
+        run: npm install --prefix .local-sql-test --ignore-scripts --save-exact axe-core@4.11.1 --no-audit --no-fund
       - name: Instalar Chromium para Playwright
         run: npx playwright install --with-deps chromium
       - name: Executar testes E2E com backend simulado

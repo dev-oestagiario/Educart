@@ -1,17 +1,17 @@
+import DateRangeFields from '../components/DateRangeFields';
 import {LoadingState,EmptyState,Feedback} from '../components/Feedback';
 import {useState,useEffect,useSyncExternalStore,type ReactNode} from 'react';
 import {useQuery} from '@tanstack/react-query';
 import {CalendarDays,PackageMinus,PackageCheck,Clock,ClipboardCheck,Wrench,RefreshCw,Boxes,Laptop,UserRound,ArrowRight} from 'lucide-react';
 import {supabase,type Cart,type Requester,type Notebook} from '../lib/supabase';
-import {todayInSaoPaulo,addCalendarDays,showDate,shiftLabel,SHIFTS,type Shift} from '../lib/reservations';
+import {todayInSaoPaulo,addCalendarDays,isValidIsoDate,showDate,shiftLabel,SHIFTS,type Shift} from '../lib/reservations';
 import {dashboardSummary,type DashboardData,type DashboardFilter,type DashboardPeriod,type DashboardMovement,type DashboardMaintenance,type DashboardRequest} from '../lib/dashboard';
 type Target='reservations'|'movements'|'maintenance'|'approvals'|'calendar'|'carts'|'requesters'|'notebooks';
 async function pages<T>(get:(a:number,b:number)=>PromiseLike<{data:unknown;error:unknown}>):Promise<T[]>{
  const result:T[]=[];
  for(let i=0;;i+=250){const {data,error}=await get(i,i+249);if(error)throw error;const rows=(data??[]) as T[];result.push(...rows);if(rows.length<250)return result;}
 }
-async function load(today:string):Promise<DashboardData>{
- const end=addCalendarDays(today,30);
+async function load(today:string,end:string):Promise<DashboardData>{
  const [carts,requesters,notebooks,periods,todayMovements,openMovements,maintenance,requests]=await Promise.all([
   pages<Cart>((a,b)=>supabase.from('carts').select('*').order('id').range(a,b)),
   pages<Requester>((a,b)=>supabase.from('requesters').select('*').order('id').range(a,b)),
@@ -24,7 +24,7 @@ async function load(today:string):Promise<DashboardData>{
  ]);
  return {carts,requesters,notebooks,periods,movements:[...new Map([...todayMovements,...openMovements].map(m=>[m.id,m])).values()],maintenance,requests};
 }
-const initial:DashboardFilter={cartId:'',shift:'all',days:7};
+function initial(today:string):DashboardFilter{return {cartId:'',shift:'all',start:today,end:addCalendarDays(today,7)};}
 function Metric({label,value,icon}: {label:string;value:string|number;icon:ReactNode}){
  return <div className="stat"><span className="stat-icon">{icon}</span><span className="stat-label">{label}</span><strong>{value}</strong></div>;
 }
@@ -44,14 +44,18 @@ function subscribeDashboardLayout(notify:()=>void){
 }
 const isDesktopDashboard=()=>!window.matchMedia(dashboardMediaQuery).matches;
 export default function DashboardPage({onNavigate}:{onNavigate:(target:Target)=>void}){
- const [today,setToday]=useState(todayInSaoPaulo),[filter,setFilter]=useState<DashboardFilter>(initial);
+ const [today,setToday]=useState(todayInSaoPaulo),[filter,setFilter]=useState<DashboardFilter>(()=>initial(todayInSaoPaulo()));
  useEffect(()=>{const sync=()=>setToday(todayInSaoPaulo());const id=window.setInterval(sync,30000);window.addEventListener('focus',sync);return()=>{window.clearInterval(id);window.removeEventListener('focus',sync)};},[]);
  const desktop=useSyncExternalStore(subscribeDashboardLayout,isDesktopDashboard,()=>false);
  const [expandedSections,setExpandedSections]=useState<Record<string,boolean>>({});
  const controls=(id:string)=>({expanded:!!expandedSections[id],onToggle:()=>setExpandedSections(previous=>({...previous,[id]:!previous[id]}))});
- const query=useQuery({queryKey:['operational-dashboard',today],queryFn:()=>load(today),staleTime:15000,refetchInterval:60000,retry:false});
+ const end=filter.end||filter.start;
+ const rangeValid=isValidIsoDate(filter.start)&&isValidIsoDate(end)&&filter.start>=today&&end>=filter.start&&end<=addCalendarDays(today,365);
+ const safeFilter=rangeValid?filter:{...filter,start:today,end:today};
+ const horizon=rangeValid?end:today;
+ const query=useQuery({queryKey:['operational-dashboard',today,horizon],queryFn:()=>load(today,horizon),staleTime:15000,refetchInterval:60000,retry:false});
  const data=query.data;
- const s=data?dashboardSummary(data,today,filter):null;
+ const s=data?dashboardSummary(data,today,safeFilter):null;
  const cartName=(id:string)=>data?.carts.find(c=>c.id===id)?.name??'Carrinho';
  const professor=(id:string)=>data?.requesters.find(p=>p.id===id)?.name??'Solicitante';
  const agenda=(p:DashboardPeriod)=> <article key={p.id} className="item dashboard-item"><div><strong>{cartName(p.cart_id)}</strong><span>{professor(p.reservations!.requester_id)} · {showDate(p.usage_date)} · {shiftLabel[p.shift]}</span><span>{p.quantity} notebook(s){p.reservations?.destination_label?' · '+p.reservations.destination_label:''}</span></div>{p.usage_date===today&&<span className="dashboard-status">{s!.status(p)}</span>}</article>;
@@ -68,9 +72,10 @@ export default function DashboardPage({onNavigate}:{onNavigate:(target:Target)=>
   <section className="panel dashboard-filters" aria-label="Filtros do dashboard">
    <label className="field" htmlFor="dashboard-cart"><span>Carrinho</span><select id="dashboard-cart" value={filter.cartId} onChange={e=>setFilter(f=>({...f,cartId:e.target.value}))}><option value="">Todos os carrinhos</option>{(data?.carts??[]).map(c=><option key={c.id} value={c.id}>{c.name}{c.active?'':' (inativo)'}</option>)}</select></label>
    <label className="field" htmlFor="dashboard-shift"><span>Turno</span><select id="dashboard-shift" value={filter.shift} onChange={e=>setFilter(f=>({...f,shift:e.target.value as Shift|'all'}))}><option value="all">Todos os turnos</option>{SHIFTS.map(s=><option key={s} value={s}>{shiftLabel[s]}</option>)}</select></label>
-   <label className="field" htmlFor="dashboard-days"><span>Próximos dias</span><select id="dashboard-days" value={filter.days} onChange={e=>setFilter(f=>({...f,days:Number(e.target.value) as DashboardFilter['days']}))}><option value={7}>7 dias</option><option value={14}>14 dias</option><option value={30}>30 dias</option></select></label>
-   <button className="ghost" onClick={()=>setFilter(initial)}>Limpar filtros</button>
+   <DateRangeFields id="dashboard-period" start={filter.start} end={filter.end} min={today} onChange={(a,b)=>setFilter(f=>({...f,start:a,end:b}))}/>
+   <button className="ghost" onClick={()=>setFilter(initial(today))}>Limpar filtros</button>
   </section>
+  {!rangeValid&&<Feedback kind="warning">Escolha um intervalo válido entre hoje e os próximos 365 dias.</Feedback>}
   {query.error?<Feedback kind="error">Não foi possível carregar o painel operacional. {data?'Exibindo a última consulta; atualize antes de tomar decisões.':'Tente atualizar. Nenhum indicador foi presumido.'}</Feedback>:null}
   {query.isLoading&&<LoadingState>Carregando painel operacional…</LoadingState>}
   {s&&<>
@@ -86,7 +91,7 @@ export default function DashboardPage({onNavigate}:{onNavigate:(target:Target)=>
     <div className="dashboard-grid">
      {desktop?<><div className="dashboard-column">{[sections[0],sections[2],sections[4]]}</div><div className="dashboard-column">{[sections[1],sections[3],sections[5]]}</div></>:sections}
     </div>
-    <p className="form-hint">O horizonte de dias limita próximas utilizações e manutenções. Devoluções e solicitações pendentes não expiram com esse filtro. O painel não representa rastreamento em tempo real.</p>
+    <p className="form-hint">O intervalo selecionado limita próximas utilizações e manutenções; a agenda de hoje continua disponível. Devoluções e solicitações pendentes não expiram com esse filtro. O painel não representa rastreamento em tempo real.</p>
   </>}
  </div>;
 }

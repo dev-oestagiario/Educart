@@ -1848,7 +1848,7 @@ test('Dashboard operacional — recortes, pendências antigas, filtros e atalhos
  await expect(metric('Solicitações pendentes')).toHaveText('1');
  await expect(page.getByText('De data anterior',{exact:true})).toBeVisible();
  await expect(page.getByText('Nenhum período confirmado no intervalo.')).toBeVisible();
- await page.getByLabel('Próximos dias').selectOption('14');
+ await page.locator('#dashboard-period-end').fill(new Date(Date.now()+14*86400000).toISOString().slice(0,10));
  await expect(page.getByText('Nenhum período confirmado no intervalo.')).toHaveCount(0);
  await page.getByRole('combobox',{name:'Carrinho',exact:true}).selectOption(c1);
  await expect(metric('Períodos de hoje')).toHaveText('1');
@@ -2270,7 +2270,7 @@ test('F4.4 — aprovação invalida relatório e painel sem aguardar expiração
  await page.locator('#calendar-period-start').fill(day);
  await expect(metric()).toHaveText('1');
  await page.getByRole('button',{name:'Visão geral',exact:true}).click();
- await page.getByLabel('Próximos dias').selectOption('30');
+ await page.locator('#dashboard-period-end').fill(new Date(Date.now()+30*86400000).toISOString().slice(0,10));
  await expect(page.getByText('Professor integração',{exact:false}).first()).toBeVisible();
 });
 

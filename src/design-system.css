@@ -137,3 +137,5 @@
 @media(max-width:690px){.teacher-portal-nav button{flex:1 1 135px}.educart-date-range{grid-template-columns:minmax(0,1fr)}.notification-visual-icon{display:none}}
 
 .calendar-filter-grid>.educart-date-range{grid-column:1/-1}.educart-date-range>.field{min-width:0}
+
+.dashboard-filters>.educart-date-range{grid-column:1/-1;width:100%}

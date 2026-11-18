@@ -4,8 +4,8 @@ import {useQuery} from '@tanstack/react-query';
 import {Laptop2,MousePointer2,Rotate3D} from 'lucide-react';
 import {supabase,type Cart,type Notebook,type Requester} from '../lib/supabase';
 import {buildCartSlots,type SlotPeriod,type SlotAssignment} from '../lib/cartScene';
-import {isWeekday,showDate,todayInSaoPaulo,shiftLabel,SHIFTS,type Shift} from '../lib/reservations';
-import {useMaintenanceWindows,isMaintenanceBlocked} from '../lib/maintenance';
+import {calculateAvailability,isWeekday,showDate,todayInSaoPaulo,shiftLabel,SHIFTS,type Shift} from '../lib/reservations';
+import {useMaintenanceWindows,isMaintenanceBlocked,applyMaintenance} from '../lib/maintenance';
 import Cart3DCanvas from './Cart3DCanvas';
 
 type Period=SlotPeriod&{cart_id:string;usage_date:string;shift:Shift;active:boolean};
@@ -61,10 +61,12 @@ export default function Visual3DPage(){
       if(error)throw error;return (data??[]) as Booking[];
     }
   });
-  const slots=useMemo(()=>buildCartSlots(blocked?0:cart?.capacity??0,
-    (notebooks.data??[]).filter(n=>n.cart_id===cartId).map(n=>({id:n.id,code:n.code})),
+  const capacity=applyMaintenance(calculateAvailability(cart?.capacity??0,[],[date],[shift]),maintenance.data??[],cartId)[0]?.capacity??0;
+  const maintained=new Set((maintenance.data??[]).filter(m=>m.notebook_id&&!m.closed_at&&m.start_date<=date&&m.end_date>=date&&m.shifts.includes(shift)).map(m=>m.notebook_id));
+  const slots=useMemo(()=>buildCartSlots(capacity,
+    (notebooks.data??[]).filter(n=>n.cart_id===cartId&&!maintained.has(n.id)).map(n=>({id:n.id,code:n.code})),
     periods.data??[],assignments.data??[]
-  ),[blocked,cart?.capacity,cartId,notebooks.data,periods.data,assignments.data]);
+  ),[capacity,cartId,notebooks.data,periods.data,assignments.data,maintenance.data,date,shift]);
   const selected=slots.find(s=>s.position===selectedPosition);
   const booked=selected?.reservationId?bookings.data?.find(b=>b.id===selected.reservationId):null;
   const teacher=booked?teachers.data?.find(t=>t.id===booked.requester_id):null;
@@ -142,7 +144,7 @@ export default function Visual3DPage(){
       </div>
       <section className="panel">
         <h2>Consulta textual equivalente</h2>
-        <p className="reservation-subtle">Use os botões para consultar cada posição mesmo sem acesso ao WebGL. O total corresponde à capacidade configurada, independentemente de quantos códigos estão cadastrados.</p>
+        <p className="reservation-subtle">Use os botões para consultar cada posição mesmo sem acesso ao WebGL. O total corresponde à capacidade operacional após descontar manutenções, independentemente de quantos códigos estão cadastrados.</p>
         {hasError&&<Feedback kind="error">Não foi possível confirmar a ocupação. Tente novamente quando a conexão estiver disponível.</Feedback>}
         <div className="visual3d-text-grid">{ready&&slots.map(slot=><button key={slot.position} type="button"
           className={'visual3d-slot '+(slot.reserved?'reserved':'available')}
