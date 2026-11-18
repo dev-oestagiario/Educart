@@ -93,7 +93,7 @@ Especificação técnica e plano de tarefas: [educart-3d-v2.md](educart-3d-v2.md
 - [ ] F5.3 [Modelos GLB ilustrativos integrados](f5-3-assets-detalhados.md); validação técnica parcial, referência física e aceite visual pendentes.
 - [ ] F5.4 [Inspeção interativa implementada](f5-4-inspecao-interativa.md); vínculos reais separados da geometria, validação visual e homologação pendentes.
 - [ ] F5.5 [Otimização e responsividade implementadas](f5-5-otimizacao-3d.md); validação visual e GPU pendentes.
-- [ ] F5.6 Testes, comparação com inventário físico, aceite visual da TI e reativação do menu somente quando aprovado.
+- [ ] F5.6 [Homologação técnica parcial e matriz de aceite](f5-6-homologacao-3d.md): contratos e SQL isolado aprovados; auditoria high, Chromium, Supabase real e aceite da TI bloqueiam publicação.
 
 **Aceite:** cena inicial com todos os carrinhos; cada um clicável; ambiente e interior detalhados; dados reais coerentes, posições fictícias identificadas; nenhuma reserva criada pelo renderizador; fallback acessível e desempenho medido.
 
