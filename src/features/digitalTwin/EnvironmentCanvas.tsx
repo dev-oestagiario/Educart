@@ -96,6 +96,7 @@ export default function EnvironmentCanvas(props:Props){
    const state=latest.current,selected=carts.find(c=>c.cart.id===state.selectedId),focused=carts.find(c=>c.cart.id===state.focusId);
    for(const c of carts){c.ring.visible=c===selected;c.detailed?.setCutaway(c===focused);}
    canvas.dataset.selectedCart=selected?.cart.id??'';
+   canvas.dataset.cutawayCart=focused?.detailed?focused.cart.id:'';
    const focus=focused?.cart.id??null;
    if(lastReset!==state.reset||lastFocus!==focus){
     lastReset=state.reset;lastFocus=focus;
