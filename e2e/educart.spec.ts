@@ -624,7 +624,8 @@ test('Fase 4 — filtros semanais, contagem correta e exportação CSV/PDF',asyn
   await login(page);
   await page.getByRole('button',{name:'Calendário',exact:true}).click();
   await expect(page.getByRole('heading',{name:'Calendário e relatórios'})).toBeVisible();
-  await page.locator('#calendar-focus').fill(date1);
+  await page.locator('#calendar-period-start').fill(date1);
+  await page.locator('#calendar-period-end').fill(date2);
   await page.locator('#calendar-cart').selectOption(cartId);
   await page.locator('#calendar-requester').selectOption(teacherId);
   await expect(page.locator('.calendar-event').getByText('Professora Relatório').first()).toBeVisible();
@@ -662,7 +663,9 @@ test('Fase 4 — calendário responsivo sem rolagem horizontal',async({page})=>{
     .getByRole('button',{name:'Calendário'}).click();
   await expect(page.getByRole('heading',{name:'Calendário e relatórios'})).toBeVisible();
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth+1)).toBe(true);
-  await page.locator('#calendar-mode').selectOption('mes');
+  const rangeStart=futureMondays()[0];
+  await page.locator('#calendar-period-start').fill(rangeStart);
+  await page.locator('#calendar-period-end').fill(futureMondays()[1]);
   await expect(page.locator('.calendar-grid')).toBeVisible();
 });
 
@@ -727,8 +730,8 @@ test('Fase 6 — professor vinculado envia e retira pedido, sem ocupar capacidad
   const d=new Date(Date.now()+14*86400000);
   while(d.getUTCDay()===0||d.getUTCDay()===6)d.setUTCDate(d.getUTCDate()+1);
   const day=d.toISOString().slice(0,10);
-  await page.locator('#teacher-start').fill(day);
-  await page.locator('#teacher-end').fill(day);
+  await page.locator('#teacher-period-start').fill(day);
+  await page.locator('#teacher-period-end').fill(day);
   await page.getByRole('button',{name:'Enviar solicitação para aprovação'}).click();
   await expect(page.getByText(/Solicitação enviada à TI/)).toBeVisible();
   expect(db.reservation_requests).toHaveLength(1);
@@ -891,8 +894,8 @@ test('Fase 8 — professor consulta saldo sem códigos físicos e sem contar pen
   await expect(page.getByRole('heading',{name:'Pedidos de reserva'})).toBeVisible();
   await page.getByRole('button',{name:'Nova solicitação'}).click();
   await page.locator('#teacher-cart').selectOption(cartId);
-  await page.locator('#teacher-start').fill(day);
-  await page.locator('#teacher-end').fill(day);
+  await page.locator('#teacher-period-start').fill(day);
+  await page.locator('#teacher-period-end').fill(day);
   await expect(page.getByText(/1 de 1 períodos possuem saldo estimado para 1 notebook/)).toBeVisible();
   await page.getByText(/Ver saldo por data e turno/).click();
   const detail=page.locator('.teacher-availability-table-wrap');
@@ -927,8 +930,8 @@ test('Fase 8 — sem reservas confirmadas, capacidade permanece 30 e pedidos pen
   await login(page);
   await page.getByRole('button',{name:'Nova solicitação'}).click();
   await page.locator('#teacher-cart').selectOption(cartId);
-  await page.locator('#teacher-start').fill(day);
-  await page.locator('#teacher-end').fill(day);
+  await page.locator('#teacher-period-start').fill(day);
+  await page.locator('#teacher-period-end').fill(day);
   await page.getByLabel('Carrinho completo').check();
   await expect(page.getByText(/1 de 1 períodos possuem saldo estimado para 30 notebook/)).toBeVisible();
   await page.getByText(/Ver saldo por data e turno/).click();
@@ -1937,7 +1940,7 @@ test('F3.5 — professor solicita série semanal pelo celular sem ocupar capacid
  await login(page);
  await page.getByRole('button',{name:'Nova solicitação'}).click();
  await page.locator('#teacher-cart').selectOption(cart);
- await page.locator('#teacher-date-mode').selectOption('weekly');
+ await page.getByRole('button',{name:'Recorrência semanal',exact:true}).click();
  await setWeekly(page,'teacher-weekly',dates);
  await page.getByRole('checkbox',{name:'Incluir '+brDate(dates[1])}).uncheck();
  await expect(page.locator('.weekly-summary')).toContainText('2 ocorrência(s)');
@@ -1985,7 +1988,7 @@ test('F3.6 — preferências de e-mail opcionais, canal desativado e avisos inte
  });
  await page.setViewportSize({width:320,height:780});
  await login(page);
- await page.getByRole('button',{name:/^Notificações/}).click();
+ await page.getByRole('button',{name:'Configurações',exact:true}).click();
  const panel=page.getByRole('region',{name:'Preferências de e-mail'});
  const toggle=panel.getByRole('checkbox',{name:'Receber avisos no e-mail confirmado da minha conta'});
  await expect(toggle).not.toBeChecked();
@@ -1993,7 +1996,9 @@ test('F3.6 — preferências de e-mail opcionais, canal desativado e avisos inte
  await toggle.click();await expect(toggle).toBeChecked();await expect(page.locator('#educart-toasts').getByText('Preferência salva.')).toBeVisible();
  expect(enabled).toBe(true);
  await toggle.click();await expect(toggle).not.toBeChecked();expect(enabled).toBe(false);
+ await page.getByRole('navigation',{name:'Menu do professor'}).getByRole('button',{name:'Notificações',exact:true}).click();
  await expect(page.getByRole('heading',{name:'Seus avisos'})).toBeVisible();
+ await expect(page.getByRole('region',{name:'Preferências de e-mail'})).toHaveCount(0);
  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=document.documentElement.clientWidth+1)).toBe(true);
 });
 
@@ -2194,7 +2199,7 @@ test('F4.3 — auditoria do professor e consulta pública em telas pequenas',asy
   await skip.focus();await page.keyboard.press('Enter');await expect(page.locator('#teacher-main')).toBeFocused();
   await page.getByRole('button',{name:'Nova solicitação'}).click();
   await page.locator('#teacher-cart').selectOption(cart);
-  await page.locator('#teacher-date-mode').selectOption('weekly');
+  await page.getByRole('button',{name:'Recorrência semanal',exact:true}).click();
   await scan(theme+' professor recorrência');
   await page.getByRole('button',{name:'Voltar para solicitações'}).click();
  }
@@ -2237,7 +2242,7 @@ test('F4.4 — recorte incompleto bloqueia exportação e atualização recupera
   await route.fulfill({status:200,headers:{'access-control-allow-origin':'*','access-control-allow-headers':'*'},json:[]});
  });
  await login(page);await page.getByRole('button',{name:'Calendário',exact:true}).click();
- await page.locator('#calendar-focus').fill(day);
+ await page.locator('#calendar-period-start').fill(day);
  await expect(page.getByRole('alert')).toContainText('Falha ao carregar o recorte completo');
  await expect(page.getByRole('button',{name:'Planilha CSV'})).toBeDisabled();
  await expect(page.getByRole('button',{name:'Exportar PDF'})).toBeDisabled();
@@ -2254,14 +2259,14 @@ test('F4.4 — aprovação invalida relatório e painel sem aguardar expiração
  db.carts.push({id:cart,name:'Carrinho integração',code:'INT',capacity:10,active:true});
  db.reservation_requests.push({id:request,requester_id:teacher,cart_id:cart,mode:'PARCIAL',quantity:2,dates:[day],shifts:['MATUTINO'],needs_mouse:false,notes:null,status:'PENDENTE',created_at:new Date().toISOString()});
  await login(page);await page.getByRole('button',{name:'Calendário',exact:true}).click();
- await page.locator('#calendar-focus').fill(day);
+ await page.locator('#calendar-period-start').fill(day);
  const metric=()=>page.locator('.calendar-stats .stat').filter({has:page.getByText('Períodos ocupados',{exact:true})}).locator('strong');
  await expect(metric()).toHaveText('0');
  await page.getByRole('button',{name:'Solicitações',exact:true}).click();
  await page.getByRole('button',{name:'Aprovar e confirmar reserva'}).click();
  await expect(page.getByText('Solicitação aprovada e reserva confirmada.')).toBeVisible();
  await page.getByRole('button',{name:'Calendário',exact:true}).click();
- await page.locator('#calendar-focus').fill(day);
+ await page.locator('#calendar-period-start').fill(day);
  await expect(metric()).toHaveText('1');
  await page.getByRole('button',{name:'Visão geral',exact:true}).click();
  await page.getByLabel('Próximos dias').selectOption('30');
