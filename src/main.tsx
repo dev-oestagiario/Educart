@@ -13,9 +13,13 @@ initializeTheme();
 const stopObserving=observeBrowserFailures(window);
 if(import.meta.hot)import.meta.hot.dispose(stopObserving);
 
+const queryEpochs=new WeakMap<object,number>(),mutationEpochs=new WeakMap<object,number>();
+const queries=new QueryCache({onError:(_error,query)=>{const epoch=queryEpochs.get(query);if(epoch!==undefined&&query.getObserversCount()>0)diagnostics.record('operation','failure',0,epoch);}});
+const mutations=new MutationCache({onMutate:(_variables,mutation)=>{mutationEpochs.set(mutation,diagnostics.generation());},onError:(_error,_variables,_context,mutation)=>{const epoch=mutationEpochs.get(mutation);if(epoch!==undefined)diagnostics.record('operation','failure',0,epoch);}});
+const stopQueries=queries.subscribe(event=>{if(event.type==='updated'&&event.action.type==='fetch')queryEpochs.set(event.query,diagnostics.generation());});
+if(import.meta.hot)import.meta.hot.dispose(stopQueries);
 const queryClient = new QueryClient({
-  queryCache: new QueryCache({onError:(_error,query)=>{if(query.getObserversCount()>0)diagnostics.record('operation','failure',0);}}),
-  mutationCache: new MutationCache({onError:()=>diagnostics.record('operation','failure',0)}),
+  queryCache:queries,mutationCache:mutations,
   defaultOptions: { queries: { retry: 1, staleTime: 30_000, refetchOnWindowFocus: false } }
 });
 createRoot(document.getElementById('root')!).render(
