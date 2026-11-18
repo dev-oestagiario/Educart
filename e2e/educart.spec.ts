@@ -2445,7 +2445,7 @@ test.describe('F5.2 — visão geral administrativa 3D',()=>{
   await page.route('**/rest/v1/rpc/spatial_cart_details*',async r=>{
    if(r.request().method()==='OPTIONS'){await r.fulfill({headers,status:204});return;}
    detailCalls++;const body=r.request().postDataJSON();const row=summary(body.p_shift).find(c=>c.cart_id===body.p_cart_id)!;
-   await r.fulfill({headers,json:{summary:row,reservations:row.cart_id===cartA?[reservation]:[],confirmed_slots:row.cart_id===cartA?[slot]:[]}});
+   await r.fulfill({headers,json:{summary:row,reservations:row.cart_id===cartA?[{...reservation,quantity:row.reserved}]:[],confirmed_slots:row.cart_id===cartA?[slot]:[]}});
   });
   await page.route('**/cart-illustrative-v1.glb*',r=>r.fulfill({status:503,body:'asset unavailable'}));
   await page.goto('/?environment3d=1');
