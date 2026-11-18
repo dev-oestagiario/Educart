@@ -51,5 +51,6 @@ export function sameOverviewSummary(a:SpatialSummary,b:SpatialSummary){
  return a.cart_id===b.cart_id&&a.active===b.active&&a.nominal_capacity===b.nominal_capacity&&
   a.effective_capacity===b.effective_capacity&&a.reserved===b.reserved&&a.available===b.available&&
   a.maintenance_count===b.maintenance_count&&a.availability_status===b.availability_status&&
-  a.storage_room_id===b.storage_room_id&&a.scene_id===b.scene_id&&a.placement_version===b.placement_version;
+  a.storage_room_id===b.storage_room_id&&a.scene_id===b.scene_id&&a.placement_version===b.placement_version&&
+  a.model_id===b.model_id&&a.code===b.code&&a.name===b.name&&a.position_x===b.position_x&&a.position_y===b.position_y&&a.position_z===b.position_z&&a.yaw===b.yaw;
 }
