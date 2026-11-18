@@ -61,9 +61,7 @@ export default function NotificationsPage({userId,onReturn,onViewRequests,audien
       </div>
       {notice&&<Feedback kind={notice.kind}>{notice.message}</Feedback>}
       {data.isLoading?<p role="status">Carregando notificações…</p>:
-        data.isError?<div role="alert" className="notice error">Não foi possível consultar as notificações.
-          <button type="button" className="text-button" onClick={()=>void data.refetch()}>Tentar novamente</button>
-        </div>:
+        data.isError?<Feedback kind="error">Não foi possível consultar as notificações. <button type="button" className="text-button" onClick={()=>void data.refetch()}>Tentar novamente</button></Feedback>:
         !data.data?.length?<div className="empty">Não há notificações ainda. As atualizações aparecerão aqui quando houver solicitações ou decisões da TI.</div>:
         <div className="notifications-list">{data.data.map(item=><article
           className={'notification-item '+(item.read_at?'':'unread')} key={item.id}>

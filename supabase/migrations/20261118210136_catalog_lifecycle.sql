@@ -45,7 +45,7 @@ begin
   if not found then raise exception 'Notebook inativo'; end if;
  elsif tg_table_name='notebook_codes' then
   if not new.active then return new; end if;
-  perform 1 from public.carts where id=new.cart_id and active for share;
+  perform 1 from public.carts where id=new.cart_id and active for update;
   if not found then raise exception 'Carrinho inativo'; end if;
  end if;
  return new;

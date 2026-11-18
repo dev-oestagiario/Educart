@@ -1,6 +1,7 @@
 import {useEffect,useRef,useState} from 'react';
 import {useMutation,useQueryClient} from '@tanstack/react-query';
 import {supabase} from '../lib/supabase';
+import {errorMessage} from '../lib/validation';
 export type CatalogTable='carts'|'requesters'|'notebook_codes'|'campuses'|'campus_blocks'|'campus_rooms';
 type Result={kind:'success'|'error';message:string};
 type RecordRef={id:string;active:boolean;label:string;table:CatalogTable};
@@ -24,7 +25,7 @@ export function useCatalogLifecycle(onResult:(result:Result)=>void){
  const mutation=useMutation({
   mutationFn:async(target:RecordRef)=>{
    const {data,error}=await supabase.from(target.table).update({active:!target.active}).eq('id',target.id).eq('active',target.active).select('id').maybeSingle();
-   if(error)throw new Error(error.code==='42501'?'Você não tem permissão para alterar a situação.':error.message);
+   if(error)throw new Error(error.code==='P0001'?error.message:errorMessage(error));
    if(!data)throw new Error('O cadastro foi alterado ou não existe. Atualize a listagem.');
   },
   onSuccess:async(_,target)=>{await qc.invalidateQueries();setRecord(null);onResult({kind:'success',message:target.active?'Cadastro inativado.':'Cadastro reativado.'});},

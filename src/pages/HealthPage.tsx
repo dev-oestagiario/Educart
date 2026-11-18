@@ -1,3 +1,4 @@
+import {Feedback} from '../components/Feedback';
 import {useEffect,useState,useSyncExternalStore} from 'react';
 import {diagnostics,type Service} from '../lib/observability';
 import './health.css';
@@ -17,10 +18,10 @@ export default function HealthPage(){
    <article className="panel"><h2>Falhas da interface</h2><strong>{report.frontendIssues}</strong></article>
    <article className="panel"><h2>Operações com erro</h2><strong>{report.operationFailures}</strong></article>
   </div>
-  {!online?<p className="notice warning" role="status">Dispositivo informa conexão indisponível. Confira a rede antes de repetir operações.</p>:null}
-  {report.truncated&&<p className="notice warning" role="status">Janela limitada a 1.000 registros recentes; parte da amostra foi descartada.</p>}
-  {alerts.length>0?<p className="notice warning" role="status">Atenção: falhas de transporte ou latência elevada em {alerts.map(r=>labels[r.service]).join(', ')}.</p>:<p className="notice" role="status">{transport.some(r=>r.total)?'Sem alerta de transporte na amostra atual.':'Sem amostra suficiente para avaliar a saúde dos serviços.'}</p>}
-  {report.frontendIssues>0&&<p className="notice warning">Falhas da interface observadas nesta aba. Se persistirem, contate a TI.</p>}
+  {!online?<Feedback kind="warning">Dispositivo informa conexão indisponível. Confira a rede antes de repetir operações.</Feedback>:null}
+  {report.truncated&&<Feedback kind="warning">Janela limitada a 1.000 registros recentes; parte da amostra foi descartada.</Feedback>}
+  {alerts.length>0?<Feedback kind="warning">Atenção: falhas de transporte ou latência elevada em {alerts.map(r=>labels[r.service]).join(', ')}.</Feedback>:<p className="form-hint" role="status">{transport.some(r=>r.total)?'Sem alerta de transporte na amostra atual.':'Sem amostra suficiente para avaliar a saúde dos serviços.'}</p>}
+  {report.frontendIssues>0&&<Feedback kind="warning">Falhas da interface observadas nesta aba. Se persistirem, contate a TI.</Feedback>}
   <div className="panel"><h2>Serviços observados</h2><p className="form-hint">HTTP 2xx indica resposta bem-sucedida, não confirma resultado de negócio. P95 é a latência das respostas 2xx; cancelamentos não contam como falhas de serviço.</p>
    <div className="health-services">{transport.map(r=><article key={r.service} className="health-service"><h3>{labels[r.service]}</h3>
     <p>{r.total===0?'Sem amostra':r.alert?'Atenção':'Sem alerta na amostra'}</p>
