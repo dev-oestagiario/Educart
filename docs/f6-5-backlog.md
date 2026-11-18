@@ -35,7 +35,7 @@ Prioridades P0 (bloqueadores da release); números referentes a issues criadas n
 
 | Issue | Critério para encerramento | Dependência |
 |---|---|---|
-| [#66](https://github.com/dev-oestagiario/Educart/issues/66) | Audit aprovado com atualização compatível e regressão | Correção disponível ou outra solução revisada |
+| [#66](https://github.com/dev-oestagiario/Educart/issues/66) | Audit aprovado com atualização compatível e regressão | [Diagnóstico e mitigação parcial](issue-66-seguranca-dependencias.md); correção oficial ou solução revisada pendente |
 | [#67](https://github.com/dev-oestagiario/Educart/issues/67) | Auth, PostgREST, JWT, RLS, concorrência e regressão real de 13 migrations | Executor isolado autorizado |
 | [#68](https://github.com/dev-oestagiario/Educart/issues/68) | Backup real aprovado, restore isolado, RPO/RTO e responsáveis | Plano e política autorizados |
 | [#69](https://github.com/dev-oestagiario/Educart/issues/69) | Monitor contínuo, alertas e política de privacidade | Executor, canal e responsável TI |
