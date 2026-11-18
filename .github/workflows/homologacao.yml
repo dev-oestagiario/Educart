@@ -14,7 +14,7 @@ concurrency:
 
 jobs:
   homologacao:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     timeout-minutes: 45
     env:
       EDUCART_DISPOSABLE_HOMOLOGACAO: educart-homologacao
@@ -39,11 +39,21 @@ jobs:
           npx --yes supabase@2.79.0 status -o json > .env.homologacao.status.local
       - name: Conferir histórico de migrations
         run: npx --yes supabase@2.79.0 migration list --local
-      - name: Preparar navegadores e verificador PDF
+      - name: Preparar Chromium
+        timeout-minutes: 8
+        run: npx playwright install --with-deps chromium
+      - name: Preparar WebKit
+        timeout-minutes: 8
+        run: npx playwright install --with-deps webkit
+      - name: Preparar verificador PDF
+        timeout-minutes: 4
         run: |
-          npx playwright install --with-deps chromium webkit
-          sudo apt-get update -qq
-          sudo apt-get install -y --no-install-recommends poppler-utils
+          if ! command -v pdftotext >/dev/null || ! command -v pdfinfo >/dev/null; then
+            sudo apt-get -o Acquire::Retries=2 -o Acquire::http::Timeout=30 -o Acquire::https::Timeout=30 update -qq
+            sudo apt-get -o Acquire::Retries=2 -o Acquire::http::Timeout=30 -o Acquire::https::Timeout=30 install -y --no-install-recommends poppler-utils
+          fi
+          command -v pdftotext
+          command -v pdfinfo
       - name: Executar as 11 suítes de homologação real
         run: npm run test:homologacao
       - name: Encerrar ambiente isolado
