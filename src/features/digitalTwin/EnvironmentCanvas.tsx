@@ -65,7 +65,7 @@ export default function EnvironmentCanvas(props:Props){
   controls.maxPolarAngle=Math.PI*.48;
   scene.add(new THREE.HemisphereLight(0xe5e7ff,0x766b80,2.1));
   const light=new THREE.DirectionalLight(0xfff1dc,2.1);light.position.set(span/2,span,span/2);scene.add(light);
-  const roomVisuals:{zone:OverviewLayout['zones'][number];root:THREE.Group;fallback:THREE.Group}[]=[];
+  const roomVisuals:{zone:OverviewLayout['zones'][number];root:THREE.Group;fallback:THREE.Group;detailed?:THREE.Group}[]=[];
   for(const zone of props.layout.zones){
    const roomRoot=new THREE.Group();roomRoot.position.set(zone.x,0,zone.z);scene.add(roomRoot);
    const fallback=new THREE.Group();roomRoot.add(fallback);roomVisuals.push({zone,root:roomRoot,fallback});
@@ -87,6 +87,12 @@ export default function EnvironmentCanvas(props:Props){
    const state=latest.current;
    const ppm=host!.clientHeight*camera.zoom/Math.max(.01,camera.top-camera.bottom);
    detailSet=detailIds(props.layout.carts,state.focusId,state.selectedId,controls.target,ppm,detailSet);
+   const focusedZone=props.layout.carts.find(c=>c.id===state.focusId)?.zoneId;
+   for(const r of roomVisuals){const want=!r.zone.unplaced&&r.zone.id===focusedZone;
+    if(want&&!r.detailed){r.detailed=createRoomVisual(library,r.zone.width,r.zone.depth);r.root.add(r.detailed);}
+    if(!want&&r.detailed){r.root.remove(r.detailed);r.detailed=undefined;}
+    r.fallback.visible=!r.detailed;
+   }
    for(const c of carts){const want=detailSet.has(c.cart.id);
     if(want&&!c.detailed){c.detailed=createCartVisual(library,c.cart.width,c.cart.depth);c.root.add(c.detailed.root);}
     if(!want&&c.detailed){c.root.remove(c.detailed.root);c.detailed=null;}
@@ -156,10 +162,10 @@ export default function EnvironmentCanvas(props:Props){
   if(props.quality==='low'){setAssetState('economical');canvas.dataset.assetMode='economical';}
   else {
    setAssetState('loading');canvas.dataset.assetMode='loading';
-   void loadIllustrativeAssets(abort.signal).then(assets=>{
+   void loadIllustrativeAssets(abort.signal,true).then(assets=>{
     if(abort.signal.aborted){disposeAssets(Object.values(assets));return;}
     library=assets;
-    for(const r of roomVisuals){if(r.zone.unplaced)continue;const detailed=createRoomVisual(assets,r.zone.width,r.zone.depth);r.root.add(detailed);r.fallback.visible=false;}
+    // Detailed room is only instantiated in the focused zone.
     // Detail groups are allocated only in applyLod; far carts keep pooled simple meshes.
     setAssetState('detailed');canvas.dataset.assetMode='detailed';update();
    }).catch(()=>{
@@ -176,6 +182,7 @@ export default function EnvironmentCanvas(props:Props){
    canvas.removeEventListener('webglcontextlost',contextLost);canvas.removeEventListener('webglcontextrestored',restored);
    // GLB geometry/materials are shared by clones; dispose each resource once.
    if(library)disposeAssets([...Object.values(library),scene]);else disposeAssets([scene]);
+   if(!carts.length)pool.geometry.dispose();
    scene.traverse(obj=>{if(obj instanceof THREE.Sprite){obj.material.map?.dispose();obj.material.dispose();}});
    renderer.dispose();canvas.remove();
   };
