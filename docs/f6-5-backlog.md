@@ -36,7 +36,7 @@ Prioridades P0 (bloqueadores da release); números referentes a issues criadas n
 | Issue | Critério para encerramento | Dependência |
 |---|---|---|
 | [#66](https://github.com/dev-oestagiario/Educart/issues/66) | Audit aprovado com atualização compatível e regressão | [Diagnóstico e mitigação parcial](issue-66-seguranca-dependencias.md); correção oficial ou solução revisada pendente |
-| [#67](https://github.com/dev-oestagiario/Educart/issues/67) | Auth, PostgREST, JWT, RLS, concorrência e regressão real de 13 migrations | Executor isolado autorizado |
+| [#67](https://github.com/dev-oestagiario/Educart/issues/67) | Auth, PostgREST, JWT, RLS, concorrência e regressão real de 13 migrations | [Executor e diagnóstico](issue-67-homologacao-real.md) preparados; stack real autorizado pendente |
 | [#68](https://github.com/dev-oestagiario/Educart/issues/68) | Backup real aprovado, restore isolado, RPO/RTO e responsáveis | Plano e política autorizados |
 | [#69](https://github.com/dev-oestagiario/Educart/issues/69) | Monitor contínuo, alertas e política de privacidade | Executor, canal e responsável TI |
 | [#70](https://github.com/dev-oestagiario/Educart/issues/70) | Aceite institucional, dispositivos físicos, impressão e acessibilidade; gate específico do 3D | Homologação real e referências autorizadas |
@@ -50,6 +50,6 @@ Prioridades P0 (bloqueadores da release); números referentes a issues criadas n
 
 ## Limitações conhecidas / gate final
 - Audit cinco high derivados de picomatch; correção indisponível no registro consultado. Não ignorar gate.
-- Docker e WSL ausentes no CQP-KAINA-72; homologação integral atual não executada. Termux só complementar; Chromium GPU falhou nele, Windows resolveu os E2E de mock.
+- Docker e WSL ausentes no CQP-KAINA-72; runtime nativo CLI 3.2.0 no Termux falhou na memória compartilhada PostgreSQL. Homologação integral atual não executada; Windows resolveu os E2E de mock.
 - RPO/RTO, alertas, suporte e aceite dependem de responsáveis. 3D DEV-only, modelos ilustrativos; e-mail desativado; nenhuma configuração real/componentes de infraestrutura modificados.
 - Main e Pages não promovidos, sem tag/release. PR #65 continua draft. F6.5 conclui triagem e organização, não libera F6.4 nem encerra #33.
