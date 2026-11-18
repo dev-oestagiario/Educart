@@ -140,9 +140,9 @@ Implementação e testes locais: [F5.1](f5-1-fundacao-espacial.md). Editor numé
 - [ ] DT-020 Invalidação espacial, polling e timestamps implementados; comprovação integral de consistência com dashboard, relatórios e consulta pública pendente na homologação.
 
 ### F5.5 — Otimização e fallback
-- [ ] DT-021 LOD/instancing, lazy loader, cache/descarte, compressão de assets, modo adaptativo de qualidade e render sob demanda.
-- [ ] DT-022 Teclado/lista textual e layout mobile; teste em rede limitada, falhas de GLB/WebGL, zoom 200%, reduced-motion e contraste.
-- [ ] DT-023 Medir performance em escala de referência, comparar perfil antes/depois, corrigir gargalos e documentar limites reais.
+- [ ] DT-021 LOD, instancing, lazy loader, cache/descarte, modo adaptativo e render sob demanda implementados. GLB já compactos (46.360 bytes); compressão adicional não adotada sem medição de benefício.
+- [ ] DT-022 Lista paginada, controles mobile, modo automático e reduced-motion implementados; teste real de navegador, contraste, rede e zoom pendentes.
+- [ ] DT-023 Perfil estrutural sintético de 120 carrinhos: 21.240 → 2.124 nós detalhados no limite de 12. GPU/FPS, memória real e homologação pendentes.
 
 ### F5.6 — Homologação e publicação
 - [ ] DT-024 Vitest de projeção, poses, status, vínculos e datas; testes SQL de acesso/RLS e consistência.

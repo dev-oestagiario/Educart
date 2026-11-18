@@ -2447,6 +2447,7 @@ test.describe('F5.2 — visão geral administrativa 3D',()=>{
    detailCalls++;const body=r.request().postDataJSON();const row=summary(body.p_shift).find(c=>c.cart_id===body.p_cart_id)!;
    await r.fulfill({headers,json:{summary:row,reservations:row.cart_id===cartA?[reservation]:[],confirmed_slots:row.cart_id===cartA?[slot]:[]}});
   });
+  await page.route('**/cart-illustrative-v1.glb*',r=>r.fulfill({status:503,body:'asset unavailable'}));
   await page.goto('/?environment3d=1');
   await page.getByLabel('E-mail').fill('test-admin@educart.example');
   await page.getByLabel('Senha').fill('senha-de-teste-sem-uso-real');
@@ -2457,8 +2458,17 @@ test.describe('F5.2 — visão geral administrativa 3D',()=>{
   await expect(list.getByRole('button',{name:/F52A/})).toContainText('Sala 1');
   await expect(list.getByRole('button',{name:/F52B/})).toContainText('Sem localização definida');
   expect(detailCalls).toBe(0);
+  await page.getByLabel('Qualidade visual').selectOption('high');
   const canvas=page.locator('.dt-stage canvas');
+  await canvas.scrollIntoViewIfNeeded();
+  await expect(canvas).toHaveAttribute('data-asset-mode','fallback',{timeout:15000});
+  await expect(list.getByRole('button')).toHaveCount(2);
+  await page.unroute('**/cart-illustrative-v1.glb*');
+  await page.getByLabel('Qualidade visual').selectOption('low');
+  await page.getByLabel('Qualidade visual').selectOption('high');
+  await canvas.scrollIntoViewIfNeeded();
   await expect(canvas).toHaveAttribute('data-asset-mode','detailed',{timeout:15000});
+  await expect(canvas).toHaveAttribute('data-instanced-carts','2');
   await expect(canvas).toHaveAttribute('data-cart-count','2');
   await list.getByRole('button',{name:/F52A/}).click();
   await expect(page.getByRole('button',{name:/F54-NB-01/})).toBeVisible();
@@ -2471,10 +2481,12 @@ test.describe('F5.2 — visão geral administrativa 3D',()=>{
   await page.getByRole('button',{name:'Focalizar carrinho'}).click();
   await expect(canvas).toHaveAttribute('data-cutaway-cart','');
   await page.getByRole('button',{name:'Abrir porta virtual'}).click();
+  await canvas.scrollIntoViewIfNeeded();
   await expect(canvas).toHaveAttribute('data-cutaway-cart',cartA);
   await page.getByRole('button',{name:'Notebook ilustrativo',exact:true}).click();
   await expect(page.getByText('Exemplo visual sem patrimônio, posição física ou reserva individual associada.',{exact:false})).toBeVisible();
   await page.getByRole('button',{name:'Fechar porta virtual'}).click();
+  await canvas.scrollIntoViewIfNeeded();
   await expect(canvas).toHaveAttribute('data-cutaway-cart','');
   await list.getByRole('button',{name:/F52B/}).click();
   await expect(page.getByRole('button',{name:/F54-NB-01/})).toHaveCount(0);
@@ -2483,7 +2495,7 @@ test.describe('F5.2 — visão geral administrativa 3D',()=>{
   await expect(canvas).toHaveAttribute('data-asset-mode','economical');
   await page.route('**/cart-illustrative-v1.glb*',r=>r.fulfill({status:503,body:'asset unavailable'}));
   await page.getByLabel('Qualidade visual').selectOption('high');
-  await expect(canvas).toHaveAttribute('data-asset-mode','fallback',{timeout:15000});
+  await expect(canvas).toHaveAttribute('data-asset-mode','detailed',{timeout:15000}); // cache verificado reutilizado sem rede
   await expect(list.getByRole('button')).toHaveCount(2);
   await page.unroute('**/cart-illustrative-v1.glb*');
   await list.getByRole('button',{name:/F52A/}).click();
@@ -2500,6 +2512,8 @@ test.describe('F5.2 — visão geral administrativa 3D',()=>{
   await expect(list.getByRole('button',{name:/F52A/})).toContainText('Não confirmado');
   await expect(list.getByRole('button',{name:/F52A/})).not.toContainText('disponíveis');
   await page.setViewportSize({width:390,height:844});
+  await page.getByLabel('Qualidade visual').selectOption('auto');
+  await expect(page.getByText(/Qualidade em uso: Econômica/)).toBeVisible();
   await expect.poll(()=>page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)).toBe(true);
  });
  test('sem autorização administrativa não expõe ambiente mesmo com flag DEV',async({page})=>{
