@@ -68,6 +68,9 @@ jobs:
           VITE_SUPABASE_URL: https://tsruibcrvnxiwgrfrecu.supabase.co
           # Chave PUBLICAVEL: e enviada ao navegador, nao e uma chave secreta.
           VITE_SUPABASE_PUBLISHABLE_KEY: sb_publishable_k5cR7QLJf5MTpHQvOYQgmg_LoX7EgBZ
+          # DSN publica autorizada; a variavel do repositorio pode substituir ou desativar.
+          VITE_SENTRY_DSN: ${{ vars.VITE_SENTRY_DSN || 'https://b18b0d51ae7340c04475824913e384bc@o4512453849513984.ingest.us.sentry.io/4512453856067584' }}
+          VITE_SENTRY_RELEASE: ${{ github.sha }}
         run: npm run build
 
       - name: Registrar versão publicada
