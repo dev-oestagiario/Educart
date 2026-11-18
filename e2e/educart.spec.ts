@@ -2536,3 +2536,31 @@ test.describe('F5.2 — visão geral administrativa 3D',()=>{
   await expect(page.getByRole('button',{name:'Ambiente 3D',exact:true})).toHaveCount(0);
  });
 });
+
+test.describe('F6.2 — diagnóstico administrativo local',()=>{
+ test('diagnóstico contabiliza falhas sem expor conteúdo e pode ser limpo',async({page})=>{
+  await useFakeSupabase(page);
+  await page.goto('/');
+  await page.getByLabel('E-mail').fill('test-admin@educart.example');
+  await page.getByLabel('Senha').fill('senha-de-teste-sem-uso-real');
+  await page.getByRole('button',{name:'Entrar no Educart'}).click();
+  await page.getByRole('button',{name:'Saúde da aplicação',exact:true}).click();
+  await expect(page.getByRole('heading',{name:'Saúde da aplicação',exact:true})).toBeVisible();
+  await page.evaluate(()=>window.dispatchEvent(new ErrorEvent('error',{message:'PRIVATE_SENTINEL',error:new Error('PRIVATE_SENTINEL')})));
+  await expect(page.locator('.health-metrics article').filter({hasText:'Falhas da interface'})).toContainText('1');
+  await expect(page.locator('.health-page')).not.toContainText('PRIVATE_SENTINEL');
+  await page.getByRole('button',{name:'Limpar diagnóstico local'}).click();
+  await expect(page.locator('.health-metrics article').filter({hasText:'Falhas da interface'})).toContainText('0');
+  await page.setViewportSize({width:320,height:800});
+  await expect.poll(()=>page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)).toBe(true);
+ });
+ test('usuário sem autorização não vê diagnóstico administrativo',async({page})=>{
+  await useFakeSupabase(page,false);
+  await page.goto('/');
+  await page.getByLabel('E-mail').fill('test-admin@educart.example');
+  await page.getByLabel('Senha').fill('senha-de-teste-sem-uso-real');
+  await page.getByRole('button',{name:'Entrar no Educart'}).click();
+  await expect(page.getByRole('heading',{name:'Conta criada, aguardando autorização'})).toBeVisible();
+  await expect(page.getByRole('button',{name:'Saúde da aplicação',exact:true})).toHaveCount(0);
+ });
+});
