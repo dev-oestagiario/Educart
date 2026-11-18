@@ -92,7 +92,8 @@ try{
   for(const page of [pa,pb]){
     await page.reload();
     await expect(page.getByRole('heading',{name:'Pedidos de reserva'})).toBeVisible({timeout:15000});
-    await expect(page.getByRole('button',{name:'Solicitações',exact:true})).toHaveCount(0);
+    await expect(page.getByRole('navigation',{name:'Menu principal'})).toHaveCount(0);
+     await expect(page.getByRole('navigation',{name:'Menu do professor'}).getByRole('button',{name:'Solicitações',exact:true})).toBeVisible();
   }
   denied(await a.client.rpc('link_teacher_account',{p_requester_id:teachers[2].id,p_email:pending.email}),'Professor não autoriza contas');
   denied(await a.client.rpc('preview_teacher_availability',{...previewArgs,p_cart_id:inactive.id}),'Carrinho inativo sem prévia');
@@ -102,8 +103,8 @@ try{
     await expect(page.locator('#teacher-cart').locator('option').filter({hasText:inactiveName})).toHaveCount(0);
     await page.locator('#teacher-cart').selectOption(cartId);
     await page.locator('#teacher-quantity').fill(String(quantity));
-    await page.locator('#teacher-start').fill(day);
-    await page.locator('#teacher-end').fill(day);
+    await page.locator('#teacher-period-start').fill(day);
+    await page.locator('#teacher-period-end').fill(day);
     if(mouse){
       await page.getByLabel('Preciso de mouse').check();
       await page.locator('#teacher-notes').fill('Material sintético para aula');
