@@ -1,6 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {mkdtemp,writeFile,readFile,rm,mkdir} from 'node:fs/promises';
+import {mkdtemp,writeFile,readFile,rm,mkdir,copyFile} from 'node:fs/promises';
+import {createServer} from 'node:http';
+import {recordBackup,requiredScope} from './verificar-backup-operacional.mjs';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {initialState,applyDeploy,applyBackup,summarize,validateState,runMonitor} from './monitorar-operacao.mjs';
@@ -58,4 +60,39 @@ test('version mismatch is deployment failure and invalid backup raises alert',as
 test('concurrent run fails closed and corrupt state is not reset',async t=>{
  const dir=await fixture(t);await mkdir(join(dir,'.monitor-lock'));await assert.rejects(()=>runMonitor(dir,'status',{clock:()=>now}));await rm(join(dir,'.monitor-lock'),{recursive:true});
  await writeFile(join(dir,'state.json'),'{}');await assert.rejects(()=>runMonitor(dir,'status',{clock:()=>now}));assert.equal(await readFile(join(dir,'state.json'),'utf8'),'{}');
+});
+
+test('configuration changes require a new state, not reuse of previous evidence',async t=>{
+ const dir=await fixture(t);const deps={clock:()=>now,deploy:async()=>({ok:true}),version:async()=>({ok:true})};
+ await runMonitor(dir,'deploy',deps);
+ const config=JSON.parse(await readFile(join(dir,'config.json'),'utf8'));config.expectedSha='b'.repeat(40);
+ await writeFile(join(dir,'config.json'),JSON.stringify(config));
+ await assert.rejects(()=>runMonitor(dir,'status',deps),/Configuração mudou/);
+});
+test('real loopback HTTP and two synthetic backup files: incident and recovery',async t=>{
+ const dir=await fixture(t);
+ let down=false;
+ const server=createServer((req,res)=>{
+  if(down){res.writeHead(503);res.end();return;}
+  if(req.url==='/Educart/'){res.writeHead(200,{'content-type':'text/html'});res.end('<title>Educart</title><div id="root"></div><script src="./assets/app.js"></script>');}
+  else if(req.url==='/Educart/assets/app.js'){res.writeHead(200,{'content-type':'application/javascript'});res.end('export {};');}
+  else if(req.url==='/Educart/version.json'){res.writeHead(200,{'content-type':'application/json'});res.end(JSON.stringify({commit:sha,ref:'main',build:'2026-11-18T14:00:00.000Z'}));}
+  else{res.writeHead(404);res.end();}
+ });
+ await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));t.after(()=>new Promise(resolve=>server.close(resolve)));
+ const cfg=JSON.parse(await readFile(join(dir,'config.json'),'utf8'));cfg.deployUrl='http://127.0.0.1:'+server.address().port+'/Educart/';
+ await writeFile(join(dir,'config.json'),JSON.stringify(cfg));await mkdir(cfg.backupPrimary);await mkdir(cfg.backupSecondary);
+ await writeFile(join(cfg.backupPrimary,'backup.age'),'age-encryption.org/v1\nsynthetic-fixture');
+ await writeFile(join(cfg.backupPrimary,'metadata.json'),JSON.stringify({schemaVersion:1,projectRef:cfg.projectRef,startedAt:new Date(now-H).toISOString(),completedAt:new Date(now-H+M).toISOString(),postgresMajor:17,migrations:['20261115145429'],scope:requiredScope,storage:'empty-verified',format:'age-binary-v1'}));
+ await recordBackup(cfg.backupPrimary,cfg.projectRef,now);
+ for(const f of ['manifest.json','backup.age'])await copyFile(join(cfg.backupPrimary,f),join(cfg.backupSecondary,f));
+ let time=now;const deps={clock:()=>time};
+ assert.equal((await runMonitor(dir,'backup',deps)).backup,'verified');
+ assert.equal((await runMonitor(dir,'deploy',deps)).deployment,'healthy');
+ down=true;
+ for(let i=0;i<3;i++){time+=5*M;const result=await runMonitor(dir,'deploy',deps);assert.equal(result.event,i===2?'deploy-open':null);}
+ down=false;
+ for(let i=0;i<2;i++){time+=5*M;const result=await runMonitor(dir,'deploy',deps);assert.equal(result.event,i===1?'deploy-recovered':null);}
+ await writeFile(join(cfg.backupSecondary,'backup.age'),'age-encryption.org/v1\ncorrupted-fixture');
+ assert.equal((await runMonitor(dir,'backup',deps)).backup,'invalid');
 });

@@ -40,7 +40,7 @@ export async function probeVersion(value,expectedSha,fetcher=fetch){
  if(!result.ok)return {ok:false,kind:result.kind,ms:result.ms};
  try{
   const v=JSON.parse(text);
-  if(Object.keys(v).sort().join(',')!=='build,commit,ref'||v.commit!==expectedSha||!(/^[A-Za-z0-9][A-Za-z0-9/_-]{0,127}$/).test(v.ref)||typeof v.build!=='string'||!Number.isFinite(Date.parse(v.build)))throw Error('Versão inesperada');
+  if(Object.keys(v).sort().join(',')!=='build,commit,ref'||v.commit!==expectedSha||typeof v.ref!=='string'||!(/^[A-Za-z0-9][A-Za-z0-9/_-]{0,127}$/).test(v.ref)||typeof v.build!=='string'||!Number.isFinite(Date.parse(v.build)))throw Error('Versão inesperada');
   return {ok:true,kind:'ok',ms:result.ms};
  }catch{return {ok:false,kind:'unexpected-version',ms:result.ms};}
 }

@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import {lstat,realpath,readFile,writeFile,rename,mkdir,rmdir,unlink} from 'node:fs/promises';
 import {resolve,relative,isAbsolute,join} from 'node:path';
 import {fileURLToPath,pathToFileURL} from 'node:url';
-import {randomUUID} from 'node:crypto';
+import {randomUUID,createHash} from 'node:crypto';
 import {probeDeploy,probeVersion,validatedTarget} from './verificar-saude-deploy.mjs';
 import {verifyBackupPair} from './verificar-backup-operacional.mjs';
 const H=3600000,M=60000;
@@ -79,7 +79,9 @@ export async function runMonitor(dirInput,mode,{clock=Date.now,deploy=probeDeplo
  try{
   const cfg=validateConfig(await readJson(dir,'config.json'));
   const prior=await readJson(dir,'state.json',true);
-  const initial=prior===null?initialState():prior;
+  const configHash=createHash('sha256').update(JSON.stringify(Object.keys(cfg).sort().map(k=>[k,cfg[k]]))).digest('hex');
+  if(prior!==null)assert.ok(fields(prior,['configHash','state'])&&prior.configHash===configHash,'Configuração mudou; arquive o estado e revalide.');
+  const initial=prior===null?initialState():prior.state;
   validateState(initial,clock());
   let state=initial,event=null;
   if(mode==='deploy'){
@@ -97,7 +99,7 @@ export async function runMonitor(dirInput,mode,{clock=Date.now,deploy=probeDeplo
    }catch{}
    state=applyBackup(initial,age,clock());
   }
-  if(mode!=='status')await writeState(dir,state);
+  if(mode!=='status')await writeState(dir,{configHash,state});
   const summary=summarize(state,clock());
   return {...summary,event,mode};
  }finally{await rmdir(lock);}
