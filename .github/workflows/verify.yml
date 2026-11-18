@@ -2,7 +2,7 @@ name: Verificação do Educart
 on:
   pull_request:
   push:
-    branches: [main]
+    branches: [main, develop]
 permissions:
   contents: read
 
@@ -26,6 +26,8 @@ jobs:
         run: npm run build
       - name: Executar testes
         run: npm run test
+      - name: Validar regras de promoção
+        run: node --test scripts/git-flow.test.mjs scripts/verificar-ci-release.test.mjs
 
   e2e:
     runs-on: ubuntu-latest

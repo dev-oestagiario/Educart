@@ -1,6 +1,8 @@
 name: Ensaio de recuperação Educart
 on:
   pull_request:
+  push:
+    branches: [main]
   workflow_dispatch:
 
 permissions:

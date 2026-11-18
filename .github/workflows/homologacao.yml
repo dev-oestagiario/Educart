@@ -2,7 +2,7 @@ name: Homologação Educart — Supabase isolado
 on:
   pull_request:
   push:
-    branches: [main]
+    branches: [main, develop]
   workflow_dispatch:
 
 permissions:

@@ -4,12 +4,13 @@ on:
   workflow_dispatch:
     inputs:
       approved_sha:
-        description: 'SHA completo da main aprovado após #66–#70'
+        description: 'SHA completo da main aprovado para esta publicação'
         required: true
         type: string
 
 permissions:
   contents: read
+  actions: read
   pages: write
   id-token: write
 
@@ -43,6 +44,11 @@ jobs:
         with:
           node-version: '22'
 
+      - name: Exigir CI e homologação do SHA aprovado
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: node scripts/verificar-ci-release.mjs
+
       - name: Instalar dependencias
         run: npm ci --no-audit --no-fund
 
@@ -52,7 +58,7 @@ jobs:
         run: npm run test
 
       - name: Validar scripts operacionais
-        run: node --test scripts/verificar-f5-2-layout.mjs scripts/email-worker.test.mjs scripts/verificar-saude-deploy.test.mjs scripts/verificar-artefato-release.test.mjs scripts/homologacao-preflight.test.mjs scripts/verificar-backup-operacional.test.mjs scripts/monitorar-operacao.test.mjs
+        run: node --test scripts/git-flow.test.mjs scripts/verificar-ci-release.test.mjs scripts/verificar-f5-2-layout.mjs scripts/email-worker.test.mjs scripts/verificar-saude-deploy.test.mjs scripts/verificar-artefato-release.test.mjs scripts/homologacao-preflight.test.mjs scripts/verificar-backup-operacional.test.mjs scripts/monitorar-operacao.test.mjs
 
       - name: Preparar acessibilidade automatizada
         run: npm install --prefix .local-sql-test --ignore-scripts --save-exact axe-core@4.11.1 --no-audit --no-fund
