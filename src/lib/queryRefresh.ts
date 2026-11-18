@@ -1,6 +1,6 @@
 import type {QueryClient} from '@tanstack/react-query';
 // Query keys are arrays: ['calendar-'] does not match ['calendar-periods'].
-const dependentKeys=['reservation-periods','reservations','booking-periods','reservation-events','calendar-periods','calendar-bookings','operational-dashboard','movement-periods','teacher-availability','3d-periods'];
+const dependentKeys=['reservation-periods','reservations','booking-periods','reservation-events','calendar-periods','calendar-bookings','operational-dashboard','movement-periods','teacher-availability','3d-periods','spatial'];
 export function invalidateReservationViews(qc:QueryClient){
  return Promise.all(dependentKeys.map(key=>qc.invalidateQueries({queryKey:[key]})));
 }
