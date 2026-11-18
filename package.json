@@ -14,7 +14,10 @@
     "audit:runtime": "npm audit --omit=dev --audit-level=high",
     "audit:bundle": "node scripts/verificar-escopo-dependencias.mjs",
     "test:homologacao": "node scripts/homologacao-completa.mjs",
-    "test:homologacao:preflight": "node --test scripts/homologacao-preflight.test.mjs"
+    "test:homologacao:preflight": "node --test scripts/homologacao-preflight.test.mjs",
+    "backup:record": "node scripts/verificar-backup-operacional.mjs record",
+    "backup:verify": "node scripts/verificar-backup-operacional.mjs verify",
+    "test:backup": "node --test scripts/verificar-backup-operacional.test.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "2.80.0",
