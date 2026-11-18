@@ -134,10 +134,10 @@ Implementação e testes locais: [F5.1](f5-1-fundacao-espacial.md). Editor numé
 - [ ] DT-016 Revisão visual das referências e aprovação do realismo/modelagem antes de declarar réplica. Chromium/WebGL ainda pendentes.
 
 ### F5.4 — Inspeção e interação
-- [ ] DT-017 Foco/sair, rotação/zoom, abrir portas e explorar interior com hotspots e controles de teclado.
-- [ ] DT-018 Clique no notebook mostra dados confirmados; posição ilustrativa informa apenas ocupação agregada quando não houver vínculo.
-- [ ] DT-019 Fluxo de abrir reservas/detalhes/histórico via páginas existentes, com RBAC e sem mutação direta de mesh.
-- [ ] DT-020 Sincronização cache após alterações, polling e timestamps; consistência com dashboard, relatórios e consulta pública.
+- [x] DT-017 Foco/sair, rotação/zoom, porta virtual articulada e hotspots por raycast e controles de teclado; validação visual pendente.
+- [x] DT-018 Inspeção de exemplares ilustrativos sem atribuir dados reais. Lista textual separada de vínculos confirmados, reserva e histórico individual por UUID. Mapeamento físico sobre a geometria depende de referência aprovada.
+- [x] DT-019 Navegação para cadastros, reservas, manutenção e histórico por páginas existentes, sem mutação de dados por interação 3D.
+- [ ] DT-020 Invalidação espacial, polling e timestamps implementados; comprovação integral de consistência com dashboard, relatórios e consulta pública pendente na homologação.
 
 ### F5.5 — Otimização e fallback
 - [ ] DT-021 LOD/instancing, lazy loader, cache/descarte, compressão de assets, modo adaptativo de qualidade e render sob demanda.

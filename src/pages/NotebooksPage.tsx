@@ -37,6 +37,7 @@ export default function NotebooksPage(){
     },
     onSuccess:()=>{
       void qc.invalidateQueries({queryKey:['notebooks']});
+      void qc.invalidateQueries({queryKey:['spatial']});
       setCartFilter(editorCartId);
       setCodes('');setScreen('list');
       setFeedback({kind:'success',message:'Códigos cadastrados.'});

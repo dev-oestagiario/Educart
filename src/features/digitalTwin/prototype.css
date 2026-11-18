@@ -40,3 +40,5 @@
 @media(max-width:1050px){.dt-overview-layout{grid-template-columns:minmax(0,1fr)}}
 @media(max-width:720px){.dt-overview-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:520px){.dt-overview-toolbar{grid-template-columns:minmax(0,1fr)}.dt-overview-actions{justify-content:stretch}.dt-overview-actions button{flex:1}.dt-overview-stage{height:320px}}
+
+.dt-inspection{border-top:1px solid var(--educart-divider,#534766);padding-top:12px;margin-top:16px;min-width:0;overflow-wrap:anywhere}.dt-inspection-actions{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0}.dt-inspection-actions button{min-height:44px;white-space:normal;max-width:100%;text-align:left}.dt-inspection-actions button[aria-pressed=true]{outline:2px solid #a88af5;outline-offset:1px}.dt-inspection-list{display:grid;gap:7px;max-height:300px;overflow:auto;padding:4px}.dt-inspection-record{border:1px solid var(--educart-divider,#534766);border-radius:10px;padding:10px;margin:12px 0}.dt-inspection-record ul{padding-left:20px}.dt-inspection-record li{margin:8px 0}.dt-inspection input{width:100%;min-width:0}.dt-inspection-record button{min-height:44px;max-width:100%;white-space:normal}

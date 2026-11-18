@@ -44,13 +44,13 @@ describe('F5.3 GLB illustrative assets',()=>{
    const examples=a.root.getObjectByName('illustrative-notebooks')!;
    expect(examples.children).toHaveLength(0);expect(a.root.getObjectByName('shelf-0')?.visible).toBe(false);
    a.setCutaway(true);expect(examples.children).toHaveLength(30);
-   expect(a.root.getObjectByName('door-hinge')?.visible).toBe(false);
+   expect(a.root.getObjectByName('door-hinge')?.rotation.y).toBeCloseTo(-Math.PI*.64);
    expect(a.root.getObjectByName('shelf-0')?.visible).toBe(true);
-   expect(b.root.getObjectByName('door-hinge')?.visible).toBe(true);
+   expect(b.root.getObjectByName('door-hinge')?.rotation.y).toBe(0);
    expect(b.root.getObjectByName('illustrative-notebooks')?.children).toHaveLength(0);
    expect(a.root.getObjectByName('illustrative-slot-01')?.userData.notPhysicalBinding).toBe(true);
    a.setCutaway(false);expect(examples.children).toHaveLength(0);
-   expect(a.root.getObjectByName('door-hinge')?.visible).toBe(true);
+   expect(a.root.getObjectByName('door-hinge')?.rotation.y).toBe(0);
   }finally{disposeAssets(Object.values(lib));}
  });
  it('does not put illustrative furniture into registered scenes',async()=>{
