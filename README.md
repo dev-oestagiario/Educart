@@ -28,7 +28,7 @@ Playwright usa backend simulado; testes de autorização e concorrência reais s
 
 ## Fluxo de desenvolvimento e publicação
 
-A baseline de integração está no PR #34. Novas alterações partem da main em branches próprias, com PR, CI e revisão. Não reutilize branches históricas para publicar. O pipeline de produção publica somente a main após testes e build, com metadados em `/Educart/version.json`. Prévias de PR são verificadas no CI, sem substituir produção. Em caso de regressão, reverter por PR preservando histórico. Acesso 3D antigo permanece oculto até a homologação do V2.
+A baseline de integração está no PR #34. Novas alterações partem da main em branches próprias, com PR, CI e revisão. Não reutilize branches históricas para publicar. O pipeline de produção publica somente a main após testes e build, com metadados em `/Educart/version.json`. Prévias de PR são verificadas no CI, sem substituir produção. Em caso de regressão, reverter por PR preservando histórico. Acesso 3D antigo permanece oculto até a homologação do V2. Consulte a [matriz de aceite F5.6](docs/f5-6-homologacao-3d.md): publicação bloqueada. Em desenvolvimento autorizado, use `?environment3d=1` para testar o ambiente ilustrativo administrativo e `?spatial3d=1` para a configuração; não representam monitoramento físico.
 
 
 ## Skills de engenharia

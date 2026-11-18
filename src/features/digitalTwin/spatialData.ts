@@ -16,12 +16,30 @@ export const summarySchema=z.object({
   placement_version:z.number().int().positive().nullable(),nominal_capacity:z.number().int().positive(),effective_capacity:z.number().int().nonnegative(),
   reserved:z.number().int().nonnegative(),available:z.number().int().nonnegative(),maintenance_count:z.number().int().nonnegative(),
   availability_status:z.enum(['INACTIVE','MAINTENANCE','UNAVAILABLE','FULL','PARTIAL','FREE']),snapshot_at:z.string(),
+}).superRefine((row,ctx)=>{
+ const fail=(message:string)=>ctx.addIssue({code:'custom',message});
+ if(!Number.isFinite(Date.parse(row.snapshot_at)))fail('Timestamp espacial inválido');
+ if(row.effective_capacity!==0&&row.effective_capacity!==row.nominal_capacity)fail('Capacidade efetiva divergente');
+ if(row.available!==Math.max(0,row.effective_capacity-row.reserved))fail('Saldo divergente');
+ const expected=!row.active?'INACTIVE':row.maintenance_count>0?'MAINTENANCE':row.effective_capacity===0?'UNAVAILABLE':row.reserved>=row.effective_capacity?'FULL':row.reserved>0?'PARTIAL':'FREE';
+ if(row.availability_status!==expected||((!row.active||row.maintenance_count>0)&&row.effective_capacity!==0))fail('Estado operacional contraditório');
+ const coords=[row.position_x,row.position_y,row.position_z,row.yaw];
+ if(row.scene_id===null?coords.some(v=>v!==null):(!row.model_id||row.placement_version===null||coords.some(v=>v===null)||row.position_y!==0||row.yaw!<0||row.yaw!>=360))fail('Pose incompleta ou contraditória');
 });
 export type SpatialSummary=z.infer<typeof summarySchema>;
-const detailSchema=z.object({summary:summarySchema,reservations:z.array(z.object({
-  id:z.string().uuid(),period_id:z.string().uuid(),requester:z.string(),quantity:z.number().int(),mode:z.enum(['COMPLETA','PARCIAL']),
+export const detailSchema=z.object({summary:summarySchema,reservations:z.array(z.object({
+  id:z.string().uuid(),period_id:z.string().uuid(),requester:z.string(),quantity:z.number().int().positive(),mode:z.enum(['COMPLETA','PARCIAL']),
   destination_room_id:z.string().uuid().nullable(),destination_label:z.string().nullable(),needs_mouse:z.boolean(),notes:z.string().nullable(),
-})),confirmed_slots:z.array(z.object({slot_key:z.string(),notebook_id:z.string().uuid(),code:z.string(),confirmed_at:z.string(),reservation_period_id:z.string().uuid().nullable()}))});
+})),confirmed_slots:z.array(z.object({slot_key:z.string(),notebook_id:z.string().uuid(),code:z.string(),confirmed_at:z.string(),reservation_period_id:z.string().uuid().nullable()}))}).superRefine((detail,ctx)=>{
+ const fail=(message:string)=>ctx.addIssue({code:'custom',message});
+ const periods=new Set(detail.reservations.map(r=>r.period_id));
+ if(periods.size!==detail.reservations.length||detail.reservations.reduce((n,r)=>n+r.quantity,0)!==detail.summary.reserved)fail('Reservas não correspondem ao resumo');
+ const slots=new Set<string>(),notebooks=new Set<string>();
+ for(const slot of detail.confirmed_slots){
+  if(!slot.slot_key.trim()||!slot.code.trim()||!Number.isFinite(Date.parse(slot.confirmed_at))||slots.has(slot.slot_key)||notebooks.has(slot.notebook_id)||slot.reservation_period_id!==null&&!periods.has(slot.reservation_period_id))fail('Vínculo individual inconsistente');
+  slots.add(slot.slot_key);notebooks.add(slot.notebook_id);
+ }
+});
 export async function getSpatialSummary(date:string,shift:Shift) {
   const rows:SpatialSummary[]=[];
   for(let offset=0;;offset+=250){
