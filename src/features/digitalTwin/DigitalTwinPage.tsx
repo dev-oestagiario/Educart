@@ -21,7 +21,7 @@ export default function DigitalTwinPage({onNavigate}:{onNavigate:(target:'reserv
  const [date,setDate]=useState(todayInSaoPaulo),[shift,setShift]=useState<Shift>('MATUTINO');
  const [search,setSearch]=useState(''),[selection,setSelection]=useState<string|null>(null),[focusId,setFocusId]=useState<string|null>(null);
  const [reset,setReset]=useState(0),[show3d,setShow3d]=useState(true),[quality,setQuality]=useState<'low'|'high'>('high');
- const [doorOpen,setDoorOpen]=useState(false),[hotspot,setHotspot]=useState<Hotspot|null>(null);
+ const [doorOpen,setDoorOpen]=useState(false),[hotspot,setHotspot]=useState<Hotspot|null>(null),[inspectionReady,setInspectionReady]=useState(false);
  const [now,setNow]=useState(()=>Date.now());
  useEffect(()=>{const timer=window.setInterval(()=>setNow(Date.now()),5000);return()=>window.clearInterval(timer);},[]);
  const valid=isValidIsoDate(date);
@@ -51,8 +51,8 @@ export default function DigitalTwinPage({onNavigate}:{onNavigate:(target:'reserv
    <label className="field"><span>Data</span><input id="dt-date" type="date" value={date} onChange={e=>period(e.target.value,shift)}/></label>
    <label className="field"><span>Turno</span><select id="dt-shift" value={shift} onChange={e=>period(date,e.target.value as Shift)}>{SHIFTS.map(s=><option key={s} value={s}>{shiftLabel[s]}</option>)}</select></label>
    <label className="field"><span>Buscar carrinho na lista</span><input type="search" value={search} onChange={e=>setSearch(e.target.value)} placeholder="Código, nome ou local"/></label>
-   <label className="field"><span>Qualidade visual</span><select value={quality} onChange={e=>setQuality(e.target.value==='low'?'low':'high')}><option value="high">Detalhada (GLB)</option><option value="low">Econômica</option></select></label>
-   <label className="dt-toggle"><input type="checkbox" checked={show3d} onChange={e=>setShow3d(e.target.checked)}/> Exibir ambiente 3D</label>
+   <label className="field"><span>Qualidade visual</span><select value={quality} onChange={e=>{setDoorOpen(false);setInspectionReady(false);setQuality(e.target.value==='low'?'low':'high');}}><option value="high">Detalhada (GLB)</option><option value="low">Econômica</option></select></label>
+   <label className="dt-toggle"><input type="checkbox" checked={show3d} onChange={e=>{setDoorOpen(false);setInspectionReady(false);setShow3d(e.target.checked);}}/> Exibir ambiente 3D</label>
    <div className="dt-overview-actions"><button type="button" className="secondary" onClick={overview}><RotateCcw size={16}/> Visão geral</button><button type="button" className="secondary" disabled={catalog.isFetching||summary.isFetching||detail.isFetching||movement.isFetching} onClick={refresh}><RefreshCw size={16}/> Atualizar dados</button></div>
   </div>
   {!valid&&<p role="alert" className="notice error">Informe uma data válida para consultar disponibilidade.</p>}
@@ -70,7 +70,7 @@ export default function DigitalTwinPage({onNavigate}:{onNavigate:(target:'reserv
    <section className="panel dt-scene">
     <h2><Box size={19}/> {focusId&&selected?.id===focusId?'Foco: '+selected.code:'Ambientes — visão geral'}</h2>
     <div className="dt-legend">{Object.entries(overviewStatuses).map(([key,s])=><span key={key}><i style={{backgroundColor:'#'+s.color.toString(16).padStart(6,'0')}}/>{s.label}</span>)}</div>
-    {show3d&&layout.carts.length>0?<CanvasBoundary key={quality}><Suspense fallback={<p role="status">Carregando visualização 3D…</p>}><Canvas layout={layout} selectedId={selected?.id??null} focusId={focusId} reset={reset} onPick={pick} doorOpen={doorOpen&&selected?.id===focusId} hotspot={hotspot} onHotspot={(id,part)=>{if(id===focusId&&id===selected?.id)setHotspot(part);}} quality={quality}/></Suspense></CanvasBoundary>:<p className="empty">{!show3d?'Cena desativada; use a lista acessível.':summary.isSuccess?'Nenhum carrinho cadastrado neste resumo.':'Aguardando dados para a cena.'}</p>}
+    {show3d&&layout.carts.length>0?<CanvasBoundary key={quality}><Suspense fallback={<p role="status">Carregando visualização 3D…</p>}><Canvas layout={layout} selectedId={selected?.id??null} focusId={focusId} reset={reset} onPick={pick} doorOpen={doorOpen&&selected?.id===focusId} hotspot={hotspot} onHotspot={(id,part)=>{if(id===focusId&&id===selected?.id)setHotspot(part);}} onInspectionReady={setInspectionReady} quality={quality}/></Suspense></CanvasBoundary>:<p className="empty">{!show3d?'Cena desativada; use a lista acessível.':summary.isSuccess?'Nenhum carrinho cadastrado neste resumo.':'Aguardando dados para a cena.'}</p>}
     <p className="form-hint">Arraste para orbitar, roda ou pinça para zoom; use a lista para selecionar por teclado. A busca não remove carrinhos da cena. Focalize o carrinho e abra a porta virtual para inspecionar o interior. Os componentes são ilustrativos; não indicam ocupação real.</p>
    </section>
    <section className="panel dt-details" aria-labelledby="dt-real-details">
@@ -86,8 +86,9 @@ export default function DigitalTwinPage({onNavigate}:{onNavigate:(target:'reserv
      {focusId===selected.id&&<section className="dt-inspection" aria-label="Inspeção virtual">
       <h3>Inspeção virtual</h3>
       <p className="form-hint">Ações apenas na visualização; nenhuma alteração no cadastro ou equipamento físico.</p>
+      {!inspectionReady&&<p className="form-hint">Porta virtual indisponível sem o modelo detalhado. Consulte os componentes e vínculos pela lista.</p>}
       <div className="dt-inspection-actions">
-       <button type="button" className="secondary" disabled={!show3d||quality==='low'} aria-pressed={doorOpen} onClick={()=>{setDoorOpen(v=>!v);setHotspot('door');}}>{doorOpen?'Fechar porta virtual':'Abrir porta virtual'}</button>
+       <button type="button" className="secondary" disabled={!show3d||quality==='low'||!inspectionReady} aria-pressed={doorOpen} onClick={()=>{setDoorOpen(v=>!v);setHotspot('door');}}>{doorOpen?'Fechar porta virtual':'Abrir porta virtual'}</button>
        <button type="button" className="secondary" onClick={overview}>Sair da inspeção</button>
       </div>
       <div className="dt-inspection-actions" aria-label="Componentes ilustrativos">{(Object.keys(hotspots) as Hotspot[]).map(key=><button key={key} type="button" className="secondary" aria-pressed={hotspot===key} onClick={()=>setHotspot(key)}>{hotspots[key].label}</button>)}</div>
