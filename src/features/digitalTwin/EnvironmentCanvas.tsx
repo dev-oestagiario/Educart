@@ -1,4 +1,4 @@
-import {useEffect,useRef,useState} from 'react';
+import {useEffect,useMemo,useRef,useState} from 'react';
 import * as THREE from 'three';
 import {OrbitControls} from 'three/examples/jsm/controls/OrbitControls.js';
 import {loadIllustrativeAssets,createRoomVisual,createCartVisual,disposeAssets,type AssetLibrary} from './illustrativeAssets';
@@ -11,25 +11,25 @@ function box(root:THREE.Object3D,w:number,h:number,d:number,color:number,x:numbe
  const mesh=new THREE.Mesh(new THREE.BoxGeometry(1,1,1),new THREE.MeshStandardMaterial({color,roughness:.72}));
  mesh.scale.set(w,h,d);mesh.position.set(x,y,z);root.add(mesh);return mesh;
 }
-function label(value:string,color:number,width:number){
- const c=document.createElement('canvas');c.width=768;c.height=112;
+function label(value:string,color:number,width:number,quality:'low'|'high'){
+ const c=document.createElement('canvas');c.width=quality==='high'?512:384;c.height=quality==='high'?80:64;
  const ctx=c.getContext('2d');if(!ctx)return null;
  ctx.fillStyle='#242332';ctx.fillRect(0,0,c.width,c.height);
  ctx.fillStyle='#'+color.toString(16).padStart(6,'0');ctx.fillRect(0,0,14,c.height);
- ctx.fillStyle='#fff';ctx.font='bold 32px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';
+ ctx.fillStyle='#fff';ctx.font='bold '+Math.round(c.height*.30)+'px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';
  const text=value.length>90?value.slice(0,87)+'…':value;
- ctx.fillText(text,c.width/2,56,710);
+ ctx.fillText(text,c.width/2,c.height/2,c.width-32);
  const texture=new THREE.CanvasTexture(c);texture.colorSpace=THREE.SRGBColorSpace;
  const sprite=new THREE.Sprite(new THREE.SpriteMaterial({map:texture,depthTest:false}));
- sprite.scale.set(width,width*112/768,1);sprite.renderOrder=2;return sprite;
+ sprite.scale.set(width,width*c.height/c.width,1);sprite.renderOrder=2;return sprite;
 }
-function cartMesh(cart:SceneCart){
+function cartMesh(cart:SceneCart,quality:'low'|'high'){
  const root=new THREE.Group();root.position.set(cart.x,cart.y,cart.z);root.rotation.y=cart.yaw*Math.PI/180;
  root.userData.cartId=cart.id;
  const w=cart.width,d=cart.depth,h=1.7;
  // One body and one status strip in far LOD; detailed parts loaded only for nearby carts.
  const status=overviewStatuses[cart.status];
- const tag=label(cart.code+' · '+status.label,status.color,Math.max(2.6,w*1.2));
+ const tag=label(cart.code+' · '+status.label,status.color,Math.max(2.6,w*1.2),quality);
  if(tag){tag.position.set(0,h+.58,0);root.add(tag);}
  const radius=Math.max(.75,Math.hypot(w,d)/2+.16);
  const ring=new THREE.Mesh(new THREE.RingGeometry(radius,radius+.095,32),new THREE.MeshBasicMaterial({color:0xd0b6ff,side:THREE.DoubleSide}));
@@ -39,7 +39,7 @@ function cartMesh(cart:SceneCart){
 
 export default function EnvironmentCanvas(props:Props){
  const mount=useRef<HTMLDivElement>(null),latest=useRef(props);latest.current=props;
- const layoutKey=sceneKey(props.layout);
+ const layoutKey=useMemo(()=>sceneKey(props.layout),[props.layout]);
  const synchronise=useRef<(()=>void)|null>(null);
  const cameraMemory=useRef<{position:THREE.Vector3;target:THREE.Vector3;zoom:number;focusId:string|null;reset:number}|null>(null);
  const [unavailable,setUnavailable]=useState(false);
@@ -68,10 +68,10 @@ export default function EnvironmentCanvas(props:Props){
     box(fallback,zone.width,.55,.13,0x8994a8,0,.27,-zone.depth/2);
     box(fallback,.13,.55,zone.depth,0x8994a8,-zone.width/2,.27,0);
    }
-   const name=label(zone.label,zone.unplaced?0xc7a3ff:0xa5b8cf,Math.min(Math.max(3.5,zone.width*.8),12));
+   const name=label(zone.label,zone.unplaced?0xc7a3ff:0xa5b8cf,Math.min(Math.max(3.5,zone.width*.8),12),props.quality);
    if(name){name.position.set(zone.x,.7,zone.z+zone.depth/2+.45);scene.add(name);}
   }
-  const carts=props.layout.carts.map(cartMesh);for(const c of carts)scene.add(c.root);
+  const carts=props.layout.carts.map(c=>cartMesh(c,props.quality));for(const c of carts)scene.add(c.root);
   const unit=new THREE.BoxGeometry(1,1,1);
   const body=new THREE.InstancedMesh(unit,new THREE.MeshStandardMaterial({color:0x46566b,roughness:.72,metalness:.35}),carts.length);
   const statusBatch=new THREE.InstancedMesh(unit,new THREE.MeshStandardMaterial({color:0xffffff,roughness:.72}),carts.length);
@@ -114,7 +114,8 @@ export default function EnvironmentCanvas(props:Props){
    canvas.dataset.detailCount=String(detailSet.size);
    canvas.dataset.cutawayCart=carts.find(c=>c.cart.id===state.focusId&&c.detailed&&state.doorOpen)?.cart.id??'';
   }
-  const scheduler=frameScheduler(()=>{if(lost||!visible||document.hidden)return;applyLod();renderer.render(scene,camera);canvas.dataset.drawCalls=String(renderer.info.render.calls);canvas.dataset.triangles=String(renderer.info.render.triangles);canvas.dataset.frames=String(Number(canvas.dataset.frames??0)+1);},cb=>requestAnimationFrame(cb),id=>cancelAnimationFrame(id));
+  const scheduler=frameScheduler(()=>{if(lost||!visible||document.hidden)return;
+   try{applyLod();renderer.render(scene,camera);}catch{lost=true;setUnavailable(true);return;}canvas.dataset.drawCalls=String(renderer.info.render.calls);canvas.dataset.triangles=String(renderer.info.render.triangles);canvas.dataset.frames=String(Number(canvas.dataset.frames??0)+1);},cb=>requestAnimationFrame(cb),id=>cancelAnimationFrame(id));
   function render(){scheduler.schedule();}
   function resize(){
    const w=Math.max(1,host!.clientWidth),h=Math.max(1,host!.clientHeight),aspect=w/h;
