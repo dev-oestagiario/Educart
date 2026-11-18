@@ -91,7 +91,7 @@ Especificação técnica e plano de tarefas: [educart-3d-v2.md](educart-3d-v2.md
 - [x] F5.1 [Modelo espacial persistente e contratos de leitura seguros](f5-1-fundacao-espacial.md). Validados localmente; stack Supabase completa e promoção pendentes.
 - [ ] F5.2 [Visão geral multi-carrinhos implementada (validação parcial)](f5-2-visao-geral-3d.md); aguardando build e cenário E2E no PC conectado.
 - [ ] F5.3 [Modelos GLB ilustrativos integrados](f5-3-assets-detalhados.md); validação técnica parcial, referência física e aceite visual pendentes.
-- [ ] F5.4 Inspeção interativa: foco, portas, hotspots, slots, códigos e reservas; dados e cena sincronizados.
+- [ ] F5.4 [Inspeção interativa implementada](f5-4-inspecao-interativa.md); vínculos reais separados da geometria, validação visual e homologação pendentes.
 - [ ] F5.5 Otimização de carregamento, níveis de detalhe, qualidade adaptativa, mobile e alternativa 2D/textual.
 - [ ] F5.6 Testes, comparação com inventário físico, aceite visual da TI e reativação do menu somente quando aprovado.
 
