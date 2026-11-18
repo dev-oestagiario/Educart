@@ -103,7 +103,7 @@ Especificação técnica e plano de tarefas: [educart-3d-v2.md](educart-3d-v2.md
 - [ ] F6.2 [Diagnóstico local e probe de deploy implementados](f6-2-operacao-monitoramento.md); monitor externo, alertas institucionais e homologação pendentes.
 - [x] F6.3 Documentação versionada: [README](../README.md), [professor](manual-professor.md), [administrador](manual-administrador.md), [acesso e suporte](guia-acesso-suporte.md), [arquitetura](arquitetura-operacional.md), [migrations](catalogo-migrations.md) e [checklist](checklist-publicacao.md). Uso exclusivamente web; configuração técnica separada para mantenedores. Aceite institucional e publicação pendentes.
 - [ ] F6.4 [Candidata consolidada e regressão local](f6-4-release.md): artefato e smoke HTTP local aprovados; Playwright desktop simulado aprovado (71/73, 2 skips legados); audit high e homologação operacional real bloqueiam release/tag v1.0.0 e Pages.
-- [ ] F6.5 Encerrar issues aceitas, registrar limitações conhecidas, manter backlog futuro.
+- [x] F6.5 [Triagem e backlog](f6-5-backlog.md): 18 issues históricas revisadas, #30 encerrada pelo aceite técnico, #66–#71 gates P0, #72 evolução. #33 permanece aberta e v1.0.0 bloqueada.
 
 **Aceite:** versões e deploy rastreáveis; recuperação testada; aprovação de operação; release estável e documentação atual. Nenhum segredo, dado de professor ou planta interna publicado na rota pública.
 
@@ -117,4 +117,4 @@ Especificação técnica e plano de tarefas: [educart-3d-v2.md](educart-3d-v2.md
 
 ## 5. Próxima implementação
 
-Começar por F0.1. Antes de cada subfase: confirmar branch e baseline; especificar regras/aceite; planejar mudanças, escrever tarefas; implementar em PR; executar testes; revisar e registrar evidências. Não executar merges nem migrations a partir deste documento sem iniciar a fase.
+F0–F6 têm implementação acumulada e gates pendentes; a triagem F6.5 está registrada. Priorizar #66–#70 antes de #71. Verificar branch, evidências e autorização antes de promoção ou migrations. A publicação da v1.0.0 não ocorreu.
