@@ -6,6 +6,7 @@ import {buildOverviewLayout,isSnapshotFresh,overviewStatuses,searchOverview} fro
 import {getOverviewCatalog,getOverviewSummary,getOverviewDetails,getLastMovement,sameOverviewSummary} from './overviewData';
 import NotebookInspection from './NotebookInspection';
 import {hotspots,type Hotspot} from './inspection';
+import {resolveQuality,pageSlice,type QualityChoice} from './renderPolicy';
 import './prototype.css';
 
 const Canvas=lazy(()=>import('./EnvironmentCanvas'));
@@ -20,7 +21,10 @@ class CanvasBoundary extends Component<{children:ReactNode},{failed:boolean}>{
 export default function DigitalTwinPage({onNavigate}:{onNavigate:(target:'reservations'|'movements'|'maintenance'|'spatial-editor'|'notebooks')=>void}){
  const [date,setDate]=useState(todayInSaoPaulo),[shift,setShift]=useState<Shift>('MATUTINO');
  const [search,setSearch]=useState(''),[selection,setSelection]=useState<string|null>(null),[focusId,setFocusId]=useState<string|null>(null);
- const [reset,setReset]=useState(0),[show3d,setShow3d]=useState(true),[quality,setQuality]=useState<'low'|'high'>('high');
+ const [reset,setReset]=useState(0),[show3d,setShow3d]=useState(()=>!window.matchMedia('(max-width: 690px)').matches),[qualityChoice,setQualityChoice]=useState<QualityChoice>('auto');
+ const [viewport,setViewport]=useState(()=>window.innerWidth),[listPage,setListPage]=useState(0);
+ const [saveData,setSaveData]=useState(()=>Boolean((navigator as Navigator & {connection?:{saveData?:boolean}}).connection?.saveData));
+ useEffect(()=>{const sync=()=>{setViewport(window.innerWidth);setSaveData(Boolean((navigator as Navigator & {connection?:{saveData?:boolean}}).connection?.saveData));};window.addEventListener('resize',sync);window.addEventListener('online',sync);return()=>{window.removeEventListener('resize',sync);window.removeEventListener('online',sync);};},[]);
  const [doorOpen,setDoorOpen]=useState(false),[hotspot,setHotspot]=useState<Hotspot|null>(null),[inspectionReady,setInspectionReady]=useState(false);
  const [now,setNow]=useState(()=>Date.now());
  useEffect(()=>{const timer=window.setInterval(()=>setNow(Date.now()),5000);return()=>window.clearInterval(timer);},[]);
@@ -31,13 +35,17 @@ export default function DigitalTwinPage({onNavigate}:{onNavigate:(target:'reserv
  const catalogFresh=isSnapshotFresh(catalog.dataUpdatedAt,Math.max(now,catalog.dataUpdatedAt),catalog.isError);
  const rows=summary.data??[];
  const layout=useMemo(()=>buildOverviewLayout(summary.data??[],catalogFresh?catalog.data?.rooms??[]:[],catalogFresh?catalog.data?.models??[]:[],catalogFresh?catalog.data?.labels??[]:[],summaryFresh),[summary.data,catalog.data,catalogFresh,summaryFresh]);
+ const quality=resolveQuality(qualityChoice,viewport,navigator.hardwareConcurrency,saveData,layout.carts.length);
+ useEffect(()=>{setDoorOpen(false);setInspectionReady(false);},[quality]);
  const selected=layout.carts.find(c=>c.id===selection);
  const selectedSummary=rows.find(r=>r.cart_id===selected?.id);
  const detail=useQuery({queryKey:['spatial','overview-detail',selected?.id,date,shift],queryFn:()=>getOverviewDetails(selected!.id,date,shift),enabled:!!selected&&summaryFresh,...poll});
  const movement=useQuery({queryKey:['spatial','overview-movement',selected?.id],queryFn:({signal})=>getLastMovement(selected!.id,signal),enabled:!!selected&&summaryFresh,...poll});
  const detailFresh=!!detail.data&&!!selectedSummary&&summaryFresh&&isSnapshotFresh(detail.dataUpdatedAt,Math.max(now,detail.dataUpdatedAt),detail.isError)&&sameOverviewSummary(detail.data.summary,selectedSummary);
  const movementFresh=summaryFresh&&isSnapshotFresh(movement.dataUpdatedAt,Math.max(now,movement.dataUpdatedAt),movement.isError);
- const matches=searchOverview(layout.carts,search);
+ const matches=useMemo(()=>searchOverview(layout.carts,search),[layout.carts,search]);
+ const page=pageSlice(matches,listPage);
+ const summaryById=useMemo(()=>new Map(rows.map(r=>[r.cart_id,r])),[rows]);
  const counts=summaryFresh?rows.reduce((a,r)=>({reserved:a.reserved+r.reserved,available:a.available+r.available}),{reserved:0,available:0}):null;
  const firstSnapshot=rows.reduce<string|null>((old,r)=>old===null||Date.parse(r.snapshot_at)<Date.parse(old)?r.snapshot_at:old,null);
  function pick(id:string){if(!layout.carts.some(c=>c.id===id))return;setSelection(id);if(focusId&&focusId!==id){setFocusId(null);setDoorOpen(false);setHotspot(null);}}
@@ -46,13 +54,14 @@ export default function DigitalTwinPage({onNavigate}:{onNavigate:(target:'reserv
  function refresh(){void catalog.refetch();if(valid)void summary.refetch();if(selected&&summaryFresh){void detail.refetch();void movement.refetch();}}
  return <div className="dt-page" onKeyDown={e=>{if(e.key==='Escape'&&focusId){e.preventDefault();overview();}}}>
   <header className="page-header"><h1>Ambiente 3D</h1><p>Consulte todos os carrinhos cadastrados e a ocupação no período selecionado.</p></header>
-  <p className="notice warning"><strong>F5.4 — ambiente de desenvolvimento.</strong> Modelos 3D ilustrativos; salas exibidas separadamente, sem planta real. Posições e movimentações registradas não comprovam localização física em tempo real.</p>
+  <p className="notice warning"><strong>F5.5 — ambiente de desenvolvimento.</strong> Modelos 3D ilustrativos; salas exibidas separadamente, sem planta real. Posições e movimentações registradas não comprovam localização física em tempo real.</p>
   <div className="panel dt-overview-toolbar">
    <label className="field"><span>Data</span><input id="dt-date" type="date" value={date} onChange={e=>period(e.target.value,shift)}/></label>
    <label className="field"><span>Turno</span><select id="dt-shift" value={shift} onChange={e=>period(date,e.target.value as Shift)}>{SHIFTS.map(s=><option key={s} value={s}>{shiftLabel[s]}</option>)}</select></label>
-   <label className="field"><span>Buscar carrinho na lista</span><input type="search" value={search} onChange={e=>setSearch(e.target.value)} placeholder="Código, nome ou local"/></label>
-   <label className="field"><span>Qualidade visual</span><select value={quality} onChange={e=>{setDoorOpen(false);setInspectionReady(false);setQuality(e.target.value==='low'?'low':'high');}}><option value="high">Detalhada (GLB)</option><option value="low">Econômica</option></select></label>
+   <label className="field"><span>Buscar carrinho na lista</span><input type="search" value={search} onChange={e=>{setSearch(e.target.value);setListPage(0);}} placeholder="Código, nome ou local"/></label>
+   <label className="field"><span>Qualidade visual</span><select value={qualityChoice} onChange={e=>setQualityChoice(e.target.value as QualityChoice)}><option value="auto">Automática</option><option value="high">Detalhada (GLB)</option><option value="low">Econômica</option></select></label>
    <label className="dt-toggle"><input type="checkbox" checked={show3d} onChange={e=>{setDoorOpen(false);setInspectionReady(false);setShow3d(e.target.checked);}}/> Exibir ambiente 3D</label>
+   <p className="form-hint dt-quality-note">Qualidade em uso: {quality==='low'?'Econômica':'Detalhada'}. Em telas pequenas a lista abre primeiro; ative o 3D quando desejar.</p>
    <div className="dt-overview-actions"><button type="button" className="secondary" onClick={overview}><RotateCcw size={16}/> Visão geral</button><button type="button" className="secondary" disabled={catalog.isFetching||summary.isFetching||detail.isFetching||movement.isFetching} onClick={refresh}><RefreshCw size={16}/> Atualizar dados</button></div>
   </div>
   {!valid&&<p role="alert" className="notice error">Informe uma data válida para consultar disponibilidade.</p>}
@@ -114,9 +123,10 @@ export default function DigitalTwinPage({onNavigate}:{onNavigate:(target:'reserv
    </section>
   </div>
   <section className="panel"><h2>Todos os carrinhos — lista acessível</h2><p className="form-hint">{matches.length} de {layout.carts.length} carrinho(s) na lista.</p>
-   <div className="dt-list">{matches.map(c=><button type="button" className="dt-cart" key={c.id} aria-pressed={selected?.id===c.id} onClick={()=>pick(c.id)}>
-    <strong>{c.code} · {c.name}</strong><span>{overviewStatuses[c.status].label}{summaryFresh?' · '+rows.find(r=>r.cart_id===c.id)!.available+' disponíveis':''}</span><small>{c.location}</small>
+   <div className="dt-list">{page.items.map(c=><button type="button" className="dt-cart" key={c.id} aria-pressed={selected?.id===c.id} onClick={()=>pick(c.id)}>
+    <strong>{c.code} · {c.name}</strong><span>{overviewStatuses[c.status].label}{summaryFresh?' · '+summaryById.get(c.id)!.available+' disponíveis':''}</span><small>{c.location}</small>
    </button>)}</div>
+   {page.pages>1&&<nav className="dt-pagination" aria-label="Paginação dos carrinhos"><button type="button" className="secondary" disabled={page.page===0} onClick={()=>setListPage(page.page-1)}>Anterior</button><span role="status">Página {page.page+1} de {page.pages}</span><button type="button" className="secondary" disabled={page.page===page.pages-1} onClick={()=>setListPage(page.page+1)}>Próxima</button></nav>}
    {matches.length===0&&<p className="empty">{layout.carts.length?'Nenhum carrinho encontrado nessa busca.':summary.isSuccess?'Nenhum carrinho cadastrado.':'Nenhum resumo disponível.'}</p>}
   </section>
  </div>;
