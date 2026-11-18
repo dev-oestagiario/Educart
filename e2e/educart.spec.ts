@@ -2684,3 +2684,28 @@ test('Dashboard operacional — cards de alturas diferentes sem lacunas no deskt
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
  }
 });
+
+
+test('Listas — busca ocupa toda a largura disponível em desktop e mobile',async({page})=>{
+ await useFakeSupabase(page);
+ await page.setViewportSize({width:1440,height:900});await login(page);
+ const routes=[['Carrinhos','Buscar carrinho'],['Professores','Buscar professor'],['Notebooks','Buscar notebook'],['Localizações','Buscar registro'],['Manutenção','Buscar manutenção'],['Reservas','Buscar reserva'],['Retirada e devolução','Buscar movimentação']];
+ for(const [menu,label] of routes){
+  await page.setViewportSize({width:1440,height:900});
+  await page.getByRole('navigation',{name:'Menu principal'}).getByRole('button',{name:menu,exact:true}).click();
+  const input=page.getByRole('searchbox',{name:label,exact:true});
+  await expect(input).toBeVisible();
+  for(const width of [1440,1280,1024,768,390,320]){
+   await page.setViewportSize({width,height:900});await expect(input).toBeVisible();
+   const layout=await input.evaluate(el=>{
+    const box=el.getBoundingClientRect(),panel=el.closest('.panel')!;
+    const pr=panel.getBoundingClientRect(),cs=getComputedStyle(panel);
+    return {left:box.left-(pr.left+parseFloat(cs.borderLeftWidth)+parseFloat(cs.paddingLeft)),right:(pr.right-parseFloat(cs.borderRightWidth)-parseFloat(cs.paddingRight))-box.right,overflow:document.documentElement.scrollWidth>innerWidth+1};
+   });
+   expect(Math.abs(layout.left),menu+' esquerda '+width).toBeLessThanOrEqual(2);
+   expect(Math.abs(layout.right),menu+' direita '+width).toBeLessThanOrEqual(2);
+   expect(layout.overflow,menu+' overflow '+width).toBe(false);
+  }
+  await input.fill('teste sintético');await expect(input).toHaveValue('teste sintético');await input.clear();
+ }
+});

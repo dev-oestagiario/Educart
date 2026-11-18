@@ -19,7 +19,7 @@ export default function PrototypePage() {
     <header className="page-header"><h1>Ambiente 3D · Protótipo</h1><p>Explore todos os carrinhos de uma sala de TI ilustrativa.</p></header>
     <p className="notice warning"><strong>F5.0 — demonstração.</strong> Ambiente, localização, ocupação e equipamentos fictícios. Nenhuma leitura ou alteração de reservas reais.</p>
     <div className="dt-toolbar panel">
-      <label className="field"><span>Buscar carrinho na lista</span><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Nome ou código"/></label>
+      <label className="field dt-search-field"><span>Buscar carrinho na lista</span><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Nome ou código"/></label>
       <label className="field"><span>Qualidade visual</span><select value={quality} onChange={e=>setQuality(e.target.value==='low'?'low':'high')}><option value="high">Padrão</option><option value="low">Econômica</option></select></label>
       <label className="dt-toggle"><input type="checkbox" checked={show3d} onChange={e=>setShow3d(e.target.checked)}/> Exibir ambiente 3D</label>
       <button className="secondary" onClick={overview}><RotateCcw size={16}/> Visão geral</button>

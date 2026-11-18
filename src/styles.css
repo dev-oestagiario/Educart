@@ -315,7 +315,7 @@ button{touch-action:manipulation}
 .reservation-list-toolbar{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:18px}
 .reservation-list-toolbar h2{margin:0!important}
 .reservation-history-toggle{display:flex;align-items:center;gap:9px;min-height:42px}
-.reservation-list-filters{display:grid;grid-template-columns:minmax(0,2fr) minmax(190px,1fr);gap:16px;margin-bottom:20px}
+.reservation-list-filters{display:grid;grid-template-columns:minmax(0,1fr);gap:16px;margin-bottom:20px}
 .reservation-list-filters .field{min-width:0}
 .reservation-load-more{display:block;margin:18px auto;min-height:44px}
 .reservation-history-panel{max-width:100%}
@@ -406,8 +406,8 @@ button{touch-action:manipulation}
 .records-list-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:18px}
 .records-list-heading h2{margin:0}
 .records-count{font-size:12px;padding:5px 10px;color:#496783;background:#f0f5fa;border-radius:20px}
-.records-search{max-width:580px;margin-bottom:18px}
-.records-filters{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin-bottom:18px}
+.records-search{width:100%;min-width:0;margin-bottom:18px}
+.records-filters{display:grid;grid-template-columns:minmax(0,1fr);gap:14px;margin-bottom:18px}
 .records-filters .field{min-width:0}
 .records-item>div:first-child{min-width:0;overflow-wrap:anywhere}
 .records-item .secondary{min-height:44px;flex-shrink:0}

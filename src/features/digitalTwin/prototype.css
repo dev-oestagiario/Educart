@@ -1,6 +1,6 @@
 .dt-page{display:grid;gap:16px;min-width:0}
 .dt-page .panel{min-width:0}
-.dt-toolbar{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr) auto auto;align-items:end;gap:12px}
+.dt-toolbar{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) auto;align-items:end;gap:12px}
 .dt-toggle{display:flex;align-items:center;gap:8px;min-height:44px;font-size:13px}
 .dt-layout{display:grid;grid-template-columns:minmax(0,1fr) minmax(230px,285px);gap:16px;align-items:start}
 .dt-scene h2{display:flex;gap:8px;align-items:center}
@@ -25,7 +25,7 @@
 .dt-editor-fields:disabled{opacity:.7}
 .dt-editor-fields .field input,.dt-editor-fields .field select{width:100%;min-width:0}
 
-.dt-overview-toolbar{display:grid;grid-template-columns:minmax(135px,1fr) minmax(110px,.8fr) minmax(180px,1.7fr) minmax(130px,1fr);gap:12px;align-items:end}
+.dt-overview-toolbar{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;align-items:end}
 .dt-overview-toolbar .field{min-width:0}.dt-overview-toolbar input,.dt-overview-toolbar select{max-width:100%;min-width:0;width:100%}
 .dt-overview-actions{display:flex;flex-wrap:wrap;gap:8px;grid-column:span 3;justify-content:flex-end}
 .dt-overview-actions button,.dt-details>button{display:flex;align-items:center;justify-content:center;gap:7px;min-height:44px}
@@ -44,3 +44,5 @@
 .dt-inspection{border-top:1px solid var(--educart-divider,#534766);padding-top:12px;margin-top:16px;min-width:0;overflow-wrap:anywhere}.dt-inspection-actions{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0}.dt-inspection-actions button{min-height:44px;white-space:normal;max-width:100%;text-align:left}.dt-inspection-actions button[aria-pressed=true]{outline:2px solid #a88af5;outline-offset:1px}.dt-inspection-list{display:grid;gap:7px;max-height:300px;overflow:auto;padding:4px}.dt-inspection-record{border:1px solid var(--educart-divider,#534766);border-radius:10px;padding:10px;margin:12px 0}.dt-inspection-record ul{padding-left:20px}.dt-inspection-record li{margin:8px 0}.dt-inspection input{width:100%;min-width:0}.dt-inspection-record button{min-height:44px;max-width:100%;white-space:normal}
 
 .dt-pagination{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:12px;margin-top:12px}.dt-pagination button{min-height:44px}.dt-quality-note{grid-column:1/-1}.dt-overview-toolbar .field input,.dt-overview-toolbar .field select{min-height:44px}.dt-overview-stage{max-width:100%}.dt-overview-layout>*{min-width:0}.dt-page button:focus-visible{outline:2px solid var(--ds-focus,#a88af5);outline-offset:3px}@media(max-width:690px){.dt-overview-stage{height:clamp(240px,46vh,360px)}.dt-inspection-actions button{flex:1 1 150px}.dt-overview-metrics .panel{padding:10px}.dt-overview-metrics span{font-size:12px}}@media(prefers-reduced-motion:reduce){.dt-page *{scroll-behavior:auto!important;animation-duration:0.01ms!important;transition-duration:0.01ms!important}}
+
+.dt-search-field{grid-column:1/-1;min-width:0;width:100%}
