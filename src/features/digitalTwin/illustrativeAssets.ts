@@ -77,7 +77,9 @@ export function createCartVisual(library:AssetLibrary,width:number,depth:number)
  exampleNotebooks.visible=false;
  const modelRoot=root.getObjectByName('cart-illustrative-v1')??root;
  modelRoot.add(exampleNotebooks);
+ let previous=false;
  return {root,setCutaway(open:boolean){
+  if(previous===open)return;previous=open;
   if(hinge){hinge.visible=true;hinge.rotation.y=open?-Math.PI*0.64:0;}
   for(const part of interior)part.visible=open;
   if(open&&!exampleNotebooks.children.length)for(const [index,position] of slots.entries()){
