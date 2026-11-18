@@ -37,7 +37,7 @@ Prioridades P0 (bloqueadores da release); números referentes a issues criadas n
 |---|---|---|
 | [#66](https://github.com/dev-oestagiario/Educart/issues/66) | Audit aprovado com atualização compatível e regressão | [Diagnóstico e mitigação parcial](issue-66-seguranca-dependencias.md); correção oficial ou solução revisada pendente |
 | [#67](https://github.com/dev-oestagiario/Educart/issues/67) | Auth, PostgREST, JWT, RLS, concorrência e regressão real de 13 migrations | [Executor e diagnóstico](issue-67-homologacao-real.md) preparados; stack real autorizado pendente |
-| [#68](https://github.com/dev-oestagiario/Educart/issues/68) | Backup real aprovado, restore isolado, RPO/RTO e responsáveis | Plano e política autorizados |
+| [#68](https://github.com/dev-oestagiario/Educart/issues/68) | Backup real aprovado, restore isolado, RPO/RTO e responsáveis | [Inventário e verificador](issue-68-backup-operacional.md) entregues; exportação, restore isolado e política autorizada pendentes |
 | [#69](https://github.com/dev-oestagiario/Educart/issues/69) | Monitor contínuo, alertas e política de privacidade | Executor, canal e responsável TI |
 | [#70](https://github.com/dev-oestagiario/Educart/issues/70) | Aceite institucional, dispositivos físicos, impressão e acessibilidade; gate específico do 3D | Homologação real e referências autorizadas |
 | [#71](https://github.com/dev-oestagiario/Educart/issues/71) | Integração, release, Pages, version.json e smoke com rollback | #66–#70 e aprovação explícita; CI disponível |
