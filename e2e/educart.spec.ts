@@ -2449,7 +2449,9 @@ test.describe('F5.2 — visão geral administrativa 3D',()=>{
    detailCalls++;const body=r.request().postDataJSON();const row=summary(body.p_shift).find(c=>c.cart_id===body.p_cart_id)!;
    await r.fulfill({headers,json:{summary:row,reservations:row.cart_id===cartA?[{...reservation,quantity:row.reserved}]:row.cart_id===cartD?[{...reservation,id:uid(534),period_id:uid(535),quantity:10,mode:'COMPLETA'}]:[],confirmed_slots:row.cart_id===cartA?[slot]:[]}});
   });
-  await page.route('**/cart-illustrative-v1.glb*',r=>r.fulfill({status:503,body:'asset unavailable'}));
+  // Falhar apenas no arquivo GLB, não no módulo Vite ?import&url.
+  const cartAsset=(url:URL)=>url.pathname.endsWith('/cart-illustrative-v1.glb')&&!url.searchParams.has('import')&&!url.searchParams.has('url');
+  await page.route(cartAsset,r=>r.fulfill({status:503,body:'asset unavailable'}));
   await page.goto('/?environment3d=1');
   await page.getByLabel('E-mail').fill('test-admin@educart.example');
   await page.getByLabel('Senha').fill('senha-de-teste-sem-uso-real');
@@ -2467,7 +2469,7 @@ test.describe('F5.2 — visão geral administrativa 3D',()=>{
   await canvas.scrollIntoViewIfNeeded();
   await expect(canvas).toHaveAttribute('data-asset-mode','fallback',{timeout:15000});
   await expect(list.getByRole('button')).toHaveCount(4);
-  await page.unroute('**/cart-illustrative-v1.glb*');
+  await page.unroute(cartAsset);
   await page.getByLabel('Qualidade visual').selectOption('low');
   await page.getByLabel('Qualidade visual').selectOption('high');
   await canvas.scrollIntoViewIfNeeded();
@@ -2497,11 +2499,11 @@ test.describe('F5.2 — visão geral administrativa 3D',()=>{
   await expect(canvas).toHaveAttribute('data-cutaway-cart','');
   await page.getByLabel('Qualidade visual').selectOption('low');
   await expect(canvas).toHaveAttribute('data-asset-mode','economical');
-  await page.route('**/cart-illustrative-v1.glb*',r=>r.fulfill({status:503,body:'asset unavailable'}));
+  await page.route(cartAsset,r=>r.fulfill({status:503,body:'asset unavailable'}));
   await page.getByLabel('Qualidade visual').selectOption('high');
   await expect(canvas).toHaveAttribute('data-asset-mode','detailed',{timeout:15000}); // cache verificado reutilizado sem rede
   await expect(list.getByRole('button')).toHaveCount(4);
-  await page.unroute('**/cart-illustrative-v1.glb*');
+  await page.unroute(cartAsset);
   await list.getByRole('button',{name:/F52C/}).focus();
   await page.keyboard.press('Enter');
   await expect(page.getByRole('heading',{name:'Carrinho C',exact:true})).toBeVisible();
