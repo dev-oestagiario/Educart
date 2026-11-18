@@ -15,7 +15,9 @@ concurrency:
 jobs:
   homologacao:
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 45
+    env:
+      EDUCART_DISPOSABLE_HOMOLOGACAO: educart-homologacao
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -23,47 +25,27 @@ jobs:
           node-version: '22'
       - name: Instalar dependências
         run: npm ci --no-audit --no-fund
+      - name: Validar preflight
+        run: npm run test:homologacao:preflight
       - name: Preparar CLI
         run: |
           npx --yes supabase@2.79.0 --version
           npx --yes supabase@2.79.0 start --help
           npx --yes supabase@2.79.0 status --help
-      - name: Iniciar ambiente local e aplicar migrations
+      - name: Iniciar ambiente descartável
         run: |
-          # Não usar link, db push, credenciais cloud ou dados de produção.
-          npx --yes supabase@2.79.0 start > /tmp/educart-local-start.log 2>&1 || { echo "Falha ao iniciar Supabase local; confira a configuração e disponibilidade Docker."; exit 1; }
           umask 077
+          npx --yes supabase@2.79.0 start > /tmp/educart-local-start.log 2>&1 || { echo "Falha ao iniciar Supabase local."; exit 1; }
           npx --yes supabase@2.79.0 status -o json > .env.homologacao.status.local
-      - name: Preparar Chromium para homologação real
-        run: npx playwright install --with-deps chromium
-      - name: Homologar interface com Supabase real (CSV, XLSX e reservas)
-        run: node scripts/homologacao-browser.mjs
-      - name: Testar autenticação e acesso real com dados sintéticos
-        run: node scripts/homologacao-auth.mjs
-      - name: Homologar cadastros e ciclo das reservas
-        run: node scripts/homologacao-cadastros-reservas.mjs
-      - name: Validar concorrência com sessões independentes
-        run: node scripts/homologacao-concorrencia.mjs
-      - name: Homologar professores, TI e notificações em sessões reais
-        run: node scripts/homologacao-professores.mjs
-      - name: Instalar verificador de impressão PDF
-        run: sudo apt-get update -qq && sudo apt-get install -y --no-install-recommends poppler-utils
-      - name: Homologar relatórios reais e PDF A4
-        run: node scripts/homologacao-relatorios.mjs
-      - name: Preparar WebKit para homologação móvel
-        run: npx playwright install --with-deps webkit
-      - name: Homologar fluxos touch Chromium e WebKit
-        run: node scripts/homologacao-mobile.mjs
-      - name: Guardar evidências visuais sintéticas
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: educart-homologacao-mobile
-          path: test-results/mobile-local/*.png
-          if-no-files-found: ignore
-          retention-days: 7
-      - name: Homologar cadastro de localizações e destinos
-        run: node scripts/homologacao-localizacoes.mjs
+      - name: Conferir histórico de migrations
+        run: npx --yes supabase@2.79.0 migration list --local
+      - name: Preparar navegadores e verificador PDF
+        run: |
+          npx playwright install --with-deps chromium webkit
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends poppler-utils
+      - name: Executar as 11 suítes de homologação real
+        run: npm run test:homologacao
       - name: Encerrar ambiente isolado
         if: always()
         run: |
