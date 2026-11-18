@@ -15,13 +15,12 @@ async function main(){
  const users=await root.auth.admin.listUsers({page:1,perPage:1});
  if(users.error||!Array.isArray(users.data?.users)||users.data.users.length!==0)throw Error('Auth local inacessível ou não vazio; use stack descartável novo.');
  for(const table of ['admin_users','carts','requesters','reservations','reservation_requests']){
-  const r=await root.from(table).select('id',{count:'exact',head:true});
-  // admin_users uses user_id rather than id.
-  if(table==='admin_users'){const a=await root.from(table).select('user_id',{count:'exact',head:true});if(a.error||a.count!==0)throw Error('Admin local não vazio ou indisponível');continue;}
+  const column=table==='admin_users'?'user_id':'id';
+  const r=await root.from(table).select(column,{count:'exact',head:true});
   if(r.error||r.count!==0)throw Error('Dados de negócio não vazios ou indisponíveis');
  }
  const settings=await root.from('email_delivery_settings').select('enabled').eq('singleton',true).maybeSingle();
- if(settings.error||settings.data?.enabled===true)throw Error('Canal externo deve estar desativado');
+ if(settings.error||(settings.data!==null&&settings.data?.enabled!==false))throw Error('Canal externo deve estar desativado');
  console.log('PREFLIGHT OK: Auth local vazio, tabelas vazias e envio desativado');
  const report=[];
  for(const suite of plan){
