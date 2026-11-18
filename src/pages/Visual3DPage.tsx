@@ -1,3 +1,4 @@
+import {Feedback} from '../components/Feedback';
 import {useEffect,useMemo,useState} from 'react';
 import {useQuery} from '@tanstack/react-query';
 import {Laptop2,MousePointer2,Rotate3D} from 'lucide-react';
@@ -113,7 +114,7 @@ export default function Visual3DPage(){
           <div className="visual3d-legend"><span><i className="visual3d-dot free"/> Disponível</span>
             <span><i className="visual3d-dot busy"/> Reservado</span></div>
           {loading?<p role="status">Consultando equipamentos…</p>:
-            hasError?<p className="notice error" role="alert">Não foi possível consultar a disponibilidade. Atualize a página.</p>:
+            hasError?<Feedback kind="error">Não foi possível consultar a disponibilidade. Atualize a página.</Feedback>:
             <>
               <label className="reservation-check">
                 <input type="checkbox" checked={show3d} onChange={e=>setShow3d(e.target.checked)}/>
@@ -142,7 +143,7 @@ export default function Visual3DPage(){
       <section className="panel">
         <h2>Consulta textual equivalente</h2>
         <p className="reservation-subtle">Use os botões para consultar cada posição mesmo sem acesso ao WebGL. O total corresponde à capacidade configurada, independentemente de quantos códigos estão cadastrados.</p>
-        {hasError&&<p role="alert" className="notice error">Não foi possível confirmar a ocupação. Tente novamente quando a conexão estiver disponível.</p>}
+        {hasError&&<Feedback kind="error">Não foi possível confirmar a ocupação. Tente novamente quando a conexão estiver disponível.</Feedback>}
         <div className="visual3d-text-grid">{ready&&slots.map(slot=><button key={slot.position} type="button"
           className={'visual3d-slot '+(slot.reserved?'reserved':'available')}
           aria-pressed={selectedPosition===slot.position}

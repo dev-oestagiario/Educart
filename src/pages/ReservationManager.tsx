@@ -1,3 +1,4 @@
+import {Feedback} from '../components/Feedback';
 import {useMemo,useState} from 'react';
 import {useInfiniteQuery,useMutation,useQuery,useQueryClient} from '@tanstack/react-query';
 import {ClipboardCheck, History, Pencil, XCircle} from 'lucide-react';
@@ -150,7 +151,7 @@ export default function ReservationManager({carts,requesters,onEdit,onChanged}:P
           {showHistory?'Voltar à lista':'Ver histórico'}
         </button>
       </div>
-      {notice&&<p className="notice" role="status">{notice}</p>}
+      {notice&&<Feedback kind="neutral">{notice}</Feedback>}
       {!showHistory&&<>
         <div className="reservation-list-filters">
           <label className="field" htmlFor="reservation-search"><span>Buscar reserva</span>
@@ -168,7 +169,7 @@ export default function ReservationManager({carts,requesters,onEdit,onChanged}:P
           </label>
         </div>
         {reservations.isLoading||periods.isLoading?<p role="status">Carregando reservas…</p>:
-        reservations.error||periods.error?<p className="notice error" role="alert">Não foi possível consultar reservas e períodos.</p>:
+        reservations.error||periods.error?<Feedback kind="error">Não foi possível consultar reservas e períodos.</Feedback>:
         !bookings.length?<p className="empty">Nenhuma reserva registrada. Use “Nova reserva” para criar a primeira.</p>:
         !filteredBookings.length?<p className="empty">Nenhuma reserva corresponde à busca ou ao filtro.</p>:
         <div className="booking-list">{filteredBookings.map(booking=>{
@@ -222,7 +223,7 @@ export default function ReservationManager({carts,requesters,onEdit,onChanged}:P
       {showHistory&&<div className="reservation-history-panel">
         <h3 id="booking-history-title">Auditoria de reservas</h3>
       {events.isLoading?<p role="status">Carregando histórico…</p>:
-        events.error?<p role="alert" className="notice error">Falha ao consultar auditoria.</p>:
+        events.error?<Feedback kind="error">Falha ao consultar auditoria.</Feedback>:
         !events.data?.length?<p className="empty">Nenhuma alteração registrada.</p>:
         <div className="booking-history">{events.data.map(e=><details key={e.id}>
           <summary><strong>{e.event_type==='CRIACAO'?'Criação':e.event_type==='EDICAO'?'Edição':'Cancelamento'}</strong>

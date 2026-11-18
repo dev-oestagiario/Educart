@@ -301,9 +301,10 @@ async function useFakeSupabase(page: Page, authorized = true) {
       }
       if (req.method() === 'PATCH') {
         const id = url.searchParams.get('id')?.replace('eq.', '');
-        const record = database[table].find(row => row.id === id);
+        const active = url.searchParams.get('active');
+        const record = database[table].find(row => row.id === id && (!active || 'eq.'+String(row.active)===active));
         if (record) Object.assign(record, req.postDataJSON());
-        await respond([]); return;
+        await respond(req.headers()['prefer']?.includes('return=representation') && record ? [{id:record.id}] : []); return;
       }
     }
     await respond({ message: 'Rota não simulada: ' + url.pathname }, 404);
@@ -1989,7 +1990,7 @@ test('F3.6 — preferências de e-mail opcionais, canal desativado e avisos inte
  const toggle=panel.getByRole('checkbox',{name:'Receber avisos no e-mail confirmado da minha conta'});
  await expect(toggle).not.toBeChecked();
  await expect(panel.getByText(/O envio externo ainda não está habilitado/)).toBeVisible();
- await toggle.click();await expect(toggle).toBeChecked();await expect(panel.getByText('Preferência salva.')).toBeVisible();
+ await toggle.click();await expect(toggle).toBeChecked();await expect(page.locator('#educart-toasts').getByText('Preferência salva.')).toBeVisible();
  expect(enabled).toBe(true);
  await toggle.click();await expect(toggle).not.toBeChecked();expect(enabled).toBe(false);
  await expect(page.getByRole('heading',{name:'Seus avisos'})).toBeVisible();
@@ -2708,4 +2709,63 @@ test('Listas — busca ocupa toda a largura disponível em desktop e mobile',asy
   }
   await input.fill('teste sintético');await expect(input).toHaveValue('teste sintético');await input.clear();
  }
+});
+
+test('Cadastros — inativação e reativação sem exclusão física e toast sem deslocar layout',async({page})=>{
+ const db=await useFakeSupabase(page);
+ const cart=crypto.randomUUID(),teacher=crypto.randomUUID(),notebook=crypto.randomUUID(),campus=crypto.randomUUID(),block=crypto.randomUUID(),room=crypto.randomUUID();
+ db.carts.push({id:cart,name:'Carrinho ciclo sintético',code:'LIFE-01',capacity:10,active:true});
+ db.requesters.push({id:teacher,name:'Professor ciclo sintético',active:true});
+ db.notebook_codes.push({id:notebook,cart_id:cart,code:'LIFE-NB',active:true});
+ db.campuses.push({id:campus,name:'Campus ciclo sintético',active:true});
+ db.campus_blocks.push({id:block,campus_id:campus,name:'Bloco ciclo sintético',active:true});
+ db.campus_rooms.push({id:room,block_id:block,name:'Sala ciclo sintética',active:true});
+ await page.setViewportSize({width:1440,height:900});await login(page);
+ const nav=page.getByRole('navigation',{name:'Menu principal'});
+ const toast=page.locator('#educart-toasts');
+ const assertToast=async(text:string)=>{await expect(toast.getByText(text,{exact:true})).toBeVisible();await expect(toast).toHaveCSS('position','fixed');};
+ for(const [menu,label,table,id] of [['Carrinhos','Carrinho ciclo sintético','carts',cart],['Professores','Professor ciclo sintético','requesters',teacher],['Notebooks','LIFE-NB','notebook_codes',notebook]]){
+  await nav.getByRole('button',{name:menu,exact:true}).click();
+  const row=page.locator('.records-item').filter({hasText:label});
+  await expect(row).toBeVisible();
+  const panel=page.locator('.records-panel');
+  const before=(await panel.boundingBox())!.y;
+  await row.getByRole('button',{name:'Inativar',exact:true}).click();
+  const modal=page.getByRole('dialog');
+  await expect(modal).toBeVisible();
+  await modal.getByRole('button',{name:'Cancelar'}).click();
+  expect(db[table].find(r=>r.id===id)?.active).toBe(true);
+  await row.getByRole('button',{name:'Inativar',exact:true}).click();
+  await modal.getByRole('button',{name:'Confirmar inativação'}).click();
+  await assertToast('Cadastro inativado.');
+  expect(db[table].find(r=>r.id===id)?.active).toBe(false);
+  await expect(row).toHaveCount(0);
+  expect(Math.abs((await panel.boundingBox())!.y-before)).toBeLessThanOrEqual(1);
+  await page.getByRole('combobox',{name:'Situação',exact:true}).selectOption('inactive');
+  await expect(row).toBeVisible();
+  await row.getByRole('button',{name:'Reativar',exact:true}).click();
+  await modal.getByRole('button',{name:'Confirmar reativação'}).click();
+  await assertToast('Cadastro reativado.');
+  expect(db[table].find(r=>r.id===id)?.active).toBe(true);
+  expect(db[table].filter(r=>r.id===id)).toHaveLength(1);
+  await toast.getByRole('button',{name:'Fechar aviso'}).click();
+  await expect(toast.getByText('Cadastro reativado.')).toHaveCount(0);
+ }
+ await nav.getByRole('button',{name:'Localizações',exact:true}).click();
+ await page.getByRole('button',{name:'Salas',exact:true}).click();
+ const row=page.locator('.records-item').filter({hasText:'Sala ciclo sintética'});
+ await row.getByRole('button',{name:'Ver detalhes'}).click();
+ await page.getByRole('button',{name:'Inativar',exact:true}).click();
+ await page.getByRole('dialog').getByRole('button',{name:'Confirmar inativação'}).click();
+ await assertToast('Cadastro inativado.');
+ await expect(row).toHaveCount(0);
+ expect(db.campus_rooms.find(r=>r.id===room)?.active).toBe(false);
+ await page.getByRole('combobox',{name:'Situação'}).selectOption('inactive');
+ await row.getByRole('button',{name:'Ver detalhes'}).click();
+ await page.getByRole('button',{name:'Reativar',exact:true}).click();
+ await page.getByRole('dialog').getByRole('button',{name:'Confirmar reativação'}).click();
+ await assertToast('Cadastro reativado.');
+ expect(db.campus_rooms.find(r=>r.id===room)?.active).toBe(true);
+ await page.setViewportSize({width:390,height:844});
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
 });

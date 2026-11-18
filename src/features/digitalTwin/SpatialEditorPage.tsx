@@ -1,3 +1,4 @@
+import {Feedback} from '../../components/Feedback';
 import {useState,type FormEvent} from 'react';
 import {useQuery,useQueryClient} from '@tanstack/react-query';
 import {supabase} from '../../lib/supabase';
@@ -53,7 +54,7 @@ export default function SpatialEditorPage(){
   return <div className="dt-page">
     <header className="page-header"><h1>Configuração espacial · F5.1</h1><p>Cadastre modelos, ambientes e posições registradas, sem alterar reservas.</p></header>
     <p className="notice warning">Ferramenta administrativa de desenvolvimento. Posições representam o cadastro, não rastreamento físico. Utilize somente referências autorizadas.</p>
-    {error&&<p role="alert" className="notice error">{error}</p>}{message&&<p role="status" className="notice success">{message}</p>}
+    {error&&<Feedback kind="error">{error}</Feedback>}{message&&<Feedback kind="success">{message}</Feedback>}
     {catalog.isPending?<p role="status">Carregando catálogos espaciais…</p>:catalog.isError?<div className="panel"><p role="alert">Não foi possível carregar o catálogo espacial. Verifique a migration F5.1.</p><button className="secondary" onClick={()=>void catalog.refetch()}>Tentar novamente</button></div>:data&&<>
       <section className="panel"><h2>Modelos tridimensionais</h2>
         <label className="field"><span>Modelo para editar</span><select value={editModel} onChange={e=>setEditModel(e.target.value)}><option value="">Novo modelo</option>{data.models.map(m=><option key={m.id} value={m.id}>{m.name} · v{m.version}</option>)}</select></label>
@@ -96,8 +97,8 @@ export default function SpatialEditorPage(){
     <section className="panel"><h2>Prévia de disponibilidade real (somente leitura)</h2><div className="dt-editor-fields">
       <label className="field"><span>Data da consulta</span><input type="date" value={date} onChange={e=>setDate(e.target.value)}/></label>
       <label className="field"><span>Turno</span><select value={shift} onChange={e=>setShift(e.target.value as Shift)}>{SHIFTS.map(s=><option key={s} value={s}>{shiftLabel[s]}</option>)}</select></label></div>
-      {!date?<p className="empty">Selecione uma data.</p>:summary.isFetching?<p role="status">Consultando…</p>:summary.isError?<p role="alert" className="notice error">Não foi possível confirmar a disponibilidade.</p>:<div className="dt-list">{summary.data?.map(s=><button className="dt-cart" key={s.cart_id} aria-pressed={cartId===s.cart_id} onClick={()=>selectCart(s.cart_id)}><strong>{s.code} — {s.name}</strong><span>{labels[s.availability_status]} · {s.available}/{s.nominal_capacity} disponíveis</span><small>{s.scene_id?'Ambiente cadastrado':'Sem localização definida'}</small></button>)}</div>}
-      {cartId&&date&&(detail.isFetching?<p role="status">Carregando detalhes…</p>:detail.isError?<p className="notice error" role="alert">Detalhes indisponíveis.</p>:detail.data&&<div className="dt-editor-form"><h3>{detail.data.summary.name}</h3><p>{detail.data.reservations.length} reservas confirmadas · {detail.data.confirmed_slots.length} vínculos físicos ativos</p>{detail.data.reservations.map(r=><p key={r.period_id}>{r.requester} · {r.quantity} notebooks · {r.destination_label??'Destino não informado'}</p>)}</div>)}
+      {!date?<p className="empty">Selecione uma data.</p>:summary.isFetching?<p role="status">Consultando…</p>:summary.isError?<Feedback kind="error">Não foi possível confirmar a disponibilidade.</Feedback>:<div className="dt-list">{summary.data?.map(s=><button className="dt-cart" key={s.cart_id} aria-pressed={cartId===s.cart_id} onClick={()=>selectCart(s.cart_id)}><strong>{s.code} — {s.name}</strong><span>{labels[s.availability_status]} · {s.available}/{s.nominal_capacity} disponíveis</span><small>{s.scene_id?'Ambiente cadastrado':'Sem localização definida'}</small></button>)}</div>}
+      {cartId&&date&&(detail.isFetching?<p role="status">Carregando detalhes…</p>:detail.isError?<Feedback kind="error">Detalhes indisponíveis.</Feedback>:detail.data&&<div className="dt-editor-form"><h3>{detail.data.summary.name}</h3><p>{detail.data.reservations.length} reservas confirmadas · {detail.data.confirmed_slots.length} vínculos físicos ativos</p>{detail.data.reservations.map(r=><p key={r.period_id}>{r.requester} · {r.quantity} notebooks · {r.destination_label??'Destino não informado'}</p>)}</div>)}
     </section>
   </div>;
 }

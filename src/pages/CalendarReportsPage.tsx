@@ -1,3 +1,4 @@
+import {Feedback} from '../components/Feedback';
 import {useMemo,useState,type CSSProperties} from 'react';
 import {useQuery} from '@tanstack/react-query';
 import {CalendarDays,Download,FileText,Filter} from 'lucide-react';
@@ -196,9 +197,9 @@ export default function CalendarReportsPage(){
             onClick={()=>void exportFile('pdf')}><FileText size={16} aria-hidden="true"/> Exportar PDF</button>
         </div>
       </div>
-      {exportError&&<p className="notice error" role="alert">{exportError}</p>}
+      {exportError&&<Feedback kind="error">{exportError}</Feedback>}
       {busy?<p role="status">Carregando calendário…</p>:
-        hasError?<p className="notice error" role="alert">Falha ao carregar o recorte completo. Use Atualizar relatório antes de exportar.</p>:
+        hasError?<Feedback kind="error">Falha ao carregar o recorte completo. Use Atualizar relatório antes de exportar.</Feedback>:
         <div className="calendar-grid">{dates.map((day,index)=>{
           const dayRows=byDate.get(day)??[];
           const weekday=new Date(day+'T12:00:00Z').getUTCDay();

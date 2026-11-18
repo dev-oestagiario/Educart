@@ -1,3 +1,4 @@
+import {useCatalogLifecycle} from '../components/CatalogLifecycle';
 import {useState,type FormEvent} from 'react';
 import {useQuery,useQueryClient,useMutation} from '@tanstack/react-query';
 import {supabase,type Cart} from '../lib/supabase';
@@ -23,9 +24,10 @@ export default function LocationsPage(){
   }
  }});
  const [tab,setTab]=useState<Tab>('campuses'),[screen,setScreen]=useState<'list'|'detail'|'form'>('list');
- const [selected,setSelected]=useState<string|null>(null),[search,setSearch]=useState(''),[status,setStatus]=useState('all');
+ const [selected,setSelected]=useState<string|null>(null),[search,setSearch]=useState(''),[status,setStatus]=useState('active');
  const [name,setName]=useState(''),[parent,setParent]=useState(''),[active,setActive]=useState(true),[room,setRoom]=useState('');
  const [notice,setNotice]=useState<{error:boolean;text:string}|null>(null);
+ const lifecycle=useCatalogLifecycle(result=>{setNotice({error:result.kind==='error',text:result.message});if(result.kind==='success'){setScreen('list');setSelected(null);}});
  const options=roomOptions(query.data),allRooms=roomOptions(query.data,false);
  const rows:Row[]=tab==='campuses'?query.data?.campuses??[]:tab==='campus_blocks'?query.data?.blocks??[]:tab==='campus_rooms'?query.data?.rooms??[]:[];
  const parents=tab==='campus_blocks'?query.data?.campuses??[]:query.data?.blocks??[];
@@ -57,25 +59,25 @@ export default function LocationsPage(){
  const title=screen==='list'?'Localizações':screen==='detail'?'Detalhes da localização':tab==='storage'?'Alterar local de guarda':(selected?'Editar ':'Cadastrar ')+labels[tab].toLocaleLowerCase('pt-BR');
  const isLoading=query.isLoading||(tab==='storage'&&(storage.isLoading||carts.isLoading));
  const error=query.error||(tab==='storage'&&(storage.error||carts.error));
- return <div className="records-page">
+ return <div className="records-page">{lifecycle.dialog}
   {screen!=='list'&&<RecordTrail module="Localizações" section={sections[tab]} current={screen==='detail'?'Detalhes':selected?'Editar':'Novo'} onBack={list} busy={save.isPending}/>}
   <RecordsHeader title={title} description={screen==='list'?'Organize campus, blocos, salas e locais de guarda dos carrinhos.':'O local de guarda cadastral é independente do destino da reserva.'}
    actionKind={screen!=='list'?'back':tab==='storage'?'refresh':'add'} busy={save.isPending}
    actionLabel={screen==='form'?'Voltar':screen==='detail'?'Voltar à listagem':tab==='storage'?'Atualizar listagem':'Cadastrar '+labels[tab].toLocaleLowerCase('pt-BR')}
    onAction={()=>screen==='form'?cancel():screen==='detail'?list():tab==='storage'?void Promise.all([storage.refetch(),carts.refetch(),query.refetch()]):edit(null)}/>
-  {screen==='list'&&<div className="panel ds-choice-group" role="group" aria-label="Tipo de localização">{(Object.entries(sections) as [Tab,string][]).map(([id,label])=><button key={id} type="button" className={tab===id?'primary':'secondary'} aria-pressed={tab===id} onClick={()=>{setTab(id);setSelected(null);setSearch('');setStatus('all');setNotice(null);}}>{label}</button>)}</div>}
+  {screen==='list'&&<div className="panel ds-choice-group" role="group" aria-label="Tipo de localização">{(Object.entries(sections) as [Tab,string][]).map(([id,label])=><button key={id} type="button" className={tab===id?'primary':'secondary'} aria-pressed={tab===id} onClick={()=>{setTab(id);setSelected(null);setSearch('');setStatus('active');setNotice(null);}}>{label}</button>)}</div>}
   {notice&&<Feedback kind={notice.error?'error':'success'}>{notice.text}</Feedback>}
   {error?<Feedback kind="error">Não foi possível carregar as localizações. {errorMessage(error)}</Feedback>:isLoading?<LoadingState>Carregando localizações…</LoadingState>:screen==='detail'?tab==='storage'&&cart?<RecordDetail title={cart.name} actions={<button className="primary" onClick={()=>{setRoom(linkedRoom(cart.id));setScreen('form');setNotice(null);}}>Alterar local de guarda</button>}>
     <DetailFields fields={[{label:'Código do carrinho',value:cart.code},{label:'Local de guarda',value:roomLabel(linkedRoom(cart.id))},{label:'Situação',value:cart.active?'Ativo':'Inativo'}]}/>
     <p className="form-hint">Local cadastral administrativo; não representa rastreamento.</p>
-   </RecordDetail>:record?<RecordDetail title={record.name} actions={<button className="primary" onClick={()=>edit(record)}>Editar</button>}>
+   </RecordDetail>:record?<RecordDetail title={record.name} actions={<><button className="primary" onClick={()=>edit(record)}>Editar</button><button type="button" className="secondary" disabled={lifecycle.busy} onClick={()=>{if(tab!=='storage')lifecycle.request({table:tab,id:record.id,active:record.active,label:record.name});}}>{record.active?'Inativar':'Reativar'}</button></>}>
     <DetailFields fields={[{label:'Tipo',value:sections[tab]},{label:'Hierarquia',value:rowLabel(record)},{label:'Situação',value:record.active?'Ativo':'Inativo'},...('block_id' in record?[{label:'Disponível para novos vínculos',value:allRooms.find(r=>r.id===record.id)?.active?'Sim':'Não'}]:[])]}/>
    </RecordDetail>:<EmptyState>Registro não encontrado. Volte à listagem.</EmptyState>:screen==='form'?<section className="panel records-form-panel"><h2>{tab==='storage'?'Sala de guarda':'Dados do cadastro'}</h2>
    <form className="form-stack" onSubmit={submit}>
     {tab==='storage'?<><p>{cart?.name}</p><label className="field"><span>Sala de guarda</span><select value={room} onChange={e=>setRoom(e.target.value)}><option value="">Não informada</option>{options.map(r=><option key={r.id} value={r.id}>{r.label}</option>)}{room&&!options.some(x=>x.id===room)&&<option value={room} disabled>{roomLabel(room)} (inativo)</option>}</select></label></>:<>
     {tab!=='campuses'&&<label className="field"><span>{tab==='campus_blocks'?'Campus':'Bloco'}</span><select required value={parent} onChange={e=>setParent(e.target.value)}><option value="">Selecione</option>{parents.map(p=><option key={p.id} value={p.id} disabled={!p.active&&p.id!==parent}>{p.name}{'campus_id' in p?' — '+(query.data?.campuses.find(c=>c.id===p.campus_id)?.name??''):''}{!p.active?' (inativo)':''}</option>)}</select></label>}
     <label className="field"><span>Nome</span><input required maxLength={120} value={name} onChange={e=>setName(e.target.value)}/></label>
-    <label className="reservation-check"><input type="checkbox" checked={active} onChange={e=>setActive(e.target.checked)}/> Ativo</label>
+    <p className="form-hint">Situação: {active?'Ativo':'Inativo'} (altere nos detalhes após salvar).</p>
     <p className="form-hint">Desativar preserva o histórico; salas de uma hierarquia inativa deixam de estar disponíveis para novos vínculos.</p></>}
     <div className="records-form-actions"><button className="primary" disabled={save.isPending||(tab==='storage'?!selected:!name.trim())}>{save.isPending?'Salvando…':tab==='storage'?'Salvar localização':'Salvar'}</button><button type="button" className="ghost" disabled={save.isPending} onClick={cancel}>Cancelar</button></div>
    </form></section>:<section className="panel records-panel"><h2>{tab==='storage'?'Carrinhos e locais de guarda':sections[tab]+' cadastrados'}</h2>

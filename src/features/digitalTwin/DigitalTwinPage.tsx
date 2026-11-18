@@ -1,3 +1,4 @@
+import {Feedback} from '../../components/Feedback';
 import {lazy,Suspense,useEffect,useMemo,useState,Component,type ReactNode} from 'react';
 import {useQuery} from '@tanstack/react-query';
 import {Box,Focus,RotateCcw,RefreshCw} from 'lucide-react';
@@ -16,7 +17,7 @@ const poll={retry:false,staleTime:0,refetchOnMount:'always' as const,refetchOnWi
 class CanvasBoundary extends Component<{children:ReactNode},{failed:boolean}>{
  state={failed:false};
  static getDerivedStateFromError(){return {failed:true};}
- render(){return this.state.failed?<p role="status" className="notice warning">Não foi possível renderizar a cena. Use a lista de carrinhos.</p>:this.props.children;}
+ render(){return this.state.failed?<Feedback kind="warning">Não foi possível renderizar a cena. Use a lista de carrinhos.</Feedback>:this.props.children;}
 }
 export default function DigitalTwinPage({onNavigate}:{onNavigate:(target:'reservations'|'movements'|'maintenance'|'spatial-editor'|'notebooks')=>void}){
  const [date,setDate]=useState(todayInSaoPaulo),[shift,setShift]=useState<Shift>('MATUTINO');
@@ -64,10 +65,10 @@ export default function DigitalTwinPage({onNavigate}:{onNavigate:(target:'reserv
    <p className="form-hint dt-quality-note">Qualidade em uso: {quality==='low'?'Econômica':'Detalhada'}. Em telas pequenas a lista abre primeiro; ative o 3D quando desejar.</p>
    <div className="dt-overview-actions"><button type="button" className="secondary" onClick={overview}><RotateCcw size={16}/> Visão geral</button><button type="button" className="secondary" disabled={catalog.isFetching||summary.isFetching||detail.isFetching||movement.isFetching} onClick={refresh}><RefreshCw size={16}/> Atualizar dados</button></div>
   </div>
-  {!valid&&<p role="alert" className="notice error">Informe uma data válida para consultar disponibilidade.</p>}
-  {valid&&!isWeekday(date)&&<p className="notice warning">Fim de semana: o saldo operacional segue a regra institucional de indisponibilidade.</p>}
-  {summary.isError?<p role="alert" className="notice error">Não foi possível confirmar a ocupação deste período. Saldos e estados não serão apresentados como livres.</p>:summary.isPending&&valid?<p role="status">Carregando todos os carrinhos…</p>:valid&&!summaryFresh?<p role="status" className="notice warning">Resumo defasado; aguarde a atualização ou tente novamente.</p>:null}
-  {catalog.isError||(!catalogFresh&&catalog.data)?<p role="alert" className="notice warning">Não foi possível confirmar a configuração espacial; os carrinhos aparecem na zona sem localização definida.</p>:catalog.isPending?<p role="status">Carregando localizações cadastradas…</p>:null}
+  {!valid&&<Feedback kind="error">Informe uma data válida para consultar disponibilidade.</Feedback>}
+  {valid&&!isWeekday(date)&&<Feedback kind="warning">Fim de semana: o saldo operacional segue a regra institucional de indisponibilidade.</Feedback>}
+  {summary.isError?<Feedback kind="error">Não foi possível confirmar a ocupação deste período. Saldos e estados não serão apresentados como livres.</Feedback>:summary.isPending&&valid?<p role="status">Carregando todos os carrinhos…</p>:valid&&!summaryFresh?<Feedback kind="warning">Resumo defasado; aguarde a atualização ou tente novamente.</Feedback>:null}
+  {catalog.isError||(!catalogFresh&&catalog.data)?<Feedback kind="warning">Não foi possível confirmar a configuração espacial; os carrinhos aparecem na zona sem localização definida.</Feedback>:catalog.isPending?<p role="status">Carregando localizações cadastradas…</p>:null}
   <div className="dt-overview-metrics">
    <div className="panel"><span>Carrinhos no resumo</span><strong>{summary.data?rows.length:'—'}</strong></div>
    <div className="panel"><span>Sem posição confirmada</span><strong>{summary.data?layout.carts.filter(c=>!c.placed).length:'—'}</strong></div>

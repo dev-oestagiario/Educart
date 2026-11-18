@@ -1,3 +1,4 @@
+import {Feedback} from './Feedback';
 import {useMemo,useState} from 'react';
 import {CalendarDays} from 'lucide-react';
 import {showDate,addCalendarDays,isValidIsoDate} from '../lib/reservations';
@@ -22,7 +23,7 @@ export default function WeeklyRecurrence({id,value,onChange,today,shifts,disable
   </div>
   <div className="weekly-days" role="group" aria-label="Dias da semana">{WEEKLY_DAYS.map(d=><label key={d.id}><input type="checkbox" checked={value.weekdays.includes(d.id)} onChange={e=>toggleDay(d.id,e.target.checked)}/>{d.label}</label>)}</div>
   <p className="form-hint">Até 130 dias corridos e 93 ocorrências. Feriados não são excluídos automaticamente; desmarque as datas que não deseja reservar. Alterar o padrão redefine as exceções.</p>
-  {result.error&&<p role="alert" className="notice error">{result.error}</p>}
+  {result.error&&<Feedback kind="error">{result.error}</Feedback>}
   <div className="weekly-summary" aria-live="polite"><strong>{result.dates.length} ocorrência(s)</strong> · {shifts} turno(s) · {result.dates.length*shifts} período(s){value.excluded.length>0?' · '+value.excluded.length+' exceção(ões)':''}</div>
   {!!result.candidates.length&&<div className="weekly-preview">
    <button className="secondary" type="button" aria-expanded={expanded} aria-controls={id+'-preview'} onClick={()=>setExpanded(v=>!v)}>{expanded?'Ocultar datas':'Revisar datas e exceções'} ({result.candidates.length})</button>

@@ -1,3 +1,4 @@
+import {Feedback} from '../../components/Feedback';
 import {useEffect,useMemo,useRef,useState} from 'react';
 import * as THREE from 'three';
 import {OrbitControls} from 'three/examples/jsm/controls/OrbitControls.js';
@@ -204,6 +205,6 @@ export default function EnvironmentCanvas(props:Props){
  useEffect(()=>{synchronise.current?.();},[props.selectedId,props.focusId,props.reset,props.doorOpen,props.hotspot]);
  useEffect(()=>{props.onInspectionReady(assetState==='detailed'&&!unavailable);return ()=>props.onInspectionReady(false);},[assetState,unavailable,props.onInspectionReady]);
  return <div><div className="dt-stage dt-overview-stage" ref={mount} role="img" aria-label="Ambientes esquemáticos e carrinhos cadastrados. Use a lista para seleção por teclado."/>
-  {unavailable&&<p role="status" className="notice warning">WebGL indisponível. Todos os carrinhos continuam acessíveis pela lista.</p>}
+  {unavailable&&<Feedback kind="warning">WebGL indisponível. Todos os carrinhos continuam acessíveis pela lista.</Feedback>}
   {!unavailable&&<p className="form-hint" role="status">{assetState==='detailed'?'Modelos GLB ilustrativos verificados. A porta virtual mostra exemplos, não equipamentos presentes.':assetState==='loading'?'Carregando modelos detalhados; geometria simples disponível.':assetState==='fallback'?'Modelos detalhados indisponíveis. Geometria simplificada preservada.':'Qualidade econômica: geometria simplificada.'}</p>}</div>;
 }
