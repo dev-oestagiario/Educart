@@ -1,0 +1,11 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {validateLocalConfig,suitePlan,apiSuites,browserSuites,classifySuite} from './homologacao-preflight.mjs';
+const env={EDUCART_DISPOSABLE_HOMOLOGACAO:'educart-homologacao'};
+const valid={API_URL:'http://127.0.0.1:54321',DB_URL:'postgresql://local:fixture@127.0.0.1:54322/postgres',ANON_KEY:'synthetic-anon',SERVICE_ROLE_KEY:'synthetic-service'};
+test('accepts isolated loopback status',()=>assert.equal(validateLocalConfig(valid,env),valid.API_URL));
+test('rejects no opt-in and external credentials',()=>{assert.throws(()=>validateLocalConfig(valid,{}));for(const key of ['SUPABASE_ACCESS_TOKEN','SUPABASE_DB_PASSWORD','SUPABASE_SERVICE_ROLE_KEY','SUPABASE_SECRET_KEY'])assert.throws(()=>validateLocalConfig(valid,{...env,[key]:'fixture'}))});
+test('rejects hosted, altered ports, redirects and URL lookalikes',()=>{for(const u of ['https://example.com','http://127.0.0.1:54322','http://127.0.0.1:54321@other.test/','http://localhost:54321/?x=1','http://localhost:54321/rest/v1'])assert.throws(()=>validateLocalConfig({...valid,API_URL:u},env));for(const u of ['postgresql://local:fixture@cloud.test:54322/postgres','postgresql://local:fixture@localhost:54322/other','postgresql://local:fixture@localhost:54322/postgres?x=1'])assert.throws(()=>validateLocalConfig({...valid,DB_URL:u},env))});
+test('rejects missing or equal keys',()=>{assert.throws(()=>validateLocalConfig({...valid,ANON_KEY:''},env));assert.throws(()=>validateLocalConfig({...valid,SERVICE_ROLE_KEY:valid.ANON_KEY},env))});
+test('full plan includes all suites and API subset cannot imply full',()=>{assert.equal(suitePlan('full').length,11);assert.equal(new Set(suitePlan('full')).size,11);assert.deepEqual(suitePlan('api-only'),apiSuites);assert.ok(browserSuites.every(x=>!apiSuites.includes(x)));assert.throws(()=>suitePlan('unknown'))});
+test('failure, timeout and skips are not passes',()=>{assert.equal(classifySuite({status:0,stdout:'PASS F3.1'}),'PASS');assert.equal(classifySuite({status:0,stdout:'SKIP F3.3'}),'SKIP');assert.equal(classifySuite({status:0,stdout:'PASS earlier\nSKIP later'}),'SKIP');assert.equal(classifySuite({status:1,stdout:'PASS earlier'}),'FAIL');assert.equal(classifySuite({status:0,stdout:''}),'FAIL');assert.equal(classifySuite({error:Error('timeout')}),'FAIL')});

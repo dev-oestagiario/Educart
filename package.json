@@ -12,7 +12,9 @@
     "test:e2e": "playwright test",
     "audit": "npm audit --audit-level=high",
     "audit:runtime": "npm audit --omit=dev --audit-level=high",
-    "audit:bundle": "node scripts/verificar-escopo-dependencias.mjs"
+    "audit:bundle": "node scripts/verificar-escopo-dependencias.mjs",
+    "test:homologacao": "node scripts/homologacao-completa.mjs",
+    "test:homologacao:preflight": "node --test scripts/homologacao-preflight.test.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "2.80.0",
