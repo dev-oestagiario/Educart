@@ -72,10 +72,10 @@ export function createCartVisual(library:AssetLibrary,width:number,depth:number)
  const modelRoot=root.getObjectByName('cart-illustrative-v1')??root;
  modelRoot.add(exampleNotebooks);
  return {root,setCutaway(open:boolean){
-  if(hinge)hinge.visible=!open;
+  if(hinge){hinge.visible=true;hinge.rotation.y=open?-Math.PI*0.64:0;}
   for(const part of interior)part.visible=open;
-  if(open&&!exampleNotebooks.children.length)for(const position of slots){
-   const sample=library.notebook.clone(true);sample.position.copy(position);exampleNotebooks.add(sample);
+  if(open&&!exampleNotebooks.children.length)for(const [index,position] of slots.entries()){
+   const sample=library.notebook.clone(true);sample.name='sample-notebook-'+String(index+1).padStart(2,'0');sample.position.copy(position);exampleNotebooks.add(sample);
   }
   if(!open)exampleNotebooks.clear();
   exampleNotebooks.visible=open;
