@@ -1,3 +1,4 @@
+import DateRangeFields from '../components/DateRangeFields';
 import {Feedback} from '../components/Feedback';
 import { useMemo, useState, type FormEvent } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -82,7 +83,8 @@ export default function ReservationsPage() {
   const slots=useMemo(()=>applyMaintenance(calculateAvailability(
     selectedCart?.capacity??0,(periods.data??[]).filter(p=>!editingId||p.reservation_id!==editingId),dates,selectedShifts
   ),maintenance.data??[],cartId),[selectedCart?.capacity,periods.data,dates,selectedShifts,editingId,maintenance.data,cartId]);
-  const blocked=!!selectedCart && slots.some(s=>s.remaining<requestedQuantity);
+  const maintainedNotebooks=new Set((maintenance.data??[]).filter(m=>m.notebook_id&&!m.closed_at&&m.cart_id===cartId&&dates.some(d=>d>=m.start_date&&d<=m.end_date)&&selectedShifts.some(s=>m.shifts.includes(s))).map(m=>m.notebook_id));
+  const blocked=!!selectedCart && (slots.some(s=>s.remaining<requestedQuantity)||selectedNotebookIds.some(id=>maintainedNotebooks.has(id)));
   const knownNotebooks=(notebooks.data??[]).filter(n=>n.cart_id===cartId);
   const periodsCount=dates.length*selectedShifts.length;
 
@@ -245,7 +247,7 @@ export default function ReservationsPage() {
             <button type="button" className={weekly?'primary':'secondary'} aria-pressed={weekly} disabled={save.isPending} onClick={()=>{if(!weekly){setPattern(defaultWeeklyPattern(firstBookableDay));setWeekly(true);setFeedback(null);}}}>Repetir semanalmente</button>
           </div>
           {weekly?<WeeklyRecurrence id="reservation-weekly" value={pattern} today={todayInSaoPaulo()} shifts={selectedShifts.length} disabled={save.isPending} onChange={p=>{setPattern(p);setFeedback(null);}}/>:
-          <ReservationDatePicker value={{mode:dateMode,startDate,endDate,specificDates}} selectedDates={dates} onChange={updateDates} minDate={today}/>}
+          <><DateRangeFields id="reservation-period" start={startDate} end={dateMode==='single'?'':endDate} min={today} disabled={save.isPending} onChange={(a,b)=>updateDates({mode:b?'range':'single',startDate:a,endDate:b||a,specificDates:[]})}/><ReservationDatePicker value={{mode:dateMode,startDate,endDate,specificDates}} selectedDates={dates} onChange={updateDates} minDate={today}/>{dateMode==='multiple'&&<p className="form-hint">Datas avulsas selecionadas: alterar o início ou fim substitui a seleção pelo intervalo.</p>}</>}
           {editingId&&weekly&&<p className="form-hint">O padrão substituirá as datas do agrupamento em edição. Períodos já utilizados continuam protegidos pelas regras existentes.</p>}
           {!weekly&&dateResult.error&&<Feedback kind="error">{dateResult.error}</Feedback>}
           {reservationMode==='PARCIAL'&&<fieldset className="reservation-fieldset">

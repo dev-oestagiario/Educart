@@ -27,7 +27,6 @@ const cart=ok(await db.from('carts').insert({code:'REL-'+tag,name:cartName,capac
 const otherCart=ok(await db.from('carts').insert({code:'REL-OUT-'+tag,name:'Outro carrinho '+tag,capacity:30}).select('id').single(),'Outro carrinho');
 const now=new Date();
 const month=new Date(Date.UTC(now.getUTCFullYear(),now.getUTCMonth()+2,1));
-const monthIso=month.toISOString().slice(0,7);
 const dates=[];
 for(let day=new Date(month);day.getUTCMonth()===month.getUTCMonth();day.setUTCDate(day.getUTCDate()+1)){
   if(![0,6].includes(day.getUTCDay()))dates.push(day.toISOString().slice(0,10));
@@ -65,8 +64,8 @@ try{
   await page.getByRole('button',{name:'Entrar no Educart'}).click();
   await expect(page.getByRole('heading',{name:'Visão geral'})).toBeVisible({timeout:15000});
   await page.getByRole('button',{name:'Calendário',exact:true}).click();
-  await page.locator('#calendar-mode').selectOption('mes');
-  await page.locator('#calendar-focus').fill(monthIso);
+  await page.locator('#calendar-period-start').fill(dates[0]);
+  await page.locator('#calendar-period-end').fill(dates[dates.length-1]);
   await page.locator('#calendar-cart').selectOption(cart.id);
   await page.locator('#calendar-requester').selectOption(teacher.id);
   const stat=(label)=>page.locator('.calendar-stats').getByText(label,{exact:true}).locator('..').locator('strong');
@@ -102,8 +101,8 @@ try{
   assert.equal(csvRecords(csv),expectedPeriods+2);assert.ok(csv.includes('CANCELAMENTO-SINTETICO'));
   console.log('PASS F2.4-PAG: '+expectedPeriods+' períodos ativos, CSV mensal completo e filtros preservados.');
 
-  await page.locator('#calendar-mode').selectOption('semana');
-  await page.locator('#calendar-focus').fill(first);
+  await page.locator('#calendar-period-start').fill(first);
+  await page.locator('#calendar-period-end').fill(new Date(Date.parse(first+'T12:00:00Z')+4*86400000).toISOString().slice(0,10));
   await expect(stat('Períodos ocupados')).toHaveText(String(count*5*3+1));
   const pdf=await download('Exportar PDF','agenda.pdf');
   const info=execFileSync('pdfinfo',[pdf],{encoding:'utf8'});

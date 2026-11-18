@@ -60,3 +60,26 @@ for(let i=0;i<3;i++){
  assert.equal(slot.available,m.error?8:0);
 }
 console.log('PASS F3.2: RLS, conflitos, atomicidade, prévias, encerramento, auditoria e concorrência.');
+
+const nb=await add('notebook_codes',{cart_id:cart.id,code:'IND-'+tag});
+const individual={...maintenance,p_notebook_id:nb.id};
+fail(await teacher.db.rpc('schedule_notebook_maintenance',individual),'Professor sem permissão de manutenção individual');
+const partial=ok(await db.rpc('schedule_notebook_maintenance',individual),'Programar notebook');
+assert.equal((await balance()).capacity,9);
+assert.equal((await balance()).available,9);
+assert.equal((await balance('VESPERTINO')).available,10);
+const teacherSchedule=ok(await teacher.db.rpc('teacher_maintenance_schedule',{p_start:day,p_end:day}),'Consulta docente de manutenção');
+const own=teacherSchedule.find(x=>x.id===partial);
+assert.equal(own.notebook_count,1);
+assert.ok(!('reason' in own)&&!('notebook_id' in own)&&!('created_by' in own));
+fail(await anon.rpc('teacher_maintenance_schedule',{p_start:day,p_end:day}),'Anon sem acesso ao calendário de manutenção');
+fail(await db.rpc('schedule_notebook_maintenance',individual),'Duplicidade de manutenção');
+fail(await db.rpc('create_reservation',{...reserve,p_quantity:10}),'Reserva maior que capacidade efetiva');
+fail(await db.rpc('create_reservation',{...reserve,p_notebook_ids:[nb.id]}),'Notebook em manutenção não pode ser atribuído');
+const availableReservation=ok(await db.rpc('create_reservation',{...reserve,p_quantity:9}),'Reserva parcial usa saldo efetivo');
+assert.equal((await balance()).available,0);
+ok(await db.rpc('close_maintenance',{p_id:partial,p_reason:'Resolvido'}),'Encerrar notebook');
+assert.equal((await balance()).available,1);
+ok(await db.rpc('cancel_reservation',{p_reservation_id:availableReservation}),'Cancelar reserva de teste');
+assert.equal((await balance()).capacity,10);
+console.log('PASS MANUTENCAO INDIVIDUAL: capacidade efetiva, conflito, isolamento docente, encerramento.');
