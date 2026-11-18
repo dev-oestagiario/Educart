@@ -37,7 +37,7 @@ export default function DigitalTwinPage({onNavigate}:{onNavigate:(target:'reserv
  const matches=searchOverview(layout.carts,search);
  const counts=summaryFresh?rows.reduce((a,r)=>({reserved:a.reserved+r.reserved,available:a.available+r.available}),{reserved:0,available:0}):null;
  const firstSnapshot=rows.reduce<string|null>((old,r)=>old===null||Date.parse(r.snapshot_at)<Date.parse(old)?r.snapshot_at:old,null);
- function pick(id:string){if(!layout.carts.some(c=>c.id===id))return;setSelection(id);}
+ function pick(id:string){if(!layout.carts.some(c=>c.id===id))return;setSelection(id);if(focusId&&focusId!==id)setFocusId(null);}
  function overview(){setFocusId(null);setSelection(null);setReset(v=>v+1);}
  function period(nextDate:string,nextShift:Shift){setDate(nextDate);setShift(nextShift);setFocusId(null);setReset(v=>v+1);}
  function refresh(){void catalog.refetch();if(valid)void summary.refetch();if(selected&&summaryFresh){void detail.refetch();void movement.refetch();}}
