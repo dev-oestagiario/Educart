@@ -10,8 +10,10 @@ try {
   try{await pg.exec(readFileSync('supabase/migrations/'+name,'utf8'));console.log('PASS migration '+name);}
   catch(e){throw Error(name+': '+e.message);}
  }
+ // Synthetic admin for read-only fixture (distinct from f5.1 fixtures).
+ await pg.exec("insert into auth.users values ('99999999-9999-4999-8999-999999999999','f56-admin@example.test',now()); insert into public.admin_users(user_id,display_name) values('99999999-9999-4999-8999-999999999999','TI F56');");
  for(const name of ['f1_1_rls_read_only.sql','f5_1_spatial.sql']){
-  await pg.exec(readFileSync('supabase/tests/'+name,'utf8'),{onNotice:n=>console.log(n.message)});
+  try{await pg.exec(readFileSync('supabase/tests/'+name,'utf8'),{onNotice:n=>console.log(n.message)});}catch(e){throw Error(name+': '+e.message);}
   console.log('PASS '+name);
  }
  console.log('PASS: PostgreSQL local, roles e claims simuladas; não valida JWT, PostgREST ou concorrência.');
