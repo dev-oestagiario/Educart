@@ -2411,6 +2411,7 @@ test.describe('F5.1 — configuração espacial',()=>{
 
 test.describe('F5.2 — visão geral administrativa 3D',()=>{
  test('todos os carrinhos, GLB e corte, detalhe sob demanda, turno, erro sem saldo, lista alternativa',async({page})=>{
+  test.setTimeout(90_000); // Cena GLB, múltiplas remontagens e seis viewports em um fluxo integrado.
   const db=await useFakeSupabase(page);
   const uid=(n:number)=>'00000000-0000-4000-8000-'+String(n).padStart(12,'0');
   const cartA=uid(521),cartB=uid(522),cartC=uid(532),cartD=uid(533),roomId=uid(523),blockId=uid(524),campusId=uid(525),sceneId=uid(526),modelId=uid(527);
@@ -2510,7 +2511,7 @@ test.describe('F5.2 — visão geral administrativa 3D',()=>{
   await list.getByRole('button',{name:/F52D/}).click();
   await expect(page.getByRole('heading',{name:'Carrinho D',exact:true})).toBeVisible();
   await list.getByRole('button',{name:/F52A/}).click();
-  await page.getByLabel('Turno',{exact:true}).selectOption('VESPERTINO');
+  await page.getByRole('combobox',{name:'Turno',exact:true}).selectOption('VESPERTINO');
   await expect(list.getByRole('button',{name:/F52A/})).toContainText('2 disponíveis');
   await page.getByLabel('Buscar carrinho na lista').fill('F52B');
   await expect(list.getByRole('button')).toHaveCount(1);
