@@ -1,3 +1,4 @@
+import {CatalogStatusFilter,matchesStatus,useCatalogLifecycle,type StatusFilter} from '../components/CatalogLifecycle';
 import {Feedback} from '../components/Feedback';
 import {useState,type ChangeEvent,type FormEvent} from 'react';
 import {useMutation,useQuery,useQueryClient} from '@tanstack/react-query';
@@ -8,7 +9,7 @@ import {fetchCatalogRows} from '../lib/catalog';
 import {errorMessage,notebookSchema,validateCodes} from '../lib/validation';
 import {parseImportFile} from '../lib/importSpreadsheet';
 
-type Feedback={kind:'success'|'error';message:string};
+type FeedbackState={kind:'success'|'error';message:string};
 export default function NotebooksPage(){
   const qc=useQueryClient();
   const carts=useQuery({queryKey:['carts'],queryFn:()=>fetchCatalogRows<Cart>('carts')});
@@ -17,7 +18,9 @@ export default function NotebooksPage(){
   const [cartFilter,setCartFilter]=useState(''),[search,setSearch]=useState('');
   const [editorCartId,setEditorCartId]=useState('');
   const [codes,setCodes]=useState(''),[generateCount,setGenerateCount]=useState('5');
-  const [feedback,setFeedback]=useState<Feedback|null>(null);
+  const [feedback,setFeedback]=useState<FeedbackState|null>(null);
+  const [status,setStatus]=useState<StatusFilter>('active');
+  const lifecycle=useCatalogLifecycle(setFeedback);
   const formCart=carts.data?.find(c=>c.id===editorCartId&&c.active);
   const filterCart=carts.data?.find(c=>c.id===cartFilter);
   const registered=notebooks.data??[];
@@ -28,7 +31,7 @@ export default function NotebooksPage(){
     const matchesCart=!cartFilter||n.cart_id===cartFilter;
     const cartName=carts.data?.find(c=>c.id===n.cart_id)?.name??'';
     const term=search.trim().toLocaleLowerCase('pt-BR');
-    return matchesCart&&(n.code+' '+cartName).toLocaleLowerCase('pt-BR').includes(term);
+    return matchesStatus(n.active,status)&&matchesCart&&(n.code+' '+cartName).toLocaleLowerCase('pt-BR').includes(term);
   });
   const save=useMutation({
     mutationFn:async(values:string[])=>{
@@ -113,7 +116,7 @@ export default function NotebooksPage(){
     }catch(err){setFeedback({kind:'error',message:errorMessage(err)});}
     e.target.value='';
   }
-  return <div className="records-page">
+  return <div className="records-page">{lifecycle.dialog}
     {screen==='list'?<>
       <RecordsHeader title="Notebooks" description="Consulte os códigos individuais de equipamentos, organizados por carrinho."
         actionLabel="Cadastrar notebooks" onAction={addNew}/>
@@ -122,7 +125,7 @@ export default function NotebooksPage(){
         <div className="records-list-heading"><h2 id="notebook-list-title">Notebooks cadastrados</h2>
           <span className="records-count">{notebooks.isLoading?'…':registered.length} códigos</span>
         </div>
-        <div className="records-filters">
+        <div className="records-filters"><CatalogStatusFilter value={status} onChange={setStatus}/>
           <label className="field" htmlFor="cart-selector"><span>Laboratório móvel</span>
             <select id="cart-selector" value={cartFilter} onChange={e=>setCartFilter(e.target.value)}>
               <option value="">Todos os carrinhos</option>
@@ -151,6 +154,7 @@ export default function NotebooksPage(){
               <div><strong>{item.code}</strong><span>{cart?.name??'Carrinho não encontrado'} · {cart?.code??'Sem código'}</span>
                 {!item.active&&<span className="records-inactive">Inativo</span>}
               </div>
+              <button type="button" className="secondary" disabled={lifecycle.busy} onClick={()=>lifecycle.request({table:'notebook_codes',id:item.id,active:item.active,label:item.code})}>{item.active?'Inativar':'Reativar'}</button>
             </article>;
           })}</div>}
       </section>

@@ -127,3 +127,8 @@
 .educart-toast.toast-warning{border-inline-start-color:#ca9b3d}.educart-toast.toast-warning .toast-icon{color:#ca9b3d}
 .toast-text{flex:1;min-width:0}.toast-close{flex:none;border:0;background:transparent;color:var(--educart-text);display:grid;place-items:center;border-radius:6px;width:32px;height:32px;padding:0;margin:-3px -3px -3px 0}.toast-close:hover{background:var(--educart-surface-hover,var(--educart-border))}
 @media(max-width:690px){#educart-toasts{inset:auto 10px max(10px,env(safe-area-inset-bottom)) 10px;width:auto}.toast-close{width:44px;height:44px}.educart-toast{padding:9px 11px}}
+
+.catalog-status-filter{width:min(100%,320px);margin-bottom:18px}.records-filters .catalog-status-filter{margin-bottom:0}
+.catalog-status-dialog{background:var(--educart-surface);color:var(--educart-text);border:1px solid var(--educart-border);border-radius:16px;width:min(460px,calc(100% - 32px));max-height:calc(100dvh - 32px);padding:24px;margin:auto;box-shadow:0 15px 60px #0006;overflow:auto}
+.catalog-status-dialog h2{margin:0 0 12px}.catalog-status-dialog p{line-height:1.6}.catalog-status-dialog .actions{justify-content:flex-end;margin-top:22px}.catalog-status-dialog::backdrop{background:#0009}
+@media(max-width:690px){.catalog-status-filter{width:100%}.catalog-status-dialog .actions button{flex:1}}

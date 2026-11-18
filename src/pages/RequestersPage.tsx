@@ -1,3 +1,4 @@
+import {CatalogStatusFilter,matchesStatus,useCatalogLifecycle,type StatusFilter} from '../components/CatalogLifecycle';
 import {Feedback} from '../components/Feedback';
 import {useState,type FormEvent} from 'react';
 import {useMutation,useQuery,useQueryClient} from '@tanstack/react-query';
@@ -6,7 +7,7 @@ import {supabase,type Requester} from '../lib/supabase';
 import {fetchCatalogRows} from '../lib/catalog';
 import {requesterSchema,errorMessage} from '../lib/validation';
 
-type Feedback={kind:'success'|'error';message:string};
+type FeedbackState={kind:'success'|'error';message:string};
 export default function RequestersPage(){
   const qc=useQueryClient();
   const teachers=useQuery({queryKey:['requesters'],queryFn:()=>fetchCatalogRows<Requester>('requesters')});
@@ -14,7 +15,9 @@ export default function RequestersPage(){
   const [search,setSearch]=useState('');
   const [editingId,setEditingId]=useState<string|null>(null);
   const [name,setName]=useState(''),[code,setCode]=useState('');
-  const [feedback,setFeedback]=useState<Feedback|null>(null);
+  const [feedback,setFeedback]=useState<FeedbackState|null>(null);
+  const [status,setStatus]=useState<StatusFilter>('active');
+  const lifecycle=useCatalogLifecycle(setFeedback);
   const save=useMutation({
     mutationFn:async(values:{name:string;reference_code:string|null})=>{
       const req=editingId
@@ -44,9 +47,9 @@ export default function RequestersPage(){
   }
   const searchTerm=search.trim().toLocaleLowerCase('pt-BR');
   const filtered=(teachers.data??[]).filter(item=>
-    (item.name+' '+(item.reference_code??'')).toLocaleLowerCase('pt-BR').includes(searchTerm)
+    matchesStatus(item.active,status)&&(item.name+' '+(item.reference_code??'')).toLocaleLowerCase('pt-BR').includes(searchTerm)
   );
-  return <div className="records-page">
+  return <div className="records-page">{lifecycle.dialog}
     {screen==='list'?<>
       <RecordsHeader title="Professores" description="Consulte os professores responsáveis pela solicitação dos equipamentos."
         actionLabel="Cadastrar professor" onAction={newTeacher}/>
@@ -58,6 +61,7 @@ export default function RequestersPage(){
           <input id="teachers-search" type="search" placeholder="Nome ou identificador"
             value={search} onChange={event=>setSearch(event.target.value)}/>
         </label>
+        <CatalogStatusFilter value={status} onChange={setStatus}/>
         {teachers.isLoading?<p role="status">Carregando professores…</p>:
           teachers.error?<Feedback kind="error">{errorMessage(teachers.error)}</Feedback>:
           !teachers.data?.length?<p className="empty">Nenhum professor cadastrado. Use o botão “Cadastrar professor” para começar.</p>:
@@ -66,7 +70,7 @@ export default function RequestersPage(){
             <div><strong>{item.name}</strong><span>{item.reference_code||'Sem identificador interno'}</span>
               {!item.active&&<span className="records-inactive">Inativo</span>}
             </div>
-            <button type="button" className="secondary" onClick={()=>edit(item)}>Editar</button>
+            <div className="record-row-actions"><button type="button" className="secondary" onClick={()=>edit(item)}>Editar</button><button type="button" className="secondary" disabled={lifecycle.busy} onClick={()=>lifecycle.request({table:'requesters',id:item.id,active:item.active,label:item.name})}>{item.active?'Inativar':'Reativar'}</button></div>
           </article>)}</div>}
       </section>
     </>:<>
