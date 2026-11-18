@@ -2,9 +2,10 @@ import {useEffect,useRef,useState} from 'react';
 import * as THREE from 'three';
 import {OrbitControls} from 'three/examples/jsm/controls/OrbitControls.js';
 import {loadIllustrativeAssets,createRoomVisual,createCartVisual,disposeAssets,type AssetLibrary} from './illustrativeAssets';
+import {hotspotForName,type Hotspot} from './inspection';
 import {overviewStatuses,type OverviewLayout,type SceneCart} from './overviewLayout';
 
-type Props={layout:OverviewLayout;selectedId:string|null;focusId:string|null;reset:number;onPick:(id:string)=>void;quality:'low'|'high'};
+type Props={layout:OverviewLayout;selectedId:string|null;focusId:string|null;reset:number;onPick:(id:string)=>void;doorOpen:boolean;hotspot:Hotspot|null;onHotspot:(id:string,part:Hotspot)=>void;quality:'low'|'high'};
 function box(root:THREE.Object3D,w:number,h:number,d:number,color:number,x:number,y:number,z:number,metalness=0){
  const mesh=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),new THREE.MeshStandardMaterial({color,roughness:.72,metalness}));
  mesh.position.set(x,y,z);root.add(mesh);return mesh;
@@ -94,13 +95,14 @@ export default function EnvironmentCanvas(props:Props){
   if(saved){camera.position.copy(saved.position);controls.target.copy(saved.target);camera.zoom=saved.zoom;lastFocus=saved.focusId;lastReset=saved.reset;}
   function update(){
    const state=latest.current,selected=carts.find(c=>c.cart.id===state.selectedId),focused=carts.find(c=>c.cart.id===state.focusId);
-   for(const c of carts){c.ring.visible=c===selected;c.detailed?.setCutaway(c===focused);}
+   for(const c of carts){c.ring.visible=c===selected;c.detailed?.setCutaway(c===focused&&state.doorOpen);}
    canvas.dataset.selectedCart=selected?.cart.id??'';
-   canvas.dataset.cutawayCart=focused?.detailed?focused.cart.id:'';
+   canvas.dataset.cutawayCart=focused?.detailed&&state.doorOpen?focused.cart.id:'';
+   canvas.dataset.hotspot=state.hotspot??'';
    const focus=focused?.cart.id??null;
    if(lastReset!==state.reset||lastFocus!==focus){
     lastReset=state.reset;lastFocus=focus;
-    if(focused){const c=focused.cart;controls.target.set(c.x,.85,c.z);camera.position.set(c.x+distance*.5,distance*.76,c.z+distance*.65);
+    if(focused){const c=focused.cart;controls.target.set(c.x,.85,c.z);const angle=c.yaw*Math.PI/180+.35;camera.position.set(c.x+Math.sin(angle)*distance*.8,distance*.36,c.z+Math.cos(angle)*distance*.8);
      camera.zoom=Math.min(controls.maxZoom,Math.max(1,span/(Math.max(3,c.width,c.depth)*1.9)));}
     else {controls.target.set(0,.2,0);camera.position.set(distance*.7,distance*.85,distance);camera.zoom=1;}
     camera.updateProjectionMatrix();controls.update();
@@ -120,7 +122,12 @@ export default function EnvironmentCanvas(props:Props){
    const hit=ray.intersectObjects(carts.map(c=>c.root),true).find(h=>h.object instanceof THREE.Mesh&&visible(h.object));
    let obj:THREE.Object3D|null=hit?.object??null;
    while(obj&&!obj.userData.cartId)obj=obj.parent;
-   if(obj)latest.current.onPick(obj.userData.cartId as string);
+   if(obj){const id=obj.userData.cartId as string,state=latest.current;
+    if(state.focusId===id){for(let n:THREE.Object3D|null=hit?.object??null;n&&n!==obj;n=n.parent){
+     const part=hotspotForName(n.name);if(part){state.onHotspot(id,part);return;}
+    }}
+    state.onPick(id);
+   }
   };
   const cancel=()=>{start=null;};
   const contextLost=(e:Event)=>{e.preventDefault();lost=true;setUnavailable(true);};
@@ -156,8 +163,8 @@ export default function EnvironmentCanvas(props:Props){
    renderer.dispose();canvas.remove();
   };
  },[props.layout,props.quality]);
- useEffect(()=>{synchronise.current?.();},[props.selectedId,props.focusId,props.reset]);
+ useEffect(()=>{synchronise.current?.();},[props.selectedId,props.focusId,props.reset,props.doorOpen,props.hotspot]);
  return <div><div className="dt-stage dt-overview-stage" ref={mount} role="img" aria-label="Ambientes esquemáticos e carrinhos cadastrados. Use a lista para seleção por teclado."/>
   {unavailable&&<p role="status" className="notice warning">WebGL indisponível. Todos os carrinhos continuam acessíveis pela lista.</p>}
-  {!unavailable&&<p className="form-hint" role="status">{assetState==='detailed'?'Modelos GLB ilustrativos verificados. O corte mostra exemplos, não equipamentos presentes.':assetState==='loading'?'Carregando modelos detalhados; geometria simples disponível.':assetState==='fallback'?'Modelos detalhados indisponíveis. Geometria simplificada preservada.':'Qualidade econômica: geometria simplificada.'}</p>}</div>;
+  {!unavailable&&<p className="form-hint" role="status">{assetState==='detailed'?'Modelos GLB ilustrativos verificados. A porta virtual mostra exemplos, não equipamentos presentes.':assetState==='loading'?'Carregando modelos detalhados; geometria simples disponível.':assetState==='fallback'?'Modelos detalhados indisponíveis. Geometria simplificada preservada.':'Qualidade econômica: geometria simplificada.'}</p>}</div>;
 }
