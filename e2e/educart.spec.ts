@@ -2653,3 +2653,34 @@ test('Login — consulta pública discreta, centralizada e acessível no rodapé
   await link.focus();await expect(link).toBeFocused();await page.keyboard.press('Enter');
   await expect(page.getByRole('heading',{name:'Disponibilidade dos carrinhos'})).toBeVisible();
 });
+
+
+test('Dashboard operacional — cards de alturas diferentes sem lacunas no desktop',async({page})=>{
+ const db=await useFakeSupabase(page);
+ const today=new Intl.DateTimeFormat('en-CA',{timeZone:'America/Sao_Paulo',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
+ const tomorrow=new Date(today+'T12:00:00Z');tomorrow.setUTCDate(tomorrow.getUTCDate()+1);
+ const cart=crypto.randomUUID(),teacher=crypto.randomUUID();
+ db.carts.push({id:cart,name:'Carrinho de teste',code:'GAP-01',capacity:30,active:true});
+ db.requesters.push({id:teacher,name:'Professor sintético',active:true});
+ for(let i=0;i<9;i++){const id=crypto.randomUUID();db.reservation_periods.push({id,reservation_id:id,cart_id:cart,usage_date:tomorrow.toISOString().slice(0,10),shift:'MATUTINO',quantity:2,active:true,reservations:{requester_id:teacher,status:'CONFIRMADA',destination_label:null}});}
+ await page.setViewportSize({width:1440,height:900});await login(page);
+ const card=(title:string)=>page.locator('.dashboard-section').filter({has:page.getByRole('heading',{name:new RegExp('^'+title)})});
+ const upcoming=card('Próximas utilizações'),maintenance=card('Manutenções'),catalog=card('Cadastros e capacidade nominal');
+ await expect(upcoming.locator('article')).toHaveCount(5);
+ await expect(maintenance).toContainText('Nenhuma janela de manutenção');
+ const assertGap=async()=>{const m=await maintenance.boundingBox(),c=await catalog.boundingBox();expect(m&&c).toBeTruthy();expect(Math.abs(c!.x-m!.x)).toBeLessThan(2);expect(Math.abs(c!.y-m!.y-m!.height-16)).toBeLessThan(2);};
+ await assertGap();
+ await upcoming.getByRole('button',{name:'Exibir todos (9)'}).click();await expect(upcoming.locator('article')).toHaveCount(9);await assertGap();
+ await page.setViewportSize({width:390,height:850});await expect(upcoming.locator('article')).toHaveCount(9);
+ await page.setViewportSize({width:1440,height:900});await expect(upcoming.locator('article')).toHaveCount(9);await assertGap();
+ await upcoming.getByRole('button',{name:'Mostrar menos'}).click();await expect(upcoming.locator('article')).toHaveCount(5);await assertGap();
+ for(const width of [1280,1024]){await page.setViewportSize({width,height:900});await assertGap();}
+ for(const width of [1000,768,390,320]){
+  await page.setViewportSize({width,height:850});
+  await expect(page.locator('.dashboard-section h2')).toHaveText([/^Agenda de hoje/,/^Devoluções pendentes/,/^Próximas utilizações/,/^Manutenções/,/^Solicitações aguardando análise/,/^Cadastros e capacidade nominal/]);
+  const boxes=await page.locator('.dashboard-section').evaluateAll(els=>els.map(el=>{const r=el.getBoundingClientRect();return {x:r.x,y:r.y,h:r.height};}));
+  expect(boxes).toHaveLength(6);
+  for(let i=1;i<boxes.length;i++){expect(Math.abs(boxes[i].x-boxes[0].x)).toBeLessThan(2);expect(Math.abs(boxes[i].y-boxes[i-1].y-boxes[i-1].h-16)).toBeLessThan(2);}
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
+ }
+});
