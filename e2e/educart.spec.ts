@@ -2447,6 +2447,7 @@ test.describe('F5.2 — visão geral administrativa 3D',()=>{
    detailCalls++;const body=r.request().postDataJSON();const row=summary(body.p_shift).find(c=>c.cart_id===body.p_cart_id)!;
    await r.fulfill({headers,json:{summary:row,reservations:row.cart_id===cartA?[reservation]:[],confirmed_slots:row.cart_id===cartA?[slot]:[]}});
   });
+  await page.route('**/cart-illustrative-v1.glb*',r=>r.fulfill({status:503,body:'asset unavailable'}));
   await page.goto('/?environment3d=1');
   await page.getByLabel('E-mail').fill('test-admin@educart.example');
   await page.getByLabel('Senha').fill('senha-de-teste-sem-uso-real');
@@ -2460,7 +2461,14 @@ test.describe('F5.2 — visão geral administrativa 3D',()=>{
   await page.getByLabel('Qualidade visual').selectOption('high');
   const canvas=page.locator('.dt-stage canvas');
   await canvas.scrollIntoViewIfNeeded();
+  await expect(canvas).toHaveAttribute('data-asset-mode','fallback',{timeout:15000});
+  await expect(list.getByRole('button')).toHaveCount(2);
+  await page.unroute('**/cart-illustrative-v1.glb*');
+  await page.getByLabel('Qualidade visual').selectOption('low');
+  await page.getByLabel('Qualidade visual').selectOption('high');
+  await canvas.scrollIntoViewIfNeeded();
   await expect(canvas).toHaveAttribute('data-asset-mode','detailed',{timeout:15000});
+  await expect(canvas).toHaveAttribute('data-instanced-carts','2');
   await expect(canvas).toHaveAttribute('data-cart-count','2');
   await list.getByRole('button',{name:/F52A/}).click();
   await expect(page.getByRole('button',{name:/F54-NB-01/})).toBeVisible();
