@@ -42,7 +42,7 @@ export default function MovementsPage(){
    ?await supabase.rpc('register_equipment_pickup',{...shared,p_period_id:selection.period.id,p_quantity:quantity,p_notebook_ids:codes})
    :await supabase.rpc('register_equipment_return',{...shared,p_movement_id:selection.movement.id});
   if(response.error)throw response.error;return {kind:selection.kind,id:response.data as string};
- },onSuccess:async result=>{await Promise.all([qc.invalidateQueries({queryKey:['movements']}),qc.invalidateQueries({queryKey:['movement-periods']})]);setSelection(null);setDetail(null);setNotice({error:false,text:result.kind==='pickup'?'Retirada registrada.':'Devolução registrada.'});},onError:e=>setNotice({error:true,text:errorMessage(e)})});
+ },onSuccess:async result=>{await Promise.all([qc.invalidateQueries({queryKey:['movements']}),qc.invalidateQueries({queryKey:['movement-periods']}),qc.invalidateQueries({queryKey:['spatial']})]);setSelection(null);setDetail(null);setNotice({error:false,text:result.kind==='pickup'?'Retirada registrada.':'Devolução registrada.'});},onError:e=>setNotice({error:true,text:errorMessage(e)})});
  function open(s:Selection){
   setSelection(s);setKey(crypto.randomUUID());setQuantity(s.kind==='pickup'?s.period.quantity:s.movement.quantity);setCodes([]);
   setResponsible('');setCondition('BOA');setNotes('');setNotice(null);
