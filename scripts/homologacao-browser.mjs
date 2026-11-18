@@ -99,14 +99,19 @@ try{
   assert.equal(booking.quantity,4);
   const period=ok(await admin.from('reservation_periods').select('usage_date,quantity,active').eq('reservation_id',booking.id).single(),'Período persistido');
   assert.equal(period.usage_date,day);assert.equal(period.quantity,4);assert.equal(period.active,true);
-  // CI starts from a clean stack and runs this browser flow before other suites.
-  await page.getByRole('button',{name:'Editar',exact:true}).click();
+  // Scope actions to the unique synthetic reservation, even with other fixtures.
+  await page.getByLabel('Buscar reserva').fill(professor);
+  const ownBooking=page.locator('.booking-item').filter({has:page.getByText(professor,{exact:true})});
+  await expect(ownBooking).toHaveCount(1);
+  await ownBooking.getByRole('button',{name:'Editar',exact:true}).click();
   await page.getByLabel('Quantidade de notebooks').fill('3');
   await page.getByRole('button',{name:'Salvar alterações'}).click();
   await expect(page.getByText('Reserva editada e alteração registrada no histórico.')).toBeVisible();
   assert.equal(ok(await admin.from('reservations').select('quantity').eq('id',booking.id).single(),'Edição persistida').quantity,3);
-  await page.getByRole('button',{name:'Cancelar reserva'}).click();
-  await page.getByRole('button',{name:'Confirmar cancelamento'}).click();
+  await page.getByLabel('Buscar reserva').fill(professor);
+  await expect(ownBooking).toHaveCount(1);
+  await ownBooking.getByRole('button',{name:'Cancelar reserva'}).click();
+  await ownBooking.getByRole('button',{name:'Confirmar cancelamento'}).click();
   await expect(page.getByText(/Cancelamento registrado/)).toBeVisible();
   assert.equal(ok(await admin.from('reservations').select('status').eq('id',booking.id).single(),'Cancelamento persistido').status,'CANCELADA');
   const events=ok(await admin.from('reservation_events').select('event_type').eq('reservation_id',booking.id),'Histórico persistido');

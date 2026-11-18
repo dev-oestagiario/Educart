@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {validateLocalConfig,suitePlan,apiSuites,browserSuites,classifySuite} from './homologacao-preflight.mjs';
+import {validateLocalConfig,suitePlan,apiSuites,browserSuites,classifySuite,suiteFailureLocation} from './homologacao-preflight.mjs';
 const env={EDUCART_DISPOSABLE_HOMOLOGACAO:'educart-homologacao'};
 const valid={API_URL:'http://127.0.0.1:54321',DB_URL:'postgresql://local:fixture@127.0.0.1:54322/postgres',ANON_KEY:'synthetic-anon',SERVICE_ROLE_KEY:'synthetic-service'};
 test('accepts isolated loopback status',()=>assert.equal(validateLocalConfig(valid,env),valid.API_URL));
@@ -9,3 +9,6 @@ test('rejects hosted, altered ports, redirects and URL lookalikes',()=>{for(cons
 test('rejects missing or equal keys',()=>{assert.throws(()=>validateLocalConfig({...valid,ANON_KEY:''},env));assert.throws(()=>validateLocalConfig({...valid,SERVICE_ROLE_KEY:valid.ANON_KEY},env))});
 test('full plan includes all suites and API subset cannot imply full',()=>{assert.equal(suitePlan('full').length,11);assert.equal(new Set(suitePlan('full')).size,11);assert.deepEqual(suitePlan('api-only'),apiSuites);assert.ok(browserSuites.every(x=>!apiSuites.includes(x)));assert.throws(()=>suitePlan('unknown'))});
 test('failure, timeout and skips are not passes',()=>{assert.equal(classifySuite({status:0,stdout:'PASS F3.1'}),'PASS');assert.equal(classifySuite({status:0,stdout:'SKIP F3.3'}),'SKIP');assert.equal(classifySuite({status:0,stdout:'PASS earlier\nSKIP later'}),'SKIP');assert.equal(classifySuite({status:1,stdout:'PASS earlier'}),'FAIL');assert.equal(classifySuite({status:0,stdout:''}),'FAIL');assert.equal(classifySuite({error:Error('timeout')}),'FAIL')});
+
+test('browser smoke starts on clean fixtures',()=>assert.equal(suitePlan('full')[0],'homologacao-browser'));
+test('failure diagnostic exposes line only',()=>{assert.deepEqual(suiteFailureLocation({stderr:'secret fixture at file:///workspace/scripts/homologacao-browser.mjs:72:5'},'homologacao-browser'),{line:72,column:5});assert.equal(suiteFailureLocation({stderr:'secret'},'homologacao-browser'),null);assert.equal(suiteFailureLocation({stderr:'secret'},'invalid'),null);});

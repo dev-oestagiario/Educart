@@ -13,10 +13,18 @@ export function validateLocalConfig(config,env){
 }
 export function suitePlan(mode){
  assert.ok(mode==='full'||mode==='api-only','Modo não reconhecido');
- return mode==='full'?[...apiSuites,...browserSuites]:[...apiSuites];
+ return mode==='full'?[browserSuites[0],...apiSuites,...browserSuites.slice(1)]:[...apiSuites];
 }
 export function classifySuite(result){
  if(result.error||result.signal||result.status!==0)return 'FAIL';
  if(String(result.stdout??'').split(/\r?\n/).some(line=>/^SKIP\b/.test(line)))return 'SKIP';
  return String(result.stdout??'').split(/\r?\n/).some(line=>/^PASS\b/.test(line))?'PASS':'FAIL';
+}
+
+// Only emit a source line number, never the raw child error, selectors or data.
+export function suiteFailureLocation(result,suite){
+ if(![...apiSuites,...browserSuites].includes(suite))return null;
+ const pattern=new RegExp('/scripts/'+suite+'\\.mjs:(\\d+):(\\d+)');
+ const match=String(result.stderr??'').match(pattern);
+ return match?{line:Number(match[1]),column:Number(match[2])}:null;
 }
