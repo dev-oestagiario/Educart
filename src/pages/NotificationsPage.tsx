@@ -1,8 +1,8 @@
+import {Feedback} from '../components/Feedback';
 import {useState} from 'react';
 import {useMutation,useQueryClient} from '@tanstack/react-query';
 import {ArrowLeft,Bell,CheckCheck,ClipboardList} from 'lucide-react';
 import {supabase} from '../lib/supabase';
-import EmailPreference from '../components/EmailPreference';
 import {countUnread,useNotifications} from '../lib/notifications';
 
 type Props={userId:string;onReturn:()=>void;onViewRequests:()=>void;audience:'admin'|'teacher'};
@@ -18,6 +18,8 @@ export default function NotificationsPage({userId,onReturn,onViewRequests,audien
   const [notice,setNotice]=useState<{kind:'success'|'error';message:string}|null>(null);
   const data=useNotifications(userId);
   const unread=countUnread(data.data??[]);
+  const [filter,setFilter]=useState<'all'|'unread'|'read'>('all');
+  const visible=(data.data??[]).filter(item=>filter==='all'||(filter==='unread'?!item.read_at:!!item.read_at));
   const invalidate=()=>void qc.invalidateQueries({queryKey:['notifications',userId]});
   const markOne=useMutation({
     mutationFn:async(id:string)=>{
@@ -47,7 +49,6 @@ export default function NotificationsPage({userId,onReturn,onViewRequests,audien
         ?'Avisos sobre novas solicitações de reserva e retiradas pelos professores.'
         :'Acompanhe as decisões da TI sobre suas solicitações de reserva.'}</p>
     </div>
-    <EmailPreference userId={userId}/>
     <section className="panel" aria-label="Caixa de notificações">
       <div className="notifications-heading">
         <div><h2><Bell size={19} aria-hidden="true"/> Seus avisos</h2>
@@ -58,15 +59,14 @@ export default function NotificationsPage({userId,onReturn,onViewRequests,audien
           <CheckCheck size={17} aria-hidden="true"/> {markAll.isPending?'Atualizando…':'Marcar todas como lidas'}
         </button>
       </div>
-      {notice&&<p className={'notice '+notice.kind} role={notice.kind==='error'?'alert':'status'}>{notice.message}</p>}
+      <div className="notification-filters" role="group" aria-label="Filtrar avisos">{([['all','Todas'],['unread','Não lidas'],['read','Lidas']] as const).map(([id,label])=><button key={id} type="button" className={filter===id?'primary':'ghost'} aria-pressed={filter===id} onClick={()=>setFilter(id)}>{label}{id==='unread'&&unread>0?' ('+unread+')':''}</button>)}</div>
+      {notice&&<Feedback kind={notice.kind}>{notice.message}</Feedback>}
       {data.isLoading?<p role="status">Carregando notificações…</p>:
-        data.isError?<div role="alert" className="notice error">Não foi possível consultar as notificações.
-          <button type="button" className="text-button" onClick={()=>void data.refetch()}>Tentar novamente</button>
-        </div>:
-        !data.data?.length?<div className="empty">Não há notificações ainda. As atualizações aparecerão aqui quando houver solicitações ou decisões da TI.</div>:
-        <div className="notifications-list">{data.data.map(item=><article
+        data.isError?<Feedback kind="error">Não foi possível consultar as notificações. <button type="button" className="text-button" onClick={()=>void data.refetch()}>Tentar novamente</button></Feedback>:
+        !visible.length?<div className="empty">{filter==='all'?'Não há notificações ainda.':'Nenhum aviso neste filtro.'}</div>:
+        <div className="notifications-list">{visible.map(item=><article
           className={'notification-item '+(item.read_at?'':'unread')} key={item.id}>
-          <div className="notification-text">
+          <span className="notification-visual-icon"><Bell size={19} aria-hidden="true"/></span><div className="notification-text">
             <div className="notification-item-heading">
               <strong>{item.title}</strong>
               {!item.read_at&&<span className="notification-new">Nova</span>}
@@ -75,7 +75,7 @@ export default function NotificationsPage({userId,onReturn,onViewRequests,audien
             <small>{new Date(item.created_at).toLocaleString('pt-BR')}</small>
           </div>
           <div className="notification-actions">
-            <button type="button" className="secondary" onClick={onViewRequests}>
+            <button type="button" className="secondary" onClick={()=>{if(!item.read_at)markOne.mutate(item.id);onViewRequests();}}>
               <ClipboardList size={16} aria-hidden="true"/> Abrir solicitações
             </button>
             {!item.read_at&&<button type="button" className="ghost"
@@ -83,7 +83,7 @@ export default function NotificationsPage({userId,onReturn,onViewRequests,audien
               onClick={()=>markOne.mutate(item.id)}>Marcar como lida</button>}
           </div>
         </article>)}</div>}
-      <p className="form-hint notifications-limit">Exibindo no máximo 100 avisos recentes. A lista é atualizada periodicamente enquanto o Educart está aberto.</p>
+      <p className="form-hint notifications-limit">Exibindo no máximo 100 avisos recentes. A lista é atualizada automaticamente enquanto o Educart está aberto.</p>
     </section>
   </div>;
 }

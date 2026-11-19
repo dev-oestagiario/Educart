@@ -1,0 +1,25 @@
+name: Git Flow
+on:
+  pull_request:
+    branches: [main, develop]
+    types: [opened, synchronize, reopened, ready_for_review, edited]
+permissions:
+  contents: read
+jobs:
+  git-flow:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Testar regra de integração
+        run: node --test scripts/git-flow.test.mjs
+      - name: Validar origem e destino
+        env:
+          PR_BASE: ${{ github.event.pull_request.base.ref }}
+          PR_HEAD: ${{ github.event.pull_request.head.ref }}
+          PR_SAME_REPO: ${{ github.event.pull_request.head.repo.full_name == github.repository }}
+        run: node scripts/git-flow.mjs

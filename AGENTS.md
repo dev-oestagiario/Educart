@@ -4,6 +4,11 @@ Este repositório inclui 27 skills de Matt Pocock e uma skill específica de fro
 
 ## Fluxo de desenvolvimento
 
+- A partir de 18/11/2026, seguir obrigatoriamente [Git Flow](docs/git-flow.md). `develop` é a base de trabalho; `main` é a referência de produção. Não desenvolver, commitar ou enviar diretamente à `main`.
+- Criar `feature/*`, `fix/*`, `docs/*` ou `chore/*` a partir de `develop` e abrir PR para `develop`. Somente `release/*` ou `hotfix/*` revisados podem promover à `main`, com autorização explícita. Sincronizar `main` de volta em `develop` após promoção.
+- Não aplicar migrations nem testar com escrita no Supabase de produção a partir de `develop`. Homologação usa stack descartável separado. Publicação Pages permanece manual, vinculada ao SHA aprovado e CI completa.
+- Preservar os controles administrativos de proteção de branches; nunca contornar revisão, checks, aceite ou autorização de deploy.
+
 - Verifique primeiro o estado real dos arquivos e do projeto. Não suponha que já exista uma aplicação.
 - Use `setup-matt-pocock-skills` quando for configurar convenções da equipe (GitHub Issues, labels e diretório de documentação) e registre as decisões adotadas.
 - Para bugs, considere `diagnosing-bugs` e `tdd`; para mudanças grandes, `to-spec`, `to-tickets` e `implement-spec`; antes de integrar, `code-review` e `pr`.

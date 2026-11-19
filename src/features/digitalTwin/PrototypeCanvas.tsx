@@ -1,3 +1,4 @@
+import {Feedback} from '../../components/Feedback';
 import {useEffect,useRef,useState} from 'react';
 import * as THREE from 'three';
 import {OrbitControls} from 'three/examples/jsm/controls/OrbitControls.js';
@@ -147,6 +148,6 @@ export default function PrototypeCanvas(props:Props) {
   useEffect(()=>{sync.current?.();},[props.selectedId,props.inspection,props.doorOpen,props.reset]);
   return <div>
     <div className="dt-stage" ref={rootRef} role="img" aria-label="Sala ilustrativa tridimensional com quatro carrinhos. Use a lista para seleção por teclado."/>
-    {unavailable&&<p role="status" className="notice warning">WebGL indisponível. Continue pela lista de carrinhos abaixo ou desligue a cena.</p>}
+    {unavailable&&<Feedback kind="warning">WebGL indisponível. Continue pela lista de carrinhos abaixo ou desligue a cena.</Feedback>}
   </div>;
 }

@@ -1,3 +1,6 @@
+import DateRangeFields from '../components/DateRangeFields';
+import {publicDateSelection} from '../lib/publicAvailabilityDates';
+import {Feedback} from '../components/Feedback';
 import {useMemo,useState,type CSSProperties} from 'react';
 import {useQuery} from '@tanstack/react-query';
 import {CalendarDays,Download,FileText,Filter} from 'lucide-react';
@@ -24,10 +27,6 @@ export function calendarWeekdays(view:'semana'|'mes',focus:string):string[]{
   const dates=Array.from({length},(_,i)=>addCalendarDays(start,i));
   return dates.filter(isWeekday);
 }
-function humanMonth(iso:string){
-  return new Intl.DateTimeFormat('pt-BR',{timeZone:'UTC',month:'long',year:'numeric'})
-    .format(new Date(iso+'T12:00:00Z'));
-}
 
 const REPORT_PAGE_SIZE=250;
 async function collectReportPages<T>(fetchPage:(start:number,end:number)=>PromiseLike<{data:T[]|null;error:unknown}>):Promise<T[]>{
@@ -49,17 +48,19 @@ async function getRows<T>(table:'carts'|'requesters'|'admin_users',cols='*'):Pro
 }
 export default function CalendarReportsPage(){
   const today=todayInSaoPaulo();
-  const [mode,setMode]=useState<'semana'|'mes'>('semana');
-  const [focus,setFocus]=useState(today);
+  const [start,setStart]=useState(today),[end,setEnd]=useState('');
   const [cartId,setCartId]=useState('');
   const [teacherId,setTeacherId]=useState('');
   const [includeCancelled,setIncludeCancelled]=useState(false);
   const [exportBusy,setExportBusy]=useState(false);
   const [exportError,setExportError]=useState('');
-  const dates=useMemo(()=>calendarWeekdays(mode,focus),[mode,focus]);
+  const selection=useMemo(()=>publicDateSelection(start,end),[start,end]);
+  const dates=selection.dates;
   const first=dates[0]??today,last=dates[dates.length-1]??today;
+  const mode=dates.length===5&&firstDayOfWeek(first)===first&&last===addCalendarDays(first,4)?'semana':'periodo';
   const periodQuery=useQuery({
-    queryKey:['calendar-periods',mode,first,last],
+    queryKey:['calendar-periods',first,last],
+    enabled:!selection.error,
     queryFn:async():Promise<Period[]>=>{
       return collectReportPages<Period>(async(start,end)=>{
         const {data,error}=await supabase.from('reservation_periods')
@@ -98,7 +99,7 @@ export default function CalendarReportsPage(){
     const byAdmin=new Map(admins.data?.map(x=>[x.user_id,x]));
     return periodQuery.data.flatMap(p=>{
       const booking=lookup.get(p.reservation_id);
-      if(!booking)return [];
+      if(!booking||!dates.includes(p.usage_date))return [];
       if(cartId&&p.cart_id!==cartId)return [];
       if(teacherId&&booking.requester_id!==teacherId)return [];
       if(!includeCancelled&&!p.active)return [];
@@ -113,7 +114,7 @@ export default function CalendarReportsPage(){
         createdBy:admin?.display_name??'TI',notes:booking.notes??'',room:booking.destination_label??'',bookingId:booking.id,active:p.active
       }];
     });
-  },[periodQuery.data,bookings.data,carts.data,teachers.data,admins.data,cartId,teacherId,includeCancelled]);
+  },[periodQuery.data,bookings.data,carts.data,teachers.data,admins.data,cartId,teacherId,includeCancelled,dates]);
   const byDate=useMemo(()=>{const map=new Map<string,CalendarRow[]>();for(const row of rows){const group=map.get(row.dateIso)??[];group.push(row);map.set(row.dateIso,group);}return map;},[rows]);
   const active=rows.filter(r=>r.active);
   const bookingCount=new Set(active.map(r=>r.bookingId)).size;
@@ -121,9 +122,9 @@ export default function CalendarReportsPage(){
   const busy=periodQuery.isFetching||(bookingIds.length>0&&bookings.isFetching)
     ||carts.isFetching||teachers.isFetching||admins.isFetching;
   const missingBookings=useMemo(()=>{const ids=new Set(bookings.data?.map(b=>b.id));return !!periodQuery.data&&!!bookings.data&&bookingIds.some(id=>!ids.has(id));},[periodQuery.data,bookings.data,bookingIds]);
-  const hasError=periodQuery.error||bookings.error||carts.error||teachers.error||admins.error||missingBookings;
+  const hasError=!!selection.error||periodQuery.error||bookings.error||carts.error||teachers.error||admins.error||missingBookings;
   function refresh(){void periodQuery.refetch();if(bookingIds.length)void bookings.refetch();void carts.refetch();void teachers.refetch();void admins.refetch();}
-  const dateLabel=mode==='mes'?humanMonth(first):showDate(first)+' a '+showDate(last);
+  const dateLabel=selection.error?'Selecione um período válido':first===last?showDate(first):showDate(first)+' a '+showDate(last);
 
   async function exportFile(format:'pdf'|'csv'){
     if(busy||hasError||exportBusy)return;
@@ -148,19 +149,7 @@ export default function CalendarReportsPage(){
     <section className="panel calendar-filters" aria-label="Filtros do calendário">
       <h2><Filter size={18} aria-hidden="true"/> Filtros</h2>
       <div className="calendar-filter-grid">
-        <label className="field" htmlFor="calendar-mode"><span>Visualização</span>
-          <select id="calendar-mode" value={mode} onChange={e=>setMode(e.target.value as 'semana'|'mes')}>
-            <option value="semana">Semana</option><option value="mes">Mês</option>
-          </select>
-        </label>
-        <label className="field" htmlFor="calendar-focus"><span>{mode==='semana'?'Semana de referência':'Mês de referência'}</span>
-          <input id="calendar-focus" type={mode==='semana'?'date':'month'}
-            value={mode==='semana'?focus:focus.slice(0,7)}
-            onChange={e=>{
-              const value=e.target.value;
-              if(value)setFocus(mode==='semana'?value:value+'-01');
-            }}/>
-        </label>
+        <DateRangeFields id="calendar-period" start={start} end={end} onChange={(a,b)=>{setStart(a);setEnd(b);setExportError('');}}/>
         <label className="field" htmlFor="calendar-cart"><span>Carrinho</span>
           <select id="calendar-cart" value={cartId} onChange={e=>setCartId(e.target.value)}>
             <option value="">Todos os carrinhos</option>
@@ -189,16 +178,16 @@ export default function CalendarReportsPage(){
           <p className="reservation-subtle">Segunda a sexta; feriados permanecem no calendário.</p>
         </div>
         <div className="reservation-actions">
-          <button type="button" className="ghost" disabled={busy||exportBusy} onClick={refresh}>Atualizar relatório</button>
+          <button type="button" className="ghost" disabled={busy||exportBusy||!!selection.error} onClick={refresh}>Atualizar relatório</button>
           <button type="button" className="secondary" disabled={busy||!!hasError||exportBusy}
             onClick={()=>void exportFile('csv')}><Download size={16} aria-hidden="true"/> Planilha CSV</button>
           <button type="button" className="secondary" disabled={busy||!!hasError||exportBusy}
             onClick={()=>void exportFile('pdf')}><FileText size={16} aria-hidden="true"/> Exportar PDF</button>
         </div>
       </div>
-      {exportError&&<p className="notice error" role="alert">{exportError}</p>}
-      {busy?<p role="status">Carregando calendário…</p>:
-        hasError?<p className="notice error" role="alert">Falha ao carregar o recorte completo. Use Atualizar relatório antes de exportar.</p>:
+      {exportError&&<Feedback kind="error">{exportError}</Feedback>}
+      {selection.error?<Feedback kind="warning">{selection.error}</Feedback>:busy?<p role="status">Carregando calendário…</p>:
+        hasError?<Feedback kind="error">Falha ao carregar o recorte completo. Use Atualizar relatório antes de exportar.</Feedback>:
         <div className="calendar-grid">{dates.map((day,index)=>{
           const dayRows=byDate.get(day)??[];
           const weekday=new Date(day+'T12:00:00Z').getUTCDay();

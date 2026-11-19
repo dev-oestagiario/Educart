@@ -1,3 +1,4 @@
+import {Feedback} from '../components/Feedback';
 import {useEffect,useMemo,useState} from 'react';
 import {useQuery} from '@tanstack/react-query';
 import {CalendarDays,RefreshCw,X} from 'lucide-react';
@@ -16,7 +17,7 @@ function firstBusinessDay(){
 }
 const initialDay=firstBusinessDay();
 
-export default function PublicCartAvailabilityPage(){
+export default function PublicCartAvailabilityPage({embedded=false}:{embedded?:boolean}){
   const [start,setStart]=useState(initialDay);
   const [end,setEnd]=useState('');
   const [cartId,setCartId]=useState('');
@@ -64,11 +65,12 @@ export default function PublicCartAvailabilityPage(){
     setStart(next);
     if(end&&end<next)setEnd('');
   }
-  return <main id="main-content" className="public-agenda calendar-page">
+  const Container=embedded?'div':'main';
+  return <Container id={embedded?undefined:"main-content"} className={"public-agenda calendar-page"+(embedded?" public-agenda-embedded":"")}>
     <header className="public-agenda-header">
-      <div><BrandLogo tone="light"/><span className="eyebrow">CONSULTA PÚBLICA · LABORATÓRIOS MÓVEIS</span><h1>Disponibilidade dos carrinhos</h1>
+      <div>{!embedded&&<BrandLogo tone="light"/>}<span className="eyebrow">{embedded?'PORTAL DO PROFESSOR':'CONSULTA PÚBLICA · LABORATÓRIOS MÓVEIS'}</span><h1>Disponibilidade dos carrinhos</h1>
         <p>Escolha a data para consultar um dia. Para consultar vários dias, informe também até quando.</p></div>
-      <div className="public-agenda-header-actions"><ThemeToggle/><a className="secondary" href="#/login">Acesso ao sistema</a></div>
+      {!embedded&&<div className="public-agenda-header-actions"><ThemeToggle/><a className="secondary" href="#/login">Acesso ao sistema</a></div>}
     </header>
     <section className="panel calendar-filters" aria-label="Filtros da consulta pública">
       <div className="calendar-filter-grid">
@@ -98,7 +100,7 @@ export default function PublicCartAvailabilityPage(){
           <RefreshCw size={16} aria-hidden="true"/> Atualizar disponibilidade
         </button>
       </div>
-      {selection.error&&<p className="notice error" role="alert">{selection.error}</p>}
+      {selection.error&&<Feedback kind="error">{selection.error}</Feedback>}
     </section>
     <div className="stats calendar-stats">
       <div className="stat"><span className="stat-label">Carrinhos ativos</span><strong>{dates.length===0||query.isLoading?'—':carts.length}</strong></div>
@@ -110,7 +112,7 @@ export default function PublicCartAvailabilityPage(){
         <p className="reservation-subtle">Apenas dias úteis. Reservas canceladas não ocupam vagas.</p></div>
       {selection.error?<p className="calendar-empty">Ajuste a data acima para consultar a disponibilidade.</p>:
         query.isLoading?<p role="status">Carregando disponibilidade para {dates.length} dia(s) útil(eis)…</p>:
-        query.error?<p className="notice error" role="alert">Não foi possível consultar as reservas. Tente atualizar mais tarde.</p>:
+        query.error?<Feedback kind="error">Não foi possível consultar as reservas. Tente atualizar mais tarde.</Feedback>:
         carts.length===0?<p>Nenhum carrinho ativo disponível para consulta.</p>:
         <>
           {pageCount>1&&<nav className="public-day-pagination" aria-label="Navegação dos dias consultados">
@@ -141,6 +143,6 @@ export default function PublicCartAvailabilityPage(){
           })}</div>
         </>}
     </section>
-    <p className="form-hint">Consulta apenas informativa, atualizada automaticamente enquanto esta página estiver aberta. A disponibilidade pode mudar quando novas reservas forem confirmadas. Para solicitar uma reserva, entre em contato com a equipe de TI.</p>
-  </main>;
+    <p className="form-hint">Consulta apenas informativa, atualizada automaticamente enquanto esta página estiver aberta. A disponibilidade pode mudar quando novas reservas forem confirmadas. {embedded?'Use a página de solicitações para pedir uma reserva.':'Para solicitar uma reserva, entre em contato com a equipe de TI.'}</p>
+  </Container>;
 }

@@ -9,6 +9,7 @@ import './styles.css';
 import './brand-theme.css';
 import './light-theme.css';
 import './design-system.css';
+import './dropdowns.css';
 import {initializeTheme} from './lib/theme';
 initSentry();
 initializeTheme();

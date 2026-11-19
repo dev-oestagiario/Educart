@@ -49,7 +49,7 @@ export type AgendaReport={
 export type AgendaPdfOptions={
   dates:string[];
   period:string;
-  mode:'semana'|'mes';
+  mode:'semana'|'mes'|'periodo';
   title?:string;
   issuedAt?:Date;
 };
@@ -210,7 +210,7 @@ export async function createAgendaPdf(
   reserve(205);
   pdf.setFont('helvetica','bold');pdf.setFontSize(12.4);
   pdf.setTextColor(...purple);
-  pdf.text(options.mode==='semana'?'Resumo Geral da Semana':'Resumo Geral do Mês',m,y);
+  pdf.text(options.mode==='semana'?'Resumo Geral da Semana':options.mode==='mes'?'Resumo Geral do Mês':'Resumo Geral do Período',m,y);
   y+=16;
   const summaryLeft=m+92,summaryValue=m+256;
   pdf.setFontSize(9);

@@ -1,3 +1,5 @@
+import DateRangeFields from '../components/DateRangeFields';
+import {Feedback} from '../components/Feedback';
 import { useMemo, useState, type FormEvent } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ArrowLeft, CalendarDays, Info, Laptop2, Plus } from 'lucide-react';
@@ -81,7 +83,8 @@ export default function ReservationsPage() {
   const slots=useMemo(()=>applyMaintenance(calculateAvailability(
     selectedCart?.capacity??0,(periods.data??[]).filter(p=>!editingId||p.reservation_id!==editingId),dates,selectedShifts
   ),maintenance.data??[],cartId),[selectedCart?.capacity,periods.data,dates,selectedShifts,editingId,maintenance.data,cartId]);
-  const blocked=!!selectedCart && slots.some(s=>s.remaining<requestedQuantity);
+  const maintainedNotebooks=new Set((maintenance.data??[]).filter(m=>m.notebook_id&&!m.closed_at&&m.cart_id===cartId&&dates.some(d=>d>=m.start_date&&d<=m.end_date)&&selectedShifts.some(s=>m.shifts.includes(s))).map(m=>m.notebook_id));
+  const blocked=!!selectedCart && (slots.some(s=>s.remaining<requestedQuantity)||selectedNotebookIds.some(id=>maintainedNotebooks.has(id)));
   const knownNotebooks=(notebooks.data??[]).filter(n=>n.cart_id===cartId);
   const periodsCount=dates.length*selectedShifts.length;
 
@@ -184,7 +187,7 @@ export default function ReservationsPage() {
           <Plus size={18} aria-hidden="true"/> Nova reserva
         </button>
       </div>
-      {feedback&&<p role={feedback.kind==='error'?'alert':'status'} className={'notice '+feedback.kind}>{feedback.text}</p>}
+      {feedback&&<Feedback kind={feedback.kind}>{feedback.text}</Feedback>}
       <ReservationManager carts={carts.data??[]} requesters={teachers.data??[]}
         onEdit={loadForEdit} onChanged={()=>{setEditingId(null);refreshData()}}/>
     </>:<>
@@ -216,7 +219,7 @@ export default function ReservationsPage() {
             </label>
           </div>
           {(carts.error||teachers.error||notebooks.error)&&
-            <p className="notice error" role="alert">Não foi possível consultar todos os cadastros. Atualize a página.</p>}
+            <Feedback kind="error">Não foi possível consultar todos os cadastros. Atualize a página.</Feedback>}
           <fieldset className="reservation-fieldset">
             <legend>O que deseja reservar?</legend>
             <div className="reservation-options reservation-type-options">
@@ -244,15 +247,15 @@ export default function ReservationsPage() {
             <button type="button" className={weekly?'primary':'secondary'} aria-pressed={weekly} disabled={save.isPending} onClick={()=>{if(!weekly){setPattern(defaultWeeklyPattern(firstBookableDay));setWeekly(true);setFeedback(null);}}}>Repetir semanalmente</button>
           </div>
           {weekly?<WeeklyRecurrence id="reservation-weekly" value={pattern} today={todayInSaoPaulo()} shifts={selectedShifts.length} disabled={save.isPending} onChange={p=>{setPattern(p);setFeedback(null);}}/>:
-          <ReservationDatePicker value={{mode:dateMode,startDate,endDate,specificDates}} selectedDates={dates} onChange={updateDates} minDate={today}/>}
+          <><DateRangeFields id="reservation-period" start={startDate} end={dateMode==='single'?'':endDate} min={today} disabled={save.isPending} onChange={(a,b)=>updateDates({mode:b?'range':'single',startDate:a,endDate:b||a,specificDates:[]})}/><ReservationDatePicker value={{mode:dateMode,startDate,endDate,specificDates}} selectedDates={dates} onChange={updateDates} minDate={today}/>{dateMode==='multiple'&&<p className="form-hint">Datas avulsas selecionadas: alterar o início ou fim substitui a seleção pelo intervalo.</p>}</>}
           {editingId&&weekly&&<p className="form-hint">O padrão substituirá as datas do agrupamento em edição. Períodos já utilizados continuam protegidos pelas regras existentes.</p>}
-          {!weekly&&dateResult.error&&<p role="alert" className="notice error">{dateResult.error}</p>}
+          {!weekly&&dateResult.error&&<Feedback kind="error">{dateResult.error}</Feedback>}
           {reservationMode==='PARCIAL'&&<fieldset className="reservation-fieldset">
             <legend>Notebooks identificados (opcional)</legend>
             <p className="form-hint">Selecione os códigos conhecidos. Também é possível reservar notebooks sem identificar todos.</p>
             {notebooks.isFetching&&<p role="status">Consultando códigos…</p>}
             {cartId&&!notebooks.isFetching&&!notebooks.error&&!knownNotebooks.length&&<p className="reservation-subtle">Nenhum código individual cadastrado neste carrinho.</p>}
-            {selectedNotebookIds.length>requestedQuantity&&<p className="notice warning" role="status">A quantidade de códigos selecionados excede a quantidade solicitada. Remova códigos ou aumente a quantidade.</p>}
+            {selectedNotebookIds.length>requestedQuantity&&<Feedback kind="warning">A quantidade de códigos selecionados excede a quantidade solicitada. Remova códigos ou aumente a quantidade.</Feedback>}
             <div className="reservation-notebooks">{knownNotebooks.map(n=><label key={n.id}>
               <input type="checkbox" checked={selectedNotebookIds.includes(n.id)} disabled={!selectedNotebookIds.includes(n.id)&&selectedNotebookIds.length>=requestedQuantity}
                 onChange={e=>toggleNotebook(n.id,e.target.checked)}/>
@@ -281,7 +284,7 @@ export default function ReservationsPage() {
             <summary><Laptop2 size={18} aria-hidden="true"/> Ver disponibilidade por turno</summary>
             {!showPreview?<p className="form-hint">Selecione carrinho, datas e turnos para verificar o saldo.</p>:
               periods.isLoading||periods.isFetching||maintenance.isLoading||maintenance.isFetching?<p role="status">Consultando disponibilidade…</p>:
-              (periods.error||maintenance.error)?<p role="alert" className="notice error">Falha ao consultar os períodos. Não confirme antes de atualizar.</p>:
+              (periods.error||maintenance.error)?<Feedback kind="error">Falha ao consultar os períodos. Não confirme antes de atualizar.</Feedback>:
               <div className="reservation-table-wrap"><table className="reservation-table">
                 <thead><tr><th>Data</th><th>Turno</th><th>Livres</th><th>Situação</th></tr></thead>
                 <tbody>{slots.map(slot=><tr key={slot.date+'-'+slot.shift}>
@@ -291,9 +294,9 @@ export default function ReservationsPage() {
                   </span></td>
                 </tr>)}</tbody>
               </table></div>}
-            {blocked&&<p className="notice error" role="alert">Há períodos sem capacidade suficiente. Ajuste as datas, o turno, a quantidade ou o carrinho.</p>}
+            {blocked&&<Feedback kind="error">Há períodos sem capacidade suficiente. Ajuste as datas, o turno, a quantidade ou o carrinho.</Feedback>}
           </details>
-          {feedback&&<p className={'notice '+feedback.kind} role={feedback.kind==='error'?'alert':'status'}>{feedback.text}</p>}
+          {feedback&&<Feedback kind={feedback.kind}>{feedback.text}</Feedback>}
           <div className="reservation-form-actions">
             <button className="primary" type="submit"
               disabled={!requesterId||!cartId||!requestedValid||!dates.length||!selectedShifts.length||blocked||periods.isFetching||maintenance.isFetching||!!maintenance.error||!!periods.error||!!carts.error||!!teachers.error||(reservationMode==='PARCIAL'&&(notebooks.isFetching||!!notebooks.error||selectedNotebookIds.length>requestedQuantity))||save.isPending}>

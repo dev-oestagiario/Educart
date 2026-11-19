@@ -1,7 +1,7 @@
 import {describe,it,expect} from 'vitest';
 import {dashboardSummary,type DashboardData,type DashboardPeriod,type DashboardFilter} from './dashboard';
 const today='2026-11-17';
-const initial:DashboardFilter={cartId:'',shift:'all',days:7};
+const initial:DashboardFilter={cartId:'',shift:'all',start:today,end:'2026-11-24'};
 const period=(id:string,date:string,shift:DashboardPeriod['shift']='MATUTINO',cart='a',active=true):DashboardPeriod=>({id,reservation_id:id,cart_id:cart,usage_date:date,shift,quantity:4,active,reservations:{requester_id:'p',status:'CONFIRMADA',destination_label:null}});
 const data:DashboardData={
  carts:[{id:'a',code:'A',name:'A',capacity:10,active:true,created_at:''},{id:'b',code:'B',name:'B',capacity:8,active:false,created_at:''}],
@@ -25,10 +25,10 @@ describe('dashboard operacional',()=>{
   expect(s.pendingReturns.map(m=>m.id)).toEqual(['old','m1']);
   expect(s.pendingQuantity).toBe(5);expect(s.overdueReturns).toBe(1);
   expect(s.upcoming.map(p=>p.id)).toEqual(['up']);
-  expect(dashboardSummary(data,today,{...initial,days:14}).upcoming.map(p=>p.id)).toEqual(['up','outside']);
+  expect(dashboardSummary(data,today,{...initial,end:'2026-12-01'}).upcoming.map(p=>p.id)).toEqual(['up','outside']);
  });
  it('filtra carrinho e turno e ignora janelas encerradas',()=>{
-  const s=dashboardSummary(data,today,{cartId:'a',shift:'NOTURNO',days:7});
+  const s=dashboardSummary(data,today,{...initial,cartId:'a',shift:'NOTURNO'});
   expect(s.todayPeriods.map(p=>p.id)).toEqual(['today-await']);expect(s.pendingReturns).toEqual([]);
   expect(s.maintenance.map(m=>m.id)).toEqual(['maint']);expect(s.maintenanceToday).toBe(1);expect(s.pendingRequests).toEqual([]);
  });
@@ -36,4 +36,13 @@ describe('dashboard operacional',()=>{
   expect(dashboardSummary(data,today,initial).capacity).toBe(10);
   expect(dashboardSummary(data,today,{...initial,cartId:'b'}).capacity).toBe(0);
  });
+});
+
+it('accepts an exact upcoming range and keeps today metrics independent',()=>{
+ const s=dashboardSummary(data,today,{...initial,start:'2026-11-25',end:'2026-11-25'});
+ expect(s.upcoming.map(p=>p.id)).toEqual(['outside']);
+ expect(s.maintenance.map(m=>m.id)).toEqual(['far']);
+ expect(s.todayPeriods).toHaveLength(4);
+ expect(s.maintenanceToday).toBe(1);
+ expect(s.pendingReturns).toHaveLength(2);
 });

@@ -1,3 +1,4 @@
+import {Feedback} from './Feedback';
 import {useQuery} from '@tanstack/react-query';
 import {BarChart3,CalendarCheck2,Info,RefreshCw} from 'lucide-react';
 import {supabase} from '../lib/supabase';
@@ -41,9 +42,7 @@ export default function TeacherAvailabilityPreview({cartId,dates,shifts,quantity
     {!validSelection?
       <p className="form-hint">Escolha carrinho, datas e turnos para consultar o saldo disponível.</p>:
       preview.isPending?<p role="status" className="form-hint">Consultando a ocupação por dia e turno…</p>:
-      preview.isError?<div role="alert" className="notice error">
-        Não foi possível consultar o saldo agora. Você ainda pode enviar o pedido; a TI verificará a disponibilidade antes de aprovar.
-      </div>:
+      preview.isError?<Feedback kind="error">Não foi possível consultar o saldo agora. Você ainda pode enviar o pedido; a TI verificará a disponibilidade antes de aprovar.</Feedback>:
       <>
         <div className="teacher-availability-summary" role="status">
           <CalendarCheck2 size={18} aria-hidden="true"/>

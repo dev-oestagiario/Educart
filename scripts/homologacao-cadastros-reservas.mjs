@@ -78,6 +78,12 @@ await change('carts',cart.id,{active:false});
 fail(await create(),'Carrinho inativo');
 await change('carts',cart.id,{active:true});
 const id=ok(await create(),'Reserva agrupada');
+fail(await admin.from('carts').update({active:false}).eq('id',cart.id),'Impedir inativação de carrinho reservado');
+fail(await admin.from('requesters').update({active:false}).eq('id',requester.id),'Impedir inativação de professor reservado');
+fail(await admin.from('notebook_codes').update({active:false}).eq('id',codes[0].id),'Impedir inativação de notebook reservado');
+assert.equal((await find('carts',cart.id)).active,true);
+assert.equal((await find('requesters',requester.id)).active,true);
+assert.equal((await find('notebook_codes',codes[0].id)).active,true);
 const periods=await rows('reservation_periods','reservation_id',id);
 assert.equal(periods.length,4);
 assert.ok(periods.every(p=>p.active&&p.quantity===4));
@@ -120,6 +126,12 @@ assert.ok(audit.find(x=>x.event_type==='EDICAO').before_data);
 assert.ok(audit.find(x=>x.event_type==='EDICAO').after_data);
 ok(await admin.rpc('cancel_reservation',{p_reservation_id:full}),'Liberar reserva completa');
 assert.equal(await balance(cart.id,d1,'NOTURNO'),10);
+for(const [table,id] of [['notebook_codes',codes[0].id],['requesters',requester.id],['carts',cart.id]]){
+ assert.equal((await change(table,id,{active:false})).active,false);
+ assert.equal((await find(table,id)).id,id);
+ assert.equal((await change(table,id,{active:true})).active,true);
+}
+console.log('PASS CATALOGO: bloqueio de inativação com compromisso, inativação lógica e reativação');
 console.log('PASS F2.1-EDIT: detalhes, alteração, cancelamento parcial/total, saldo e trilha de auditoria');
 
 // Today rules, only on an institutional weekday. Otherwise explicitly skip.

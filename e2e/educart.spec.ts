@@ -301,9 +301,10 @@ async function useFakeSupabase(page: Page, authorized = true) {
       }
       if (req.method() === 'PATCH') {
         const id = url.searchParams.get('id')?.replace('eq.', '');
-        const record = database[table].find(row => row.id === id);
+        const active = url.searchParams.get('active');
+        const record = database[table].find(row => row.id === id && (!active || 'eq.'+String(row.active)===active));
         if (record) Object.assign(record, req.postDataJSON());
-        await respond([]); return;
+        await respond(req.headers()['prefer']?.includes('return=representation') && record ? [{id:record.id}] : []); return;
       }
     }
     await respond({ message: 'Rota não simulada: ' + url.pathname }, 404);
@@ -623,7 +624,8 @@ test('Fase 4 — filtros semanais, contagem correta e exportação CSV/PDF',asyn
   await login(page);
   await page.getByRole('button',{name:'Calendário',exact:true}).click();
   await expect(page.getByRole('heading',{name:'Calendário e relatórios'})).toBeVisible();
-  await page.locator('#calendar-focus').fill(date1);
+  await page.locator('#calendar-period-start').fill(date1);
+  await page.locator('#calendar-period-end').fill(date2);
   await page.locator('#calendar-cart').selectOption(cartId);
   await page.locator('#calendar-requester').selectOption(teacherId);
   await expect(page.locator('.calendar-event').getByText('Professora Relatório').first()).toBeVisible();
@@ -661,7 +663,9 @@ test('Fase 4 — calendário responsivo sem rolagem horizontal',async({page})=>{
     .getByRole('button',{name:'Calendário'}).click();
   await expect(page.getByRole('heading',{name:'Calendário e relatórios'})).toBeVisible();
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth+1)).toBe(true);
-  await page.locator('#calendar-mode').selectOption('mes');
+  const rangeStart=futureMondays()[0];
+  await page.locator('#calendar-period-start').fill(rangeStart);
+  await page.locator('#calendar-period-end').fill(futureMondays()[1]);
   await expect(page.locator('.calendar-grid')).toBeVisible();
 });
 
@@ -719,15 +723,16 @@ test('Fase 6 — professor vinculado envia e retira pedido, sem ocupar capacidad
   db.teacher_account_links.push({user_id:ADMIN_ID,requester_id:teacherId,active:true});
   await login(page);
   await expect(page.getByRole('heading',{name:'Pedidos de reserva'})).toBeVisible();
-  await expect(page.getByRole('button',{name:'Solicitações'})).toHaveCount(0);
+  await expect(page.getByRole('navigation',{name:'Menu principal'})).toHaveCount(0);
+  await expect(page.getByRole('navigation',{name:'Menu do professor'}).getByRole('button',{name:'Solicitações',exact:true})).toBeVisible();
   await page.getByRole('button',{name:'Nova solicitação'}).click();
   await page.locator('#teacher-cart').selectOption(cartId);
   await page.locator('#teacher-quantity').fill('7');
   const d=new Date(Date.now()+14*86400000);
   while(d.getUTCDay()===0||d.getUTCDay()===6)d.setUTCDate(d.getUTCDate()+1);
   const day=d.toISOString().slice(0,10);
-  await page.locator('#teacher-start').fill(day);
-  await page.locator('#teacher-end').fill(day);
+  await page.locator('#teacher-period-start').fill(day);
+  await page.locator('#teacher-period-end').fill(day);
   await page.getByRole('button',{name:'Enviar solicitação para aprovação'}).click();
   await expect(page.getByText(/Solicitação enviada à TI/)).toBeVisible();
   expect(db.reservation_requests).toHaveLength(1);
@@ -861,7 +866,7 @@ test('Fase 7 — não é possível marcar notificação de outro usuário',async
   });
   await login(page);
   await page.locator('.notifications-trigger').click();
-  await expect(page.getByText('Não há notificações ainda. As atualizações aparecerão aqui quando houver solicitações ou decisões da TI.')).toBeVisible();
+  await expect(page.getByText('Não há notificações ainda.',{exact:true})).toBeVisible();
   expect(db.user_notifications[0].read_at).toBeNull();
 });
 
@@ -890,8 +895,8 @@ test('Fase 8 — professor consulta saldo sem códigos físicos e sem contar pen
   await expect(page.getByRole('heading',{name:'Pedidos de reserva'})).toBeVisible();
   await page.getByRole('button',{name:'Nova solicitação'}).click();
   await page.locator('#teacher-cart').selectOption(cartId);
-  await page.locator('#teacher-start').fill(day);
-  await page.locator('#teacher-end').fill(day);
+  await page.locator('#teacher-period-start').fill(day);
+  await page.locator('#teacher-period-end').fill(day);
   await expect(page.getByText(/1 de 1 períodos possuem saldo estimado para 1 notebook/)).toBeVisible();
   await page.getByText(/Ver saldo por data e turno/).click();
   const detail=page.locator('.teacher-availability-table-wrap');
@@ -926,8 +931,8 @@ test('Fase 8 — sem reservas confirmadas, capacidade permanece 30 e pedidos pen
   await login(page);
   await page.getByRole('button',{name:'Nova solicitação'}).click();
   await page.locator('#teacher-cart').selectOption(cartId);
-  await page.locator('#teacher-start').fill(day);
-  await page.locator('#teacher-end').fill(day);
+  await page.locator('#teacher-period-start').fill(day);
+  await page.locator('#teacher-period-end').fill(day);
   await page.getByLabel('Carrinho completo').check();
   await expect(page.getByText(/1 de 1 períodos possuem saldo estimado para 30 notebook/)).toBeVisible();
   await page.getByText(/Ver saldo por data e turno/).click();
@@ -1843,7 +1848,7 @@ test('Dashboard operacional — recortes, pendências antigas, filtros e atalhos
  await expect(metric('Solicitações pendentes')).toHaveText('1');
  await expect(page.getByText('De data anterior',{exact:true})).toBeVisible();
  await expect(page.getByText('Nenhum período confirmado no intervalo.')).toBeVisible();
- await page.getByLabel('Próximos dias').selectOption('14');
+ await page.locator('#dashboard-period-end').fill(new Date(Date.now()+14*86400000).toISOString().slice(0,10));
  await expect(page.getByText('Nenhum período confirmado no intervalo.')).toHaveCount(0);
  await page.getByRole('combobox',{name:'Carrinho',exact:true}).selectOption(c1);
  await expect(metric('Períodos de hoje')).toHaveText('1');
@@ -1936,7 +1941,7 @@ test('F3.5 — professor solicita série semanal pelo celular sem ocupar capacid
  await login(page);
  await page.getByRole('button',{name:'Nova solicitação'}).click();
  await page.locator('#teacher-cart').selectOption(cart);
- await page.locator('#teacher-date-mode').selectOption('weekly');
+ await page.getByRole('button',{name:'Recorrência semanal',exact:true}).click();
  await setWeekly(page,'teacher-weekly',dates);
  await page.getByRole('checkbox',{name:'Incluir '+brDate(dates[1])}).uncheck();
  await expect(page.locator('.weekly-summary')).toContainText('2 ocorrência(s)');
@@ -1984,15 +1989,17 @@ test('F3.6 — preferências de e-mail opcionais, canal desativado e avisos inte
  });
  await page.setViewportSize({width:320,height:780});
  await login(page);
- await page.getByRole('button',{name:/^Notificações/}).click();
+ await page.getByRole('button',{name:'Configurações',exact:true}).click();
  const panel=page.getByRole('region',{name:'Preferências de e-mail'});
  const toggle=panel.getByRole('checkbox',{name:'Receber avisos no e-mail confirmado da minha conta'});
  await expect(toggle).not.toBeChecked();
  await expect(panel.getByText(/O envio externo ainda não está habilitado/)).toBeVisible();
- await toggle.click();await expect(toggle).toBeChecked();await expect(panel.getByText('Preferência salva.')).toBeVisible();
+ await toggle.click();await expect(toggle).toBeChecked();await expect(page.locator('#educart-toasts').getByText('Preferência salva.')).toBeVisible();
  expect(enabled).toBe(true);
  await toggle.click();await expect(toggle).not.toBeChecked();expect(enabled).toBe(false);
+ await page.getByRole('navigation',{name:'Menu do professor'}).getByRole('button',{name:'Notificações',exact:true}).click();
  await expect(page.getByRole('heading',{name:'Seus avisos'})).toBeVisible();
+ await expect(page.getByRole('region',{name:'Preferências de e-mail'})).toHaveCount(0);
  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=document.documentElement.clientWidth+1)).toBe(true);
 });
 
@@ -2018,7 +2025,7 @@ test('F4.1 — controles e feedback compartilham tokens nos dois temas',async({p
   await expect(page.getByRole('button',{name:'Voltar para manutenção'})).toHaveClass(/ghost records-back/);
   await expect(page.locator('.ds-fieldset')).toBeVisible();
   await expect(page.locator('.field textarea')).toHaveCSS('border-top-left-radius','10px');
-  await expect(page.locator('.field select')).toHaveCSS('min-height','44px');
+  for(const select of await page.locator('.field select').all())await expect(select).toHaveCSS('min-height','44px');
   await checkContrast('.records-form-panel .field select',4.5);
   await checkContrast('.records-form-panel .primary',4.5);
   await page.getByRole('button',{name:'Voltar para manutenção'}).click();
@@ -2193,7 +2200,7 @@ test('F4.3 — auditoria do professor e consulta pública em telas pequenas',asy
   await skip.focus();await page.keyboard.press('Enter');await expect(page.locator('#teacher-main')).toBeFocused();
   await page.getByRole('button',{name:'Nova solicitação'}).click();
   await page.locator('#teacher-cart').selectOption(cart);
-  await page.locator('#teacher-date-mode').selectOption('weekly');
+  await page.getByRole('button',{name:'Recorrência semanal',exact:true}).click();
   await scan(theme+' professor recorrência');
   await page.getByRole('button',{name:'Voltar para solicitações'}).click();
  }
@@ -2236,7 +2243,7 @@ test('F4.4 — recorte incompleto bloqueia exportação e atualização recupera
   await route.fulfill({status:200,headers:{'access-control-allow-origin':'*','access-control-allow-headers':'*'},json:[]});
  });
  await login(page);await page.getByRole('button',{name:'Calendário',exact:true}).click();
- await page.locator('#calendar-focus').fill(day);
+ await page.locator('#calendar-period-start').fill(day);
  await expect(page.getByRole('alert')).toContainText('Falha ao carregar o recorte completo');
  await expect(page.getByRole('button',{name:'Planilha CSV'})).toBeDisabled();
  await expect(page.getByRole('button',{name:'Exportar PDF'})).toBeDisabled();
@@ -2253,17 +2260,17 @@ test('F4.4 — aprovação invalida relatório e painel sem aguardar expiração
  db.carts.push({id:cart,name:'Carrinho integração',code:'INT',capacity:10,active:true});
  db.reservation_requests.push({id:request,requester_id:teacher,cart_id:cart,mode:'PARCIAL',quantity:2,dates:[day],shifts:['MATUTINO'],needs_mouse:false,notes:null,status:'PENDENTE',created_at:new Date().toISOString()});
  await login(page);await page.getByRole('button',{name:'Calendário',exact:true}).click();
- await page.locator('#calendar-focus').fill(day);
+ await page.locator('#calendar-period-start').fill(day);
  const metric=()=>page.locator('.calendar-stats .stat').filter({has:page.getByText('Períodos ocupados',{exact:true})}).locator('strong');
  await expect(metric()).toHaveText('0');
  await page.getByRole('button',{name:'Solicitações',exact:true}).click();
  await page.getByRole('button',{name:'Aprovar e confirmar reserva'}).click();
  await expect(page.getByText('Solicitação aprovada e reserva confirmada.')).toBeVisible();
  await page.getByRole('button',{name:'Calendário',exact:true}).click();
- await page.locator('#calendar-focus').fill(day);
+ await page.locator('#calendar-period-start').fill(day);
  await expect(metric()).toHaveText('1');
  await page.getByRole('button',{name:'Visão geral',exact:true}).click();
- await page.getByLabel('Próximos dias').selectOption('30');
+ await page.locator('#dashboard-period-end').fill(new Date(Date.now()+30*86400000).toISOString().slice(0,10));
  await expect(page.getByText('Professor integração',{exact:false}).first()).toBeVisible();
 });
 
@@ -2652,4 +2659,151 @@ test('Login — consulta pública discreta, centralizada e acessível no rodapé
   }
   await link.focus();await expect(link).toBeFocused();await page.keyboard.press('Enter');
   await expect(page.getByRole('heading',{name:'Disponibilidade dos carrinhos'})).toBeVisible();
+});
+
+
+test('Dashboard operacional — cards de alturas diferentes sem lacunas no desktop',async({page})=>{
+ const db=await useFakeSupabase(page);
+ const today=new Intl.DateTimeFormat('en-CA',{timeZone:'America/Sao_Paulo',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
+ const tomorrow=new Date(today+'T12:00:00Z');tomorrow.setUTCDate(tomorrow.getUTCDate()+1);
+ const cart=crypto.randomUUID(),teacher=crypto.randomUUID();
+ db.carts.push({id:cart,name:'Carrinho de teste',code:'GAP-01',capacity:30,active:true});
+ db.requesters.push({id:teacher,name:'Professor sintético',active:true});
+ for(let i=0;i<9;i++){const id=crypto.randomUUID();db.reservation_periods.push({id,reservation_id:id,cart_id:cart,usage_date:tomorrow.toISOString().slice(0,10),shift:'MATUTINO',quantity:2,active:true,reservations:{requester_id:teacher,status:'CONFIRMADA',destination_label:null}});}
+ await page.setViewportSize({width:1440,height:900});await login(page);
+ const card=(title:string)=>page.locator('.dashboard-section').filter({has:page.getByRole('heading',{name:new RegExp('^'+title)})});
+ const upcoming=card('Próximas utilizações'),maintenance=card('Manutenções'),catalog=card('Cadastros e capacidade nominal');
+ await expect(upcoming.locator('article')).toHaveCount(5);
+ await expect(maintenance).toContainText('Nenhuma janela de manutenção');
+ const assertGap=async()=>{const m=await maintenance.boundingBox(),c=await catalog.boundingBox();expect(m&&c).toBeTruthy();expect(Math.abs(c!.x-m!.x)).toBeLessThan(2);expect(Math.abs(c!.y-m!.y-m!.height-16)).toBeLessThan(2);};
+ await assertGap();
+ await upcoming.getByRole('button',{name:'Exibir todos (9)'}).click();await expect(upcoming.locator('article')).toHaveCount(9);await assertGap();
+ await page.setViewportSize({width:390,height:850});await expect(upcoming.locator('article')).toHaveCount(9);
+ await page.setViewportSize({width:1440,height:900});await expect(upcoming.locator('article')).toHaveCount(9);await assertGap();
+ await upcoming.getByRole('button',{name:'Mostrar menos'}).click();await expect(upcoming.locator('article')).toHaveCount(5);await assertGap();
+ for(const width of [1280,1024]){await page.setViewportSize({width,height:900});await assertGap();}
+ for(const width of [1000,768,390,320]){
+  await page.setViewportSize({width,height:850});
+  await expect(page.locator('.dashboard-section h2')).toHaveText([/^Agenda de hoje/,/^Devoluções pendentes/,/^Próximas utilizações/,/^Manutenções/,/^Solicitações aguardando análise/,/^Cadastros e capacidade nominal/]);
+  const boxes=await page.locator('.dashboard-section').evaluateAll(els=>els.map(el=>{const r=el.getBoundingClientRect();return {x:r.x,y:r.y,h:r.height};}));
+  expect(boxes).toHaveLength(6);
+  for(let i=1;i<boxes.length;i++){expect(Math.abs(boxes[i].x-boxes[0].x)).toBeLessThan(2);expect(Math.abs(boxes[i].y-boxes[i-1].y-boxes[i-1].h-16)).toBeLessThan(2);}
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
+ }
+});
+
+
+test('Listas — busca ocupa toda a largura disponível em desktop e mobile',async({page})=>{
+ await useFakeSupabase(page);
+ await page.setViewportSize({width:1440,height:900});await login(page);
+ const routes=[['Carrinhos','Buscar carrinho'],['Professores','Buscar professor'],['Notebooks','Buscar notebook'],['Localizações','Buscar registro'],['Manutenção','Buscar manutenção'],['Reservas','Buscar reserva'],['Retirada e devolução','Buscar movimentação']];
+ for(const [menu,label] of routes){
+  await page.setViewportSize({width:1440,height:900});
+  await page.getByRole('navigation',{name:'Menu principal'}).getByRole('button',{name:menu,exact:true}).click();
+  const input=page.getByRole('searchbox',{name:label,exact:true});
+  await expect(input).toBeVisible();
+  for(const width of [1440,1280,1024,768,390,320]){
+   await page.setViewportSize({width,height:900});await expect(input).toBeVisible();
+   const layout=await input.evaluate(el=>{
+    const box=el.getBoundingClientRect(),panel=el.closest('.panel')!;
+    const pr=panel.getBoundingClientRect(),cs=getComputedStyle(panel);
+    return {left:box.left-(pr.left+parseFloat(cs.borderLeftWidth)+parseFloat(cs.paddingLeft)),right:(pr.right-parseFloat(cs.borderRightWidth)-parseFloat(cs.paddingRight))-box.right,overflow:document.documentElement.scrollWidth>innerWidth+1};
+   });
+   expect(Math.abs(layout.left),menu+' esquerda '+width).toBeLessThanOrEqual(2);
+   expect(Math.abs(layout.right),menu+' direita '+width).toBeLessThanOrEqual(2);
+   expect(layout.overflow,menu+' overflow '+width).toBe(false);
+  }
+  await input.fill('teste sintético');await expect(input).toHaveValue('teste sintético');await input.clear();
+ }
+});
+
+test('Cadastros — inativação e reativação sem exclusão física e toast sem deslocar layout',async({page})=>{
+ const db=await useFakeSupabase(page);
+ const cart=crypto.randomUUID(),teacher=crypto.randomUUID(),notebook=crypto.randomUUID(),campus=crypto.randomUUID(),block=crypto.randomUUID(),room=crypto.randomUUID();
+ db.carts.push({id:cart,name:'Carrinho ciclo sintético',code:'LIFE-01',capacity:10,active:true});
+ db.requesters.push({id:teacher,name:'Professor ciclo sintético',active:true});
+ db.notebook_codes.push({id:notebook,cart_id:cart,code:'LIFE-NB',active:true});
+ db.campuses.push({id:campus,name:'Campus ciclo sintético',active:true});
+ db.campus_blocks.push({id:block,campus_id:campus,name:'Bloco ciclo sintético',active:true});
+ db.campus_rooms.push({id:room,block_id:block,name:'Sala ciclo sintética',active:true});
+ await page.setViewportSize({width:1440,height:900});await login(page);
+ const nav=page.getByRole('navigation',{name:'Menu principal'});
+ const toast=page.locator('#educart-toasts');
+ const assertToast=async(text:string)=>{await expect(toast.getByText(text,{exact:true})).toBeVisible();await expect(toast).toHaveCSS('position','fixed');};
+ for(const [menu,label,table,id] of [['Carrinhos','Carrinho ciclo sintético','carts',cart],['Professores','Professor ciclo sintético','requesters',teacher],['Notebooks','LIFE-NB','notebook_codes',notebook]]){
+  await nav.getByRole('button',{name:menu,exact:true}).click();
+  const row=page.locator('.records-item').filter({hasText:label});
+  await expect(row).toBeVisible();
+  const panel=page.locator('.records-panel');
+  const before=(await panel.boundingBox())!.y;
+  await row.getByRole('button',{name:'Inativar',exact:true}).click();
+  const modal=page.getByRole('dialog');
+  await expect(modal).toBeVisible();
+  await modal.getByRole('button',{name:'Cancelar'}).click();
+  expect(db[table].find(r=>r.id===id)?.active).toBe(true);
+  await row.getByRole('button',{name:'Inativar',exact:true}).click();
+  await modal.getByRole('button',{name:'Confirmar inativação'}).click();
+  await assertToast('Cadastro inativado.');
+  expect(db[table].find(r=>r.id===id)?.active).toBe(false);
+  await expect(row).toHaveCount(0);
+  expect(Math.abs((await panel.boundingBox())!.y-before)).toBeLessThanOrEqual(1);
+  await page.getByRole('combobox',{name:'Situação',exact:true}).selectOption('inactive');
+  await expect(row).toBeVisible();
+  await row.getByRole('button',{name:'Reativar',exact:true}).click();
+  await modal.getByRole('button',{name:'Confirmar reativação'}).click();
+  await assertToast('Cadastro reativado.');
+  expect(db[table].find(r=>r.id===id)?.active).toBe(true);
+  expect(db[table].filter(r=>r.id===id)).toHaveLength(1);
+  await toast.getByRole('button',{name:'Fechar aviso'}).click();
+  await expect(toast.getByText('Cadastro reativado.')).toHaveCount(0);
+ }
+ await nav.getByRole('button',{name:'Localizações',exact:true}).click();
+ await page.getByRole('button',{name:'Salas',exact:true}).click();
+ const row=page.locator('.records-item').filter({hasText:'Sala ciclo sintética'});
+ await row.getByRole('button',{name:'Ver detalhes'}).click();
+ await page.getByRole('button',{name:'Inativar',exact:true}).click();
+ await page.getByRole('dialog').getByRole('button',{name:'Confirmar inativação'}).click();
+ await assertToast('Cadastro inativado.');
+ await expect(row).toHaveCount(0);
+ expect(db.campus_rooms.find(r=>r.id===room)?.active).toBe(false);
+ await page.getByRole('combobox',{name:'Situação'}).selectOption('inactive');
+ await row.getByRole('button',{name:'Ver detalhes'}).click();
+ await page.getByRole('button',{name:'Reativar',exact:true}).click();
+ await page.getByRole('dialog').getByRole('button',{name:'Confirmar reativação'}).click();
+ await assertToast('Cadastro reativado.');
+ expect(db.campus_rooms.find(r=>r.id===room)?.active).toBe(true);
+ await page.setViewportSize({width:390,height:844});
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
+});
+
+test('Portal docente — calendário e manutenção somente leitura, sem configurações na notificação',async({page})=>{
+ const db=await useFakeSupabase(page,false);
+ const teacher=crypto.randomUUID(),cart=crypto.randomUUID();
+ db.requesters.push({id:teacher,name:'Professor sintético',active:true});
+ db.teacher_account_links.push({user_id:ADMIN_ID,requester_id:teacher,active:true});
+ db.carts.push({id:cart,name:'Laboratório manutenção',code:'LAB',capacity:10,active:true});
+ const headers={'access-control-allow-origin':'*','access-control-allow-headers':'*','content-type':'application/json'};
+ await page.route('https://educart-e2e.supabase.co/rest/v1/rpc/public_cart_availability',async route=>{
+  if(route.request().method()==='OPTIONS'){await route.fulfill({status:204,headers});return;}
+  const {p_start}=route.request().postDataJSON();
+  await route.fulfill({status:200,headers,json:[{usage_date:p_start,cart_id:cart,cart_name:'Laboratório manutenção',capacity:9,shift:'MATUTINO',reserved:0,available:9}]});
+ });
+ await page.route('https://educart-e2e.supabase.co/rest/v1/rpc/teacher_maintenance_schedule',async route=>{
+  if(route.request().method()==='OPTIONS'){await route.fulfill({status:204,headers});return;}
+  const {p_start,p_end}=route.request().postDataJSON();
+  await route.fulfill({status:200,headers,json:[{id:crypto.randomUUID(),cart_name:'Laboratório manutenção',start_date:p_start,end_date:p_end,shifts:['MATUTINO'],notebook_count:1}]});
+ });
+ await page.setViewportSize({width:390,height:844});await login(page);
+ const nav=page.getByRole('navigation',{name:'Menu do professor'});
+ await nav.getByRole('button',{name:'Calendário',exact:true}).click();
+ await expect(page.getByRole('heading',{name:'Disponibilidade dos carrinhos'})).toBeVisible();
+ await expect(page.getByRole('button',{name:'Exportar PDF'})).toHaveCount(0);
+ await expect(page.getByRole('button',{name:'Planilha CSV'})).toHaveCount(0);
+ await nav.getByRole('button',{name:'Manutenções',exact:true}).click();
+ await expect(page.getByText(/1 notebook\(s\)/)).toBeVisible();
+ await expect(page.getByRole('button',{name:'Programar manutenção'})).toHaveCount(0);
+ await nav.getByRole('button',{name:'Notificações',exact:true}).click();
+ await expect(page.getByRole('heading',{name:'Notificações',exact:true})).toBeVisible();
+ await expect(page.getByRole('region',{name:'Preferências de e-mail'})).toHaveCount(0);
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
 });

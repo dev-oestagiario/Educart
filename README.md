@@ -161,6 +161,7 @@ O acesso é pela [aplicação web](https://dev-oestagiario.github.io/Educart/). 
 
 | Documento | Conteúdo |
 | --- | --- |
+| [Git Flow](docs/git-flow.md) | Branches, revisão, homologação e promoção controlada. |
 | [Arquitetura e operação](docs/arquitetura-operacional.md) | Componentes, configuração de desenvolvimento e homologação isolada. |
 | [Roadmap](docs/roadmap-finalizacao-educart.md) · [Baseline F0](docs/f0-integracao-baseline.md) | Desenvolvimento e integração das etapas do projeto. |
 | [Migrations](docs/catalogo-migrations.md) | Evolução do banco e atualização controlada. |
